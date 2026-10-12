@@ -6,9 +6,10 @@
 
 [![Java](https://img.shields.io/badge/Java-17%2B-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white)](https://openjdk.org/)
 [![Spring Boot](https://img.shields.io/badge/Spring_Boot-4.2.0_M2-6DB33F?style=for-the-badge&logo=spring-boot&logoColor=white)](https://spring.io/projects/spring-boot)
-[![Tests](https://img.shields.io/badge/Tests-100%20Passed-brightgreen?style=for-the-badge&logo=junit5&logoColor=white)](https://github.com/Jarjis-Alam/upimesh)
+[![Tests](https://img.shields.io/badge/Tests-115%20Passed-brightgreen?style=for-the-badge&logo=junit5&logoColor=white)](https://github.com/Jarjis-Alam/upimesh)
 [![Cryptography](https://img.shields.io/badge/Security-RSA--PSS%20%7C%20AES--256--GCM-blueviolet?style=for-the-badge&logo=lock&logoColor=white)](https://github.com/Jarjis-Alam/upimesh)
 [![Database](https://img.shields.io/badge/Database-H2_File--Backed-blue?style=for-the-badge&logo=database&logoColor=white)](https://github.com/Jarjis-Alam/upimesh)
+[![iOS](https://img.shields.io/badge/iOS-17.0%2B%20%7C%20SwiftUI-007AFF?style=for-the-badge&logo=swift&logoColor=white)](https://github.com/Jarjis-Alam/upimesh)
 [![License](https://img.shields.io/badge/License-Apache_2.0-red?style=for-the-badge)](https://opensource.org/licenses/Apache-2.0)
 
 <br/>
@@ -18,6 +19,7 @@
 [Architecture](#-system-architecture) •
 [Security Pipeline](#-cryptographic-security-pipeline) •
 [Interactive Dashboard](#-interactive-dashboard) •
+[Native iOS App](#-native-ios-app-liquid-mesh-upi) •
 [Quickstart](#-quickstart-guide) •
 [API Reference](#-api-reference) •
 [Reconciliation Engine](#-mathematical-reconciliation-engine) •
@@ -80,6 +82,7 @@ The system runs entirely as a self-contained Spring Boot application with zero e
 - **⚡ Persistent Replay Protection**: Multi-layered defense coupling canonical SHA-256 ciphertext deduplication, global `paymentId` uniqueness, and persistent `(fromAccount, nonce)` uniqueness constraints.
 - **⚖️ Double-Entry Ledger & Audit Reconciliation**: Strict atomic balance movements recorded alongside transactional ledger rows; decoupled read-only reconciliation auditing individual balances against authoritative opening baselines.
 - **🖥️ Stitch Web Dashboard**: Live web UI visualizing account balances, real-time simulated transfers, dynamic mesh topology, and ledger history.
+- **📱 Native iOS Client (Liquid Mesh UPI)**: Production-grade SwiftUI app implementing the Liquid Mesh UPI design system, live multi-account balance synchronization, real-time simulated payment dispatch, and peer discovery radar.
 
 ---
 
@@ -162,6 +165,33 @@ The application includes a responsive web interface located at `/dashboard.html`
 
 ---
 
+## 📱 Native iOS App (Liquid Mesh UPI)
+
+In addition to the web dashboard, UPI Offline Mesh includes a native **iOS SwiftUI** application located in [`ios/UPIMesh/`](ios/UPIMesh/), engineered with the **Liquid Mesh UPI** design system.
+
+The iOS app interfaces asynchronously with the Spring Boot backend (`http://localhost:8080` on the Simulator or the Mac host LAN IP on a physical device) to demonstrate live account synchronization, peer radar topology, and multi-hop mesh payment execution.
+
+### 📸 Mobile Interface Gallery
+
+| 📡 Mesh Radar | 💳 Offline Pay |
+|:---:|:---:|
+| <img src="ios_ui/mesh_radar_ios/screen.png" width="340" alt="Mesh Radar Screen"/> | <img src="ios_ui/offline_pay_ios/screen.png" width="340" alt="Offline Pay Screen"/> |
+| **P2P Radar & Device Discovery**<br/>Simulated Bluetooth mesh proximity, real-time RSSI signal strength visualization, dynamic relay peer detection, and bridge gateway tracking. | **Cryptographic Payment Dispatch**<br/>Tactile amount selection, real-time backend mesh transfer (`POST /api/mesh/transfer`), live multi-hop route telemetry (`paymentId`, `packetId`, `routeTrace`, hops, rounds), and atomic settlement confirmation. |
+| **📖 Mesh Ledger** | **💼 Mesh Wallets** |
+| <img src="ios_ui/mesh_ledger_ios/screen.png" width="340" alt="Mesh Ledger Screen"/> | <img src="ios_ui/mesh_wallets_ios/screen.png" width="340" alt="Mesh Wallets Screen"/> |
+| **Audit Journal & Verification**<br/>Chronological ledger entries, cryptographic proof badges, SHA-256 idempotency claims, and RSA-PSS signature verification logs. | **Live Multi-Account Wallets**<br/>Real-time balance synchronization via `GET /api/accounts` for Alice, Bob, and Carol with Indian Rupee formatting (`₹5,000.00`) and post-settlement reactive refresh. |
+
+### 💎 Key iOS Architecture Highlights
+
+- **Liquid Mesh Design System**: Pure SwiftUI implementation (`DesignTokens.swift`) featuring frosted glassmorphism, glowing gradient orbs, tactile interactions, and bottom pill navigation (`LiquidTabBar.swift`).
+- **Real-Time Backend Integration**:
+  - `UPIMeshAPIClient.swift`: Asynchronous networking layer (`async/await`) with URLComponents query encoding and strongly-typed DTOs (`AccountDTO`, `MeshPaymentResultDTO`, `TransactionDTO`).
+  - **Multi-State Payment Lifecycle**: Complete state handling (`idle` → `submitting` → `settled` / `failed`) with tactile spinner animations and error recovery.
+  - **Reactive Data Synchronization**: Confirmed mesh settlements broadcast `.meshAccountsUpdated` notifications, immediately invalidating and updating balances across all tabs.
+- **Simulator & Physical Device Ready**: Includes tailored ATS networking configuration (`NSLocalNetworkUsageDescription` + local domain ATS exceptions) for smooth local network debugging.
+
+---
+
 ## 🛠️ Quickstart Guide
 
 ### Prerequisites
@@ -191,7 +221,16 @@ Once started, open your browser:
 ```bash
 ./mvnw test
 ```
-All **100 tests** execute and pass in an isolated in-memory H2 database.
+All **115 tests** execute and pass in an isolated in-memory H2 database.
+
+### 4. Run the Native iOS Mobile App
+```bash
+open ios/UPIMesh/UPIMesh.xcodeproj
+```
+1. Open the project in **Xcode 16+** (supports iOS 17.0+ SDK).
+2. Select any **iOS Simulator** (e.g., iPhone 16) or a connected physical iPhone.
+3. Verify backend host in `APIConfiguration.swift` (`http://localhost:8080` for Simulator, or your Mac's LAN IP e.g. `http://192.168.1.100:8080` for physical device).
+4. Press **⌘R** to build and run. Live account data and mesh payment simulations connect instantly.
 
 ---
 
@@ -342,11 +381,11 @@ $$\Delta(i) = A(i) - E(i)$$
 
 ## 🧪 Test Suite & Verification
 
-The project includes **100 automated tests** across 13 test suites:
+The project includes **115 automated tests** across 14 test suites:
 
 ```
 [INFO] Results:
-[INFO] Tests run: 100, Failures: 0, Errors: 0, Skipped: 0
+[INFO] Tests run: 115, Failures: 0, Errors: 0, Skipped: 0
 [INFO] BUILD SUCCESS
 ```
 
@@ -357,6 +396,7 @@ The project includes **100 automated tests** across 13 test suites:
 | `SenderAuthenticationTest` | 9 | RSASSA-PSS SHA-256 signature verification, canonical byte serialization, tamper rejection |
 | `PersistentReplayProtectionTest` | 7 | DB-enforced compound `(fromAccount, nonce)` uniqueness, re-encryption defense |
 | `PersistentIdempotencyTest` | 7 | Service re-instantiation idempotency, canonical SHA-256 deduplication, concurrency |
+| `BackendIntegrationLayerTest` | 15 | Bridge public key export, prototype key registration policy, external packet ingestion & atomic settlement |
 | `TransactionLedgerIntegrationTest` | 6 | Atomic ledger recording, balance adjustments, chronological indexing |
 | `BridgeIngestionServiceTest` | 10 | Hybrid decryption, payload validation, clock skew & expiration thresholds |
 | `MeshSimulatorServiceTest` | 5 | Multi-hop gossip rounds, loop prevention, TTL expiration |

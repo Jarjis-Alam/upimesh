@@ -40,3 +40,11 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Xcode & iOS ###
+build/
+DerivedData/
+*.xcuserstate
+project.xcworkspace/xcuserdata/
+*.xcuserdatad
+xcuserdata/

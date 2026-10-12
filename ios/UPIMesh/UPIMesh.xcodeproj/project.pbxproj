@@ -1,0 +1,339 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		A1000001 /* UPIMeshApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000001 /* UPIMeshApp.swift */; };
+		A1000002 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000002 /* ContentView.swift */; };
+		A1000003 /* DesignTokens.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000003 /* DesignTokens.swift */; };
+		A1000004 /* LiquidTabBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000004 /* LiquidTabBar.swift */; };
+		A1000005 /* MeshRadarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000005 /* MeshRadarView.swift */; };
+		A1000006 /* OfflinePayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000006 /* OfflinePayView.swift */; };
+		A1000007 /* MeshLedgerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000007 /* MeshLedgerView.swift */; };
+		A1000008 /* MeshWalletsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000008 /* MeshWalletsView.swift */; };
+		A1000009 /* PreviewModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000009 /* PreviewModels.swift */; };
+		A1000010 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A2000010 /* Assets.xcassets */; };
+		A1000011 /* APIConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000012 /* APIConfiguration.swift */; };
+		A1000012 /* UPIMeshAPIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000013 /* UPIMeshAPIClient.swift */; };
+		A1000013 /* MeshWalletsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000015 /* MeshWalletsViewModel.swift */; };
+		A1000014 /* CurrencyFormatter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000016 /* CurrencyFormatter.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		A2000001 /* UPIMeshApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UPIMeshApp.swift; sourceTree = "<group>"; };
+		A2000002 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		A2000003 /* DesignTokens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignTokens.swift; sourceTree = "<group>"; };
+		A2000004 /* LiquidTabBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiquidTabBar.swift; sourceTree = "<group>"; };
+		A2000005 /* MeshRadarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeshRadarView.swift; sourceTree = "<group>"; };
+		A2000006 /* OfflinePayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfflinePayView.swift; sourceTree = "<group>"; };
+		A2000007 /* MeshLedgerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeshLedgerView.swift; sourceTree = "<group>"; };
+		A2000008 /* MeshWalletsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeshWalletsView.swift; sourceTree = "<group>"; };
+		A2000009 /* PreviewModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewModels.swift; sourceTree = "<group>"; };
+		A2000010 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		A2000011 /* PreviewAssets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = PreviewAssets.xcassets; sourceTree = "<group>"; };
+		A2000012 /* APIConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIConfiguration.swift; sourceTree = "<group>"; };
+		A2000013 /* UPIMeshAPIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UPIMeshAPIClient.swift; sourceTree = "<group>"; };
+		A2000014 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		A2000015 /* MeshWalletsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeshWalletsViewModel.swift; sourceTree = "<group>"; };
+		A2000016 /* CurrencyFormatter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CurrencyFormatter.swift; sourceTree = "<group>"; };
+		A2000099 /* UPIMesh.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = UPIMesh.app; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		A3000001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		A4000001 = {
+			isa = PBXGroup;
+			children = (
+				A4000002 /* UPIMesh */,
+				A4000003 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		A4000002 /* UPIMesh */ = {
+			isa = PBXGroup;
+			children = (
+				A2000001 /* UPIMeshApp.swift */,
+				A2000002 /* ContentView.swift */,
+				A2000003 /* DesignTokens.swift */,
+				A2000004 /* LiquidTabBar.swift */,
+				A2000005 /* MeshRadarView.swift */,
+				A2000006 /* OfflinePayView.swift */,
+				A2000007 /* MeshLedgerView.swift */,
+				A2000008 /* MeshWalletsView.swift */,
+				A2000009 /* PreviewModels.swift */,
+				A2000012 /* APIConfiguration.swift */,
+				A2000013 /* UPIMeshAPIClient.swift */,
+				A2000015 /* MeshWalletsViewModel.swift */,
+				A2000016 /* CurrencyFormatter.swift */,
+				A2000014 /* Info.plist */,
+				A2000010 /* Assets.xcassets */,
+				A4000004 /* Preview Content */,
+			);
+			path = UPIMesh;
+			sourceTree = "<group>";
+		};
+		A4000003 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				A2000099 /* UPIMesh.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		A4000004 /* Preview Content */ = {
+			isa = PBXGroup;
+			children = (
+				A2000011 /* PreviewAssets.xcassets */,
+			);
+			path = "Preview Content";
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		A5000001 /* UPIMesh */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A6000001 /* Build configuration list for PBXNativeTarget "UPIMesh" */;
+			buildPhases = (
+				A7000001 /* Sources */,
+				A3000001 /* Frameworks */,
+				A8000001 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = UPIMesh;
+			productName = UPIMesh;
+			productReference = A2000099 /* UPIMesh.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		A0000001 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastUpgradeCheck = 1600;
+				TargetAttributes = {
+					A5000001 = {
+						CreatedOnToolsVersion = 16.0;
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = A6000002 /* Build configuration list for PBXProject "UPIMesh" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = A4000001;
+			productRefGroup = A4000003 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				A5000001 /* UPIMesh */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		A8000001 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A1000010 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		A7000001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A1000001 /* UPIMeshApp.swift in Sources */,
+				A1000002 /* ContentView.swift in Sources */,
+				A1000003 /* DesignTokens.swift in Sources */,
+				A1000004 /* LiquidTabBar.swift in Sources */,
+				A1000005 /* MeshRadarView.swift in Sources */,
+				A1000006 /* OfflinePayView.swift in Sources */,
+				A1000007 /* MeshLedgerView.swift in Sources */,
+				A1000008 /* MeshWalletsView.swift in Sources */,
+				A1000009 /* PreviewModels.swift in Sources */,
+				A1000011 /* APIConfiguration.swift in Sources */,
+				A1000012 /* UPIMeshAPIClient.swift in Sources */,
+				A1000013 /* MeshWalletsViewModel.swift in Sources */,
+				A1000014 /* CurrencyFormatter.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		B1000001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		B1000002 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+			};
+			name = Release;
+		};
+		B2000001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_ASSET_PATHS = "\"UPIMesh/Preview Content\"";
+				DEVELOPMENT_TEAM = 3JBX4L8Z4J;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = UPIMesh/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "UPI Mesh";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.jarjis.upimesh;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		B2000002 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_ASSET_PATHS = "\"UPIMesh/Preview Content\"";
+				DEVELOPMENT_TEAM = 3JBX4L8Z4J;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = UPIMesh/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "UPI Mesh";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.jarjis.upimesh;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		A6000001 /* Build configuration list for PBXNativeTarget "UPIMesh" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B2000001 /* Debug */,
+				B2000002 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A6000002 /* Build configuration list for PBXProject "UPIMesh" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B1000001 /* Debug */,
+				B1000002 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = A0000001 /* Project object */;
+}

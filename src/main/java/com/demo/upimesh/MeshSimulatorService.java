@@ -100,7 +100,24 @@ public class MeshSimulatorService {
     }
 
     public PublicKey getBridgePublicKey() {
+        if (bridgeKeyPair == null) {
+            initDefaultTopology();
+        }
         return bridgeKeyPair != null ? bridgeKeyPair.getPublic() : null;
+    }
+
+    public PrivateKey getBridgePrivateKey() {
+        if (bridgePrivateKey != null) {
+            return bridgePrivateKey;
+        }
+        if (bridgeKeyPair == null) {
+            initDefaultTopology();
+        }
+        return bridgeKeyPair != null ? bridgeKeyPair.getPrivate() : null;
+    }
+
+    public BridgeIngestionService getBridgeIngestionService() {
+        return bridgeIngestionService;
     }
 
     @PostConstruct
