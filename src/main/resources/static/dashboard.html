@@ -1,0 +1,1222 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>UPI Offline Mesh — Simulation Environment & Dashboard</title>
+    <!-- Fonts & Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+    <style>
+        @layer base {
+            html, body { margin: 0; padding: 0; }
+            body { overscroll-behavior: none; }
+        }
+        ::-webkit-scrollbar { display: none; }
+    </style>
+    <!-- Tailwind CSS with Stitch design tokens -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "on-surface": "#e2e2e5",
+                        "primary-container": "#72b5a4",
+                        "on-primary-fixed": "#00201a",
+                        "outline": "#89938f",
+                        "on-tertiary-fixed": "#261900",
+                        "on-primary": "#00382e",
+                        "error-container": "#93000a",
+                        "on-background": "#e2e2e5",
+                        "tertiary-container": "#c6a463",
+                        "on-error-container": "#ffdad6",
+                        "secondary": "#afc9e9",
+                        "surface-tint": "#90d4c2",
+                        "surface-variant": "#333537",
+                        "inverse-primary": "#23695b",
+                        "secondary-fixed-dim": "#afc9e9",
+                        "tertiary-fixed-dim": "#e6c27e",
+                        "on-secondary-fixed": "#001d35",
+                        "on-tertiary-container": "#513a01",
+                        "surface-container-lowest": "#0c0e10",
+                        "on-secondary": "#18324b",
+                        "outline-variant": "#2c3035",
+                        "error": "#ffb4ab",
+                        "primary-fixed": "#abf0dd",
+                        "surface-container-highest": "#2a2e33",
+                        "secondary-container": "#324b65",
+                        "inverse-on-surface": "#2f3133",
+                        "on-error": "#690005",
+                        "on-tertiary-fixed-variant": "#5b430a",
+                        "surface-container-low": "#151719",
+                        "tertiary": "#e6c27e",
+                        "on-tertiary": "#412d00",
+                        "surface-bright": "#37393b",
+                        "on-secondary-container": "#a1bbda",
+                        "surface-container-high": "#24272c",
+                        "primary-fixed-dim": "#90d4c2",
+                        "on-primary-container": "#00463b",
+                        "surface-container": "#1d2023",
+                        "surface": "#121416",
+                        "on-surface-variant": "#9aa3aa",
+                        "background": "#121416",
+                        "surface-dim": "#121416",
+                        "primary": "#90d4c2",
+                        "on-secondary-fixed-variant": "#304963",
+                        "inverse-surface": "#e2e2e5",
+                        "secondary-fixed": "#d0e4ff",
+                        "on-primary-fixed-variant": "#005144",
+                        "tertiary-fixed": "#ffdea4"
+                    },
+                    borderRadius: {
+                        DEFAULT: "0.25rem",
+                        lg: "0.5rem",
+                        xl: "0.75rem",
+                        full: "9999px"
+                    },
+                    fontFamily: {
+                        "headline-xl": ["Geist", "sans-serif"],
+                        "headline-lg": ["Geist", "sans-serif"],
+                        "headline-md": ["Geist", "sans-serif"],
+                        "headline-sm": ["Geist", "sans-serif"],
+                        "body-lg": ["Geist", "sans-serif"],
+                        "body-md": ["Geist", "sans-serif"],
+                        "body-sm": ["Geist", "sans-serif"],
+                        "label-md": ["Geist", "sans-serif"],
+                        "label-sm": ["Geist", "sans-serif"]
+                    }
+                }
+            }
+        };
+    </script>
+</head>
+<body class="bg-[#121416] text-on-surface font-body-md text-body-md min-h-screen antialiased selection:bg-primary/20">
+
+    <!-- Top Fixed Brand Header Bar -->
+    <header class="fixed top-0 left-0 right-0 h-16 bg-[#151719]/90 backdrop-blur-md border-b border-[#24272c] z-40 px-6 sm:px-8 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary border border-primary/20">
+                <span class="material-symbols-outlined text-[19px]">hub</span>
+            </div>
+            <span class="font-headline-sm text-base font-semibold tracking-tight text-on-surface">UPI Offline Mesh</span>
+        </div>
+        <div class="flex items-center gap-3">
+            <button id="globalRefreshBtn" onclick="refreshAllData()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#1d2023] hover:bg-[#24272c] border border-[#24272c] text-on-surface-variant hover:text-on-surface text-xs font-medium transition-colors">
+                <span class="material-symbols-outlined text-[15px]">refresh</span>
+                <span>Sync</span>
+            </button>
+            <div class="flex items-center gap-2 text-xs font-medium text-on-surface-variant bg-[#1d2023] px-3.5 py-1.5 rounded-full border border-[#24272c]">
+                <span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
+                <span class="text-on-surface font-medium" id="systemStatusText">Simulation Online</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Container with bottom padding for pill nav -->
+    <main class="relative pt-24 pb-32 px-4 sm:px-6 lg:px-8 min-h-screen bg-[#121416]">
+        <div class="max-w-[1340px] mx-auto w-full">
+
+            <!-- ========================================== -->
+            <!-- 1. ACCOUNTS VIEW (Default)                 -->
+            <!-- ========================================== -->
+            <section id="view-accounts" class="flex flex-col gap-8 pb-12 w-full">
+                <!-- Header Section -->
+                <div class="flex flex-col md:flex-row md:items-end justify-between gap-4">
+                    <div>
+                        <div class="flex items-center gap-2 mb-1">
+                            <span class="font-label-sm text-label-sm text-primary uppercase tracking-widest">Simulated Ledger Environment</span>
+                            <span class="w-1 h-1 rounded-full bg-outline"></span>
+                            <span class="font-label-sm text-label-sm text-on-surface-variant">Deterministic V2.4</span>
+                        </div>
+                        <h1 class="font-headline-xl text-headline-xl text-on-surface tracking-tight font-semibold">Accounts</h1>
+                        <p class="font-body-md text-body-md text-on-surface-variant mt-1">Manage demo wallets and balances in the simulation</p>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <button onclick="switchTab('payments')" class="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary hover:bg-primary-fixed-dim text-on-primary font-label-md text-label-md transition-colors shadow-sm font-semibold">
+                            <span class="material-symbols-outlined text-[18px]">send_time_extension</span>
+                            <span>Initiate Payment</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Metric Summary Strip (3 Cards) -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="bg-surface-container rounded-xl p-5 shadow-sm flex flex-col justify-between">
+                        <div class="flex items-center justify-between mb-4">
+                            <span class="font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant">Total Wallets</span>
+                            <div class="w-8 h-8 rounded-lg bg-surface-container-high flex items-center justify-center text-primary">
+                                <span class="material-symbols-outlined text-[18px]">account_balance_wallet</span>
+                            </div>
+                        </div>
+                        <div class="flex items-baseline justify-between">
+                            <div class="font-headline-lg text-headline-lg text-on-surface tracking-tight font-semibold" id="metric-wallet-count">3 <span class="font-body-md text-body-md text-primary font-normal">Active</span></div>
+                            <span class="font-label-sm text-label-sm px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant">H2 JPA Database</span>
+                        </div>
+                    </div>
+                    <div class="bg-surface-container rounded-xl p-5 shadow-sm flex flex-col justify-between">
+                        <div class="flex items-center justify-between mb-4">
+                            <span class="font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant">Combined Balance</span>
+                            <div class="w-8 h-8 rounded-lg bg-surface-container-high flex items-center justify-center text-primary">
+                                <span class="material-symbols-outlined text-[18px]">payments</span>
+                            </div>
+                        </div>
+                        <div class="flex items-baseline justify-between">
+                            <div class="font-headline-lg text-headline-lg text-on-surface tracking-tight font-semibold" id="metric-combined-balance">₹8,000.00</div>
+                            <span class="font-label-sm text-label-sm px-2 py-0.5 rounded-full bg-surface-container-high text-primary">Net Preserved</span>
+                        </div>
+                    </div>
+                    <div class="bg-surface-container rounded-xl p-5 shadow-sm flex flex-col justify-between">
+                        <div class="flex items-center justify-between mb-4">
+                            <span class="font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant">Settled Transactions</span>
+                            <div class="w-8 h-8 rounded-lg bg-surface-container-high flex items-center justify-center text-tertiary">
+                                <span class="material-symbols-outlined text-[18px]">receipt_long</span>
+                            </div>
+                        </div>
+                        <div class="flex items-baseline justify-between">
+                            <div class="font-headline-lg text-headline-lg text-tertiary tracking-tight font-semibold" id="metric-tx-count">0 settled</div>
+                            <div class="flex items-center gap-1.5 font-label-sm text-label-sm text-tertiary">
+                                <span class="w-1.5 h-1.5 rounded-full bg-tertiary animate-pulse"></span>
+                                <span>Atomic Ledger</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Demo Wallets Grid Section -->
+                <div class="flex flex-col gap-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h2 class="font-headline-md text-headline-md text-on-surface font-medium">Demo Wallets</h2>
+                            <p class="font-body-sm text-body-sm text-on-surface-variant">Preconfigured peer entities participating in local routing simulation</p>
+                        </div>
+                        <span class="font-label-sm text-label-sm text-on-surface-variant bg-surface-container px-2.5 py-1 rounded-md" id="peer-count-badge">Peer Count: 3</span>
+                    </div>
+
+                    <!-- 3 Dynamic Account Cards -->
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-5" id="accountsCardsContainer">
+                        <!-- Rendered by JavaScript from /api/accounts -->
+                    </div>
+                </div>
+
+                <!-- Ledger Audit Table -->
+                <div class="bg-surface-container rounded-xl shadow-sm overflow-hidden">
+                    <div class="p-6 border-b border-[#24272c] flex items-center justify-between">
+                        <div>
+                            <h3 class="font-headline-sm text-headline-sm text-on-surface font-semibold">Wallet Directory & Optimistic Lock State</h3>
+                            <p class="font-body-sm text-body-sm text-on-surface-variant">Live persistence state verified via Spring Data JPA</p>
+                        </div>
+                        <span class="font-label-sm text-label-sm px-2.5 py-1 rounded-full bg-surface-container-high text-primary">Synced</span>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left">
+                            <thead>
+                                <tr class="bg-surface-container-lowest text-on-surface-variant font-label-sm text-label-sm uppercase tracking-wider">
+                                    <th class="py-3 px-6 font-medium">Account ID</th>
+                                    <th class="py-3 px-6 font-medium">Role</th>
+                                    <th class="py-3 px-6 font-medium">Available Balance</th>
+                                    <th class="py-3 px-6 font-medium">Version (@Version)</th>
+                                    <th class="py-3 px-6 font-medium text-right">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody class="font-body-md text-body-md text-on-surface divide-y divide-[#24272c]" id="accountsTableBody">
+                                <!-- Populated dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ========================================== -->
+            <!-- 2. PAYMENTS VIEW                           -->
+            <!-- ========================================== -->
+            <section id="view-payments" class="hidden flex-col gap-8 pb-12 w-full">
+                <!-- Header Section -->
+                <div class="flex flex-col gap-1">
+                    <div class="flex items-center gap-2">
+                        <span class="w-1.5 h-1.5 rounded-full bg-primary"></span>
+                        <span class="font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant">Transaction Terminal</span>
+                    </div>
+                    <h1 class="font-headline-lg text-headline-lg text-on-surface tracking-tight font-semibold">Payments</h1>
+                    <p class="font-body-md text-body-md text-on-surface-variant max-w-2xl">Create and simulate offline payments between demo wallets across the local peer-to-peer mesh network.</p>
+                </div>
+
+                <!-- Two-Column Grid -->
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                    <!-- Left Column: Create Payment Form -->
+                    <div class="lg:col-span-6 flex flex-col gap-6 bg-surface-container rounded-xl p-7 shadow-sm">
+                        <div class="flex items-center justify-between pb-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-lg bg-surface-container-high flex items-center justify-center text-primary">
+                                    <span class="material-symbols-outlined text-[20px]">add_card</span>
+                                </div>
+                                <div>
+                                    <h2 class="font-headline-sm text-headline-sm text-on-surface font-semibold">Create Payment</h2>
+                                    <p class="font-body-sm text-body-sm text-on-surface-variant">Inject an encrypted offline payment payload</p>
+                                </div>
+                            </div>
+                            <span class="font-label-sm text-label-sm px-2.5 py-1 rounded-full bg-surface-container-high text-primary font-medium">Local Mode</span>
+                        </div>
+
+                        <form id="paymentForm" class="flex flex-col gap-5" onsubmit="event.preventDefault(); submitTransfer();">
+                            <!-- Sender Selection -->
+                            <div class="flex flex-col gap-2">
+                                <label class="font-label-md text-label-md text-on-surface-variant flex justify-between" for="senderSelect">
+                                    <span>Sender</span>
+                                    <span class="font-tabular-numeric-sm text-primary" id="senderAvailableDisplay">Available: ₹5,000.00</span>
+                                </label>
+                                <div class="relative">
+                                    <select id="senderSelect" onchange="updateSenderBalanceDisplay()" class="w-full bg-surface-container-lowest text-on-surface font-body-md text-body-md rounded-lg h-11 px-3.5 appearance-none focus:outline-none focus:ring-1 focus:ring-primary transition-colors cursor-pointer" required>
+                                        <option value="alice">Alice</option>
+                                        <option value="bob">Bob</option>
+                                        <option value="carol">Carol</option>
+                                    </select>
+                                    <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-on-surface-variant">
+                                        <span class="material-symbols-outlined text-[20px]">expand_more</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Receiver Selection -->
+                            <div class="flex flex-col gap-2">
+                                <label class="font-label-md text-label-md text-on-surface-variant" for="receiverSelect">Receiver</label>
+                                <div class="relative">
+                                    <select id="receiverSelect" class="w-full bg-surface-container-lowest text-on-surface font-body-md text-body-md rounded-lg h-11 px-3.5 appearance-none focus:outline-none focus:ring-1 focus:ring-primary transition-colors cursor-pointer" required>
+                                        <option value="bob">Bob</option>
+                                        <option value="carol">Carol</option>
+                                        <option value="alice">Alice</option>
+                                    </select>
+                                    <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-on-surface-variant">
+                                        <span class="material-symbols-outlined text-[20px]">expand_more</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Amount Input & Quick Chips -->
+                            <div class="flex flex-col gap-2">
+                                <label class="font-label-md text-label-md text-on-surface-variant" for="amountInput">Amount (₹)</label>
+                                <div class="relative">
+                                    <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-on-surface-variant font-headline-sm">₹</span>
+                                    <input id="amountInput" type="number" step="0.01" min="0.01" value="250.00" class="w-full bg-surface-container-lowest text-on-surface rounded-lg h-11 pl-9 pr-4 focus:outline-none focus:ring-1 focus:ring-primary transition-colors" required/>
+                                </div>
+                                <div class="flex items-center gap-2 pt-1">
+                                    <button type="button" onclick="setQuickAmount(100)" class="px-3 py-1.5 rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-on-surface text-xs font-medium transition-colors">+₹100</button>
+                                    <button type="button" onclick="setQuickAmount(500)" class="px-3 py-1.5 rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-on-surface text-xs font-medium transition-colors">+₹500</button>
+                                    <button type="button" onclick="setQuickAmount(1000)" class="px-3 py-1.5 rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-on-surface text-xs font-medium transition-colors">+₹1,000</button>
+                                </div>
+                            </div>
+
+                            <!-- Note -->
+                            <div class="flex flex-col gap-2">
+                                <label class="font-label-md text-label-md text-on-surface-variant" for="noteInput">Memo / Note</label>
+                                <input id="noteInput" type="text" value="Offline Mesh Settlement" class="w-full bg-surface-container-lowest text-on-surface rounded-lg h-11 px-3.5 focus:outline-none focus:ring-1 focus:ring-primary transition-colors"/>
+                            </div>
+
+                            <!-- Settlement Routing Mode -->
+                            <div class="flex flex-col gap-2">
+                                <label class="font-label-md text-label-md text-on-surface-variant flex justify-between">
+                                    <span>Routing Protocol</span>
+                                    <span class="text-primary text-xs font-medium" id="routingProtocolLabel">Multi-Hop Mesh (E2E)</span>
+                                </label>
+                                <div class="grid grid-cols-2 gap-2 bg-surface-container-lowest p-1 rounded-lg">
+                                    <button type="button" id="modeBtnMesh" onclick="setTransferMode('mesh')" class="px-3 py-2 rounded-md bg-surface-container text-primary font-medium text-xs flex items-center justify-center gap-1.5 transition-colors">
+                                        <span class="material-symbols-outlined text-[16px]">hub</span>
+                                        <span>Offline Mesh Relay</span>
+                                    </button>
+                                    <button type="button" id="modeBtnDirect" onclick="setTransferMode('direct')" class="px-3 py-2 rounded-md text-on-surface-variant hover:text-on-surface font-medium text-xs flex items-center justify-center gap-1.5 transition-colors">
+                                        <span class="material-symbols-outlined text-[16px]">sync_alt</span>
+                                        <span>Direct Core Transfer</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- TTL Setting for Mesh Mode -->
+                            <div id="meshTtlContainer" class="flex flex-col gap-2">
+                                <label class="font-label-md text-label-md text-on-surface-variant flex justify-between" for="ttlInput">
+                                    <span>Mesh Packet TTL (Max Hops)</span>
+                                    <span class="text-on-surface-variant text-xs">Standard: 5 hops</span>
+                                </label>
+                                <input id="ttlInput" type="number" min="1" max="20" value="5" class="w-full bg-surface-container-lowest text-on-surface rounded-lg h-10 px-3.5 focus:outline-none focus:ring-1 focus:ring-primary transition-colors"/>
+                            </div>
+
+                            <!-- Notice -->
+                            <div class="p-3.5 rounded-lg bg-surface-container-low flex items-start gap-3 mt-1">
+                                <span class="material-symbols-outlined text-[18px] text-tertiary mt-0.5 shrink-0">lock_clock</span>
+                                <p class="font-body-sm text-body-sm text-on-surface-variant leading-relaxed">
+                                    This payment is cryptographically protected with RSA-OAEP + AES-256-GCM. Idempotency guarantees exactly-once settlement.
+                                </p>
+                            </div>
+
+                            <!-- Submit Button -->
+                            <div class="pt-2">
+                                <button type="submit" id="submitTransferBtn" class="w-full h-11 rounded-lg bg-primary-container text-on-primary-container font-semibold flex items-center justify-center gap-2 hover:opacity-95 active:scale-[0.99] transition-all">
+                                    <span class="material-symbols-outlined text-[20px]">send_time_extension</span>
+                                    <span id="submitBtnText">Simulate & Settle via Offline Mesh</span>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Right Column: Payment Journey Simulation -->
+                    <div class="lg:col-span-6 flex flex-col gap-6">
+                        <div class="bg-surface-container rounded-xl p-7 shadow-sm flex flex-col gap-6">
+                            <div class="flex items-center justify-between pb-4">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-8 h-8 rounded-lg bg-surface-container-high flex items-center justify-center text-secondary">
+                                        <span class="material-symbols-outlined text-[20px]">alt_route</span>
+                                    </div>
+                                    <div>
+                                        <h2 class="font-headline-sm text-headline-sm text-on-surface font-semibold">Payment Journey & Simulation</h2>
+                                        <p class="font-body-sm text-body-sm text-on-surface-variant">Live telemetry tracking hops and settlement</p>
+                                    </div>
+                                </div>
+                                <span class="font-label-sm text-label-sm px-2.5 py-1 rounded-full bg-surface-container-high text-primary font-medium" id="journeyBadge">Ready</span>
+                            </div>
+
+                            <!-- Active Payload Display -->
+                            <div class="p-4 rounded-xl bg-surface-container-low flex items-center justify-between">
+                                <div class="flex flex-col gap-1">
+                                    <span class="font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant">Active Payload</span>
+                                    <div class="flex items-baseline gap-2">
+                                        <span class="font-headline-lg text-headline-lg font-bold text-on-surface" id="journeyAmountDisplay">₹250.00</span>
+                                        <span class="font-body-sm text-body-sm text-on-surface-variant" id="journeyPartiesDisplay">Alice → Bob</span>
+                                    </div>
+                                </div>
+                                <div class="flex flex-col items-end gap-1">
+                                    <span class="font-label-sm text-label-sm text-on-surface-variant">Relay Status</span>
+                                    <span class="font-body-sm text-body-sm text-secondary font-medium" id="journeyStatusText">Simulated Mesh Ready</span>
+                                </div>
+                            </div>
+
+                            <!-- 4-Step Vertical Progress Tracker -->
+                            <div class="flex flex-col gap-0 relative pl-2 pt-2">
+                                <!-- Step 1 -->
+                                <div class="flex items-start gap-4 pb-7 relative group" id="journey-step-1">
+                                    <div class="w-7 h-7 rounded-full bg-primary/20 text-primary flex items-center justify-center shrink-0 z-10" id="step-1-icon">
+                                        <span class="material-symbols-outlined text-[16px]">check</span>
+                                    </div>
+                                    <div class="w-0.5 absolute left-3.5 top-7 bottom-0 bg-surface-container-high z-0"></div>
+                                    <div class="flex flex-col gap-0.5">
+                                        <span class="font-headline-sm text-headline-sm text-on-surface font-medium">1. Created on Sender Device</span>
+                                        <span class="font-body-sm text-body-sm text-on-surface-variant font-mono text-xs" id="journey-step-1-desc">RSA-OAEP + AES-256-GCM envelope & nonce ready</span>
+                                    </div>
+                                </div>
+                                <!-- Step 2 -->
+                                <div class="flex items-start gap-4 pb-7 relative group" id="journey-step-2">
+                                    <div class="w-7 h-7 rounded-full bg-primary/20 text-primary flex items-center justify-center shrink-0 z-10" id="step-2-icon">
+                                        <span class="material-symbols-outlined text-[16px]">check</span>
+                                    </div>
+                                    <div class="w-0.5 absolute left-3.5 top-7 bottom-0 bg-surface-container-high z-0"></div>
+                                    <div class="flex flex-col gap-0.5">
+                                        <span class="font-headline-sm text-headline-sm text-on-surface font-medium">2. Routed Across Peer Mesh</span>
+                                        <span class="font-body-sm text-body-sm text-on-surface-variant font-mono text-xs" id="journey-step-2-desc">Multi-hop relay with loop suppression & TTL decrement</span>
+                                    </div>
+                                </div>
+                                <!-- Step 3 -->
+                                <div class="flex items-start gap-4 pb-7 relative group" id="journey-step-3">
+                                    <div class="w-7 h-7 rounded-full bg-primary/20 text-primary flex items-center justify-center shrink-0 z-10" id="step-3-icon">
+                                        <span class="material-symbols-outlined text-[16px]">check</span>
+                                    </div>
+                                    <div class="w-0.5 absolute left-3.5 top-7 bottom-0 bg-surface-container-high z-0"></div>
+                                    <div class="flex flex-col gap-0.5">
+                                        <span class="font-headline-sm text-headline-sm text-on-surface font-medium">3. Ingested at Bridge Gateway</span>
+                                        <span class="font-body-sm text-body-sm text-on-surface-variant font-mono text-xs" id="journey-step-3-desc">SHA-256 idempotency claim acquired & payload decrypted</span>
+                                    </div>
+                                </div>
+                                <!-- Step 4 -->
+                                <div class="flex items-start gap-4 relative group" id="journey-step-4">
+                                    <div class="w-7 h-7 rounded-full bg-primary/20 text-primary flex items-center justify-center shrink-0 z-10" id="step-4-icon">
+                                        <span class="material-symbols-outlined text-[16px]">check</span>
+                                    </div>
+                                    <div class="flex flex-col gap-0.5">
+                                        <span class="font-headline-sm text-headline-sm text-on-surface font-medium">4. Settled & Committed to Ledger</span>
+                                        <span class="font-body-sm text-body-sm text-on-surface-variant font-mono text-xs" id="journey-step-4-desc">Atomic balances updated and persistent transaction recorded</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ========================================== -->
+            <!-- 3. TRANSACTIONS VIEW                       -->
+            <!-- ========================================== -->
+            <section id="view-transactions" class="hidden flex-col gap-8 pb-12 w-full">
+                <!-- Top Intro & Primary Action Grouping -->
+                <div class="flex flex-col md:flex-row md:items-end justify-between gap-4">
+                    <div>
+                        <div class="flex items-center gap-1.5 text-primary font-label-sm text-label-sm uppercase tracking-wider mb-1">
+                            <span class="w-1.5 h-1.5 rounded-full bg-primary"></span>
+                            <span>Ledger Journal · Verifiable State</span>
+                        </div>
+                        <h2 class="font-headline-xl text-headline-xl text-on-surface tracking-tight font-semibold">Transactions</h2>
+                        <p class="font-body-md text-body-md text-on-surface-variant mt-1">Complete record of simulated offline payments and settlement status</p>
+                    </div>
+                </div>
+
+                <!-- 4 Summary Metrics Cards -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="p-5 rounded-xl bg-surface-container shadow-sm flex flex-col justify-between">
+                        <div class="flex items-center justify-between text-on-surface-variant">
+                            <span class="font-label-md text-label-md uppercase tracking-wider">Total Transactions</span>
+                            <div class="w-7 h-7 rounded-lg bg-surface-variant flex items-center justify-center text-on-surface">
+                                <span class="material-symbols-outlined text-[16px]">receipt_long</span>
+                            </div>
+                        </div>
+                        <div class="mt-4 flex items-baseline justify-between">
+                            <div class="font-headline-xl text-headline-xl font-semibold text-on-surface" id="tx-stat-count">0</div>
+                            <span class="font-label-sm text-label-sm text-on-surface-variant">100% indexed</span>
+                        </div>
+                    </div>
+                    <div class="p-5 rounded-xl bg-surface-container shadow-sm flex flex-col justify-between">
+                        <div class="flex items-center justify-between text-on-surface-variant">
+                            <span class="font-label-md text-label-md uppercase tracking-wider">Settled Volume</span>
+                            <div class="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                                <span class="material-symbols-outlined text-[16px]">check_circle</span>
+                            </div>
+                        </div>
+                        <div class="mt-4 flex items-baseline justify-between">
+                            <div class="font-headline-xl text-headline-xl font-semibold text-on-surface" id="tx-stat-volume">₹0.00</div>
+                            <span class="px-2 py-0.5 rounded font-label-sm text-label-sm bg-surface-container-high text-primary">Settled</span>
+                        </div>
+                    </div>
+                    <div class="p-5 rounded-xl bg-surface-container shadow-sm flex flex-col justify-between">
+                        <div class="flex items-center justify-between text-on-surface-variant">
+                            <span class="font-label-md text-label-md uppercase tracking-wider">Ledger Status</span>
+                            <div class="w-7 h-7 rounded-lg bg-secondary/10 flex items-center justify-center text-secondary">
+                                <span class="material-symbols-outlined text-[16px]">database</span>
+                            </div>
+                        </div>
+                        <div class="mt-4 flex items-baseline justify-between">
+                            <div class="font-headline-xl text-headline-xl font-semibold text-on-surface">H2 Mem</div>
+                            <span class="px-2 py-0.5 rounded font-label-sm text-label-sm bg-surface-container-high text-secondary">Active</span>
+                        </div>
+                    </div>
+                    <div class="p-5 rounded-xl bg-surface-container shadow-sm flex flex-col justify-between">
+                        <div class="flex items-center justify-between text-on-surface-variant">
+                            <span class="font-label-md text-label-md uppercase tracking-wider">Idempotency</span>
+                            <div class="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                                <span class="material-symbols-outlined text-[16px]">security</span>
+                            </div>
+                        </div>
+                        <div class="mt-4 flex items-baseline justify-between">
+                            <div class="font-headline-xl text-headline-xl font-semibold text-on-surface">Protected</div>
+                            <span class="px-2 py-0.5 rounded font-label-sm text-label-sm bg-surface-container-high text-primary">SHA-256</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Ledger Table Card -->
+                <div class="w-full rounded-xl bg-surface-container shadow-sm overflow-hidden">
+                    <div class="p-5 border-b border-[#24272c] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div>
+                            <h3 class="font-headline-sm text-headline-sm text-on-surface font-semibold">Ledger Entries (Newest First)</h3>
+                            <p class="font-body-sm text-body-sm text-on-surface-variant">Atomically settled payments persisted in database</p>
+                        </div>
+                        <input id="txSearchInput" oninput="filterTransactions()" type="text" placeholder="Filter by account or amount..." class="bg-surface-container-lowest text-on-surface text-xs rounded-lg px-3 py-1.5 border border-[#24272c] outline-none focus:border-primary w-full sm:w-64"/>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left">
+                            <thead>
+                                <tr class="bg-surface-container-lowest text-on-surface-variant font-label-sm text-label-sm uppercase tracking-wider h-10">
+                                    <th class="px-6 font-medium">Time (UTC / Local)</th>
+                                    <th class="px-6 font-medium">Transfer</th>
+                                    <th class="px-6 font-medium">Transaction ID</th>
+                                    <th class="px-6 font-medium text-right">Amount</th>
+                                    <th class="px-6 font-medium text-right">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody class="font-body-md text-body-md text-on-surface divide-y divide-[#24272c]" id="ledgerTableBody">
+                                <tr>
+                                    <td colspan="5" class="py-8 text-center text-on-surface-variant text-sm">Loading ledger history...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ========================================== -->
+            <!-- 4. MESH NETWORK VIEW                       -->
+            <!-- ========================================== -->
+            <section id="view-mesh" class="hidden flex-col gap-6 pb-12 w-full">
+                <!-- Page Header & Action Controls -->
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div class="flex flex-col gap-1">
+                        <h1 class="font-headline-lg text-headline-lg text-on-surface tracking-tight font-semibold">Mesh Network</h1>
+                        <p class="font-body-md text-body-md text-on-surface-variant">Simulated offline device connections and bridge gateways</p>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <div class="flex items-center gap-2 bg-[#1d2023] border border-[#24272c] px-3.5 py-1.5 rounded-full text-on-surface text-xs font-medium">
+                            <span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
+                            <span>3 Peers Active</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Metric Cards Row -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+                    <div class="flex items-center gap-4 p-5 rounded-xl bg-[#1d2023] border border-[#24272c] shadow-sm">
+                        <div class="w-12 h-12 rounded-xl bg-[#151719] flex items-center justify-center text-primary border border-primary/20">
+                            <span class="material-symbols-outlined text-[24px]">devices</span>
+                        </div>
+                        <div class="flex flex-col">
+                            <span class="font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant">Active Nodes</span>
+                            <span class="font-headline-md text-headline-md text-on-surface mt-0.5">4 Devices</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-4 p-5 rounded-xl bg-[#1d2023] border border-[#24272c] shadow-sm">
+                        <div class="w-12 h-12 rounded-xl bg-[#151719] flex items-center justify-center text-tertiary border border-tertiary/20">
+                            <span class="material-symbols-outlined text-[24px]">swap_calls</span>
+                        </div>
+                        <div class="flex flex-col">
+                            <span class="font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant">Gossip Rounds</span>
+                            <span class="font-headline-md text-headline-md text-on-surface mt-0.5">Deterministic</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-4 p-5 rounded-xl bg-[#1d2023] border border-[#24272c] shadow-sm">
+                        <div class="w-12 h-12 rounded-xl bg-[#151719] flex items-center justify-center text-secondary border border-secondary/20">
+                            <span class="material-symbols-outlined text-[24px]">cloud_sync</span>
+                        </div>
+                        <div class="flex flex-col">
+                            <span class="font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant">Bridge Status</span>
+                            <span class="font-headline-md text-headline-md text-on-surface mt-0.5">Online <span class="font-body-sm text-body-sm text-on-surface-variant font-normal">(Core Ingestion)</span></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Topology Canvas Card -->
+                <div class="rounded-xl bg-[#1d2023] p-6 border border-[#24272c] shadow-sm flex flex-col gap-6">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div class="flex flex-col gap-1">
+                            <span class="font-headline-sm text-headline-sm text-on-surface font-semibold">Topology Canvas</span>
+                            <span class="font-body-sm text-body-sm text-on-surface-variant">Live visual state of peer relays and bridge sync</span>
+                        </div>
+                    </div>
+                    <div class="relative w-full h-[360px] bg-[#0c0e10] rounded-xl flex items-center justify-center overflow-hidden border border-[#24272c]">
+                        <svg class="absolute inset-0 w-full h-full pointer-events-none" xmlns="http://www.w3.org/2000/svg">
+                            <path class="text-[#2c3035]" d="M 170 180 Q 330 90 490 140" fill="none" stroke="currentColor" stroke-dasharray="6,6" stroke-width="2"></path>
+                            <path class="text-[#2c3035]" d="M 490 140 Q 640 120 780 180" fill="none" stroke="currentColor" stroke-dasharray="6,6" stroke-width="2"></path>
+                            <path class="text-[#2c3035]" d="M 490 140 Q 400 240 330 260" fill="none" stroke="currentColor" stroke-dasharray="6,6" stroke-width="2"></path>
+                            <path class="text-primary/70" d="M 170 180 Q 330 90 490 140 Q 640 120 780 180" fill="none" id="activeRelayPath" stroke="currentColor" stroke-dasharray="8,6" stroke-width="2.5">
+                                <animate attributename="stroke-dashoffset" dur="3s" from="100" repeatcount="indefinite" to="0"></animate>
+                            </path>
+                            <circle class="fill-primary animate-pulse" id="packetDot" r="5">
+                                <animatemotion dur="4s" path="M 170 180 Q 330 90 490 140 Q 640 120 780 180" repeatcount="indefinite"></animatemotion>
+                            </circle>
+                        </svg>
+                        <div class="absolute inset-0 flex items-center justify-between px-8 sm:px-16 pointer-events-none">
+                            <div class="pointer-events-auto flex flex-col items-center gap-2">
+                                <div class="w-14 h-14 rounded-2xl bg-[#1d2023] border border-[#33373d] flex items-center justify-center text-primary shadow-md">
+                                    <span class="material-symbols-outlined text-[28px]">smartphone</span>
+                                </div>
+                                <div class="flex flex-col items-center">
+                                    <span class="font-headline-sm text-headline-sm text-on-surface font-semibold">Alice</span>
+                                    <span class="font-label-sm text-label-sm text-on-surface-variant">Offline Sender</span>
+                                </div>
+                            </div>
+                            <div class="pointer-events-auto flex flex-col items-center gap-10">
+                                <div class="flex flex-col items-center gap-2">
+                                    <div class="w-14 h-14 rounded-2xl bg-[#1d2023] border border-[#324b65] flex items-center justify-center text-tertiary shadow-md">
+                                        <span class="material-symbols-outlined text-[28px]">router</span>
+                                    </div>
+                                    <div class="flex flex-col items-center">
+                                        <span class="font-headline-sm text-headline-sm text-on-surface font-semibold">Carol</span>
+                                        <span class="font-label-sm text-label-sm text-on-surface-variant">Relay Peer</span>
+                                    </div>
+                                </div>
+                                <div class="flex flex-col items-center gap-2">
+                                    <div class="w-12 h-12 rounded-xl bg-[#1d2023] border border-[#33373d] flex items-center justify-center text-on-surface-variant shadow-md">
+                                        <span class="material-symbols-outlined text-[24px]">phone_android</span>
+                                    </div>
+                                    <div class="flex flex-col items-center">
+                                        <span class="font-headline-sm text-headline-sm text-on-surface font-semibold">Bob</span>
+                                        <span class="font-label-sm text-label-sm text-on-surface-variant">Offline Receiver</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="pointer-events-auto flex flex-col items-center gap-2">
+                                <div class="w-14 h-14 rounded-2xl bg-[#1d2023] border border-secondary/40 flex items-center justify-center text-secondary shadow-md">
+                                    <span class="material-symbols-outlined text-[28px]">public</span>
+                                </div>
+                                <div class="flex flex-col items-center">
+                                    <span class="font-headline-sm text-headline-sm text-on-surface font-semibold">Bridge Gateway</span>
+                                    <span class="font-label-sm text-label-sm text-on-surface-variant">Online Settlement Sink</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Simulation Trigger & Live Telemetry Panel -->
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                    <!-- Left: Quick Trigger Card -->
+                    <div class="lg:col-span-5 bg-[#1d2023] rounded-xl p-6 border border-[#24272c] shadow-sm flex flex-col gap-5">
+                        <div class="flex items-center justify-between pb-2">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                                    <span class="material-symbols-outlined text-[20px]">play_circle</span>
+                                </div>
+                                <div>
+                                    <h3 class="font-headline-sm text-headline-sm text-on-surface font-semibold">Simulate E2E Payment</h3>
+                                    <p class="font-body-sm text-body-sm text-on-surface-variant">Run discrete multi-hop gossip rounds</p>
+                                </div>
+                            </div>
+                            <span class="font-label-sm text-label-sm px-2.5 py-1 rounded-full bg-surface-container-high text-primary font-medium">Stage 10</span>
+                        </div>
+
+                        <div class="bg-surface-container-lowest rounded-xl p-4 flex flex-col gap-2">
+                            <div class="flex justify-between text-xs text-on-surface-variant">
+                                <span>Sender Node:</span>
+                                <span class="font-semibold text-on-surface capitalize" id="simSenderName">Alice (Phone A)</span>
+                            </div>
+                            <div class="flex justify-between text-xs text-on-surface-variant">
+                                <span>Relay Node:</span>
+                                <span class="font-semibold text-tertiary">Carol (Relay Peer)</span>
+                            </div>
+                            <div class="flex justify-between text-xs text-on-surface-variant">
+                                <span>Sink / Gateway:</span>
+                                <span class="font-semibold text-secondary">Bridge Gateway (Ingestion)</span>
+                            </div>
+                            <div class="flex justify-between text-xs text-on-surface-variant">
+                                <span>Receiver Node:</span>
+                                <span class="font-semibold text-on-surface capitalize" id="simReceiverName">Bob (Phone B)</span>
+                            </div>
+                            <div class="flex justify-between text-xs text-on-surface-variant border-t border-[#24272c] pt-2 mt-1">
+                                <span>Amount:</span>
+                                <span class="font-bold text-primary font-mono">₹250.00</span>
+                            </div>
+                        </div>
+
+                        <button id="runSimMeshBtn" onclick="runMeshViewSimulation()" class="w-full h-11 rounded-lg bg-primary-container text-on-primary-container font-semibold flex items-center justify-center gap-2 hover:opacity-95 active:scale-[0.99] transition-all">
+                            <span class="material-symbols-outlined text-[20px]">send_time_extension</span>
+                            <span id="runSimMeshBtnText">Trigger Multi-Hop Mesh Payment</span>
+                        </button>
+                    </div>
+
+                    <!-- Right: Live Telemetry Output Terminal -->
+                    <div class="lg:col-span-7 bg-[#1d2023] rounded-xl p-6 border border-[#24272c] shadow-sm flex flex-col gap-4">
+                        <div class="flex items-center justify-between pb-2 border-b border-[#24272c]">
+                            <div class="flex items-center gap-2">
+                                <span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
+                                <span class="font-headline-sm text-sm font-semibold text-on-surface">Mesh Telemetry & Audit Feed</span>
+                            </div>
+                            <span class="font-label-sm text-xs text-on-surface-variant font-mono" id="simTelemetryTimestamp">Ready</span>
+                        </div>
+                        <div class="bg-surface-container-lowest rounded-xl p-4 font-mono text-xs text-on-surface-variant flex flex-col gap-2 min-h-[160px] overflow-y-auto" id="meshTelemetryConsole">
+                            <div class="text-primary font-semibold">● Mesh Simulation Environment Initialized</div>
+                            <div class="text-on-surface-variant">• Topology: Alice &lt;--&gt; Carol &lt;--&gt; Bridge Gateway, Bob &lt;--&gt; Carol</div>
+                            <div class="text-on-surface-variant">• Cryptography: RSA-OAEP SHA-256 + AES-256-GCM 12-byte IV ready</div>
+                            <div class="text-on-surface-variant">• Idempotency: SHA-256 canonical hash duplicate suppression active</div>
+                            <div class="text-[#89938f] italic">Awaiting payment injection... click "Trigger Multi-Hop Mesh Payment" above.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Registered Virtual Devices Table -->
+                <div class="bg-[#1d2023] rounded-xl border border-[#24272c] shadow-sm overflow-hidden">
+                    <div class="p-6 border-b border-[#24272c] flex items-center justify-between">
+                        <div>
+                            <h3 class="font-headline-sm text-headline-sm text-on-surface font-semibold">Registered Virtual Devices</h3>
+                            <p class="font-body-sm text-body-sm text-on-surface-variant">Live node directory fetched from Spring Boot MeshSimulatorService</p>
+                        </div>
+                        <span class="font-label-sm text-label-sm px-2.5 py-1 rounded-full bg-surface-container-high text-primary font-medium" id="topologyStatusBadge">Online</span>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left">
+                            <thead>
+                                <tr class="bg-surface-container-lowest text-on-surface-variant font-label-sm text-label-sm uppercase tracking-wider">
+                                    <th class="py-3 px-6 font-medium">Device ID</th>
+                                    <th class="py-3 px-6 font-medium">Type</th>
+                                    <th class="py-3 px-6 font-medium">Connected Neighbors</th>
+                                    <th class="py-3 px-6 font-medium">Bridge Sink?</th>
+                                    <th class="py-3 px-6 font-medium text-right">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody class="font-body-md text-body-md text-on-surface divide-y divide-[#24272c]" id="topologyTableBody">
+                                <!-- Populated dynamically by fetchTopology() -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+        </div>
+    </main>
+
+    <!-- Bottom Pill Navigation Floating Bar -->
+    <nav class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-[#1c1f22]/95 backdrop-blur-md border border-[#34383c] rounded-full px-4 py-2.5 shadow-2xl flex items-center gap-2">
+        <button id="pill-accounts" onclick="switchTab('accounts')" class="bg-[#2e3e3b] text-[#72b5a4] rounded-full px-4 py-2 font-medium whitespace-nowrap flex items-center gap-2 text-sm transition-all">
+            <span class="material-symbols-outlined text-[19px]">account_balance_wallet</span>
+            <span>Accounts</span>
+        </button>
+        <button id="pill-payments" onclick="switchTab('payments')" class="text-on-surface-variant hover:text-on-surface hover:bg-[#24282c]/60 rounded-full px-3.5 py-2 transition-all flex items-center gap-2 text-sm whitespace-nowrap">
+            <span class="material-symbols-outlined text-[19px]">sync_alt</span>
+            <span>Payments</span>
+        </button>
+        <button id="pill-transactions" onclick="switchTab('transactions')" class="text-on-surface-variant hover:text-on-surface hover:bg-[#24282c]/60 rounded-full px-3.5 py-2 transition-all flex items-center gap-2 text-sm whitespace-nowrap">
+            <span class="material-symbols-outlined text-[19px]">receipt_long</span>
+            <span>Transactions</span>
+        </button>
+        <button id="pill-mesh" onclick="switchTab('mesh')" class="text-on-surface-variant hover:text-on-surface hover:bg-[#24282c]/60 rounded-full px-3.5 py-2 transition-all flex items-center gap-2 text-sm whitespace-nowrap">
+            <span class="material-symbols-outlined text-[19px]">hub</span>
+            <span>Mesh Network</span>
+        </button>
+    </nav>
+
+    <!-- Global Floating Feedback Toast -->
+    <div id="toastNotification" class="hidden fixed bottom-24 right-6 bg-surface-container-high text-on-surface px-4 py-3 rounded-lg shadow-xl flex items-center gap-2 z-50 font-body-md text-body-md border border-[#34383c] transition-all"></div>
+
+    <!-- JavaScript Application Logic -->
+    <script>
+        let currentAccounts = [];
+        let currentTransactions = [];
+        let activeTab = 'accounts';
+
+        function formatINR(val) {
+            const num = parseFloat(val);
+            if (isNaN(num)) return '₹0.00';
+            return '₹' + num.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
+        function formatTimestamp(isoStr) {
+            if (!isoStr) return '-';
+            try {
+                const d = new Date(isoStr);
+                return d.toLocaleTimeString('en-IN', { hour12: false }) + ' ' + d.toLocaleDateString('en-IN');
+            } catch (e) {
+                return isoStr;
+            }
+        }
+
+        function showToast(message, isError = false) {
+            const toast = document.getElementById('toastNotification');
+            toast.className = `fixed bottom-24 right-6 ${isError ? 'bg-[#3b181b] text-[#ffb4ab] border-[#690005]' : 'bg-surface-container-high text-on-surface border-[#34383c]'} px-4 py-3 rounded-lg shadow-xl flex items-center gap-2 z-50 font-body-md text-body-md transition-all`;
+            toast.innerHTML = `<span class="material-symbols-outlined text-[18px] ${isError ? 'text-error' : 'text-primary'}">${isError ? 'error' : 'check_circle'}</span> <span>${message}</span>`;
+            toast.classList.remove('hidden');
+            setTimeout(() => toast.classList.add('hidden'), 4000);
+        }
+
+        // Tab Navigation
+        function switchTab(tab) {
+            activeTab = tab;
+            const views = ['accounts', 'payments', 'transactions', 'mesh'];
+            views.forEach(v => {
+                const el = document.getElementById('view-' + v);
+                const pill = document.getElementById('pill-' + v);
+                if (v === tab) {
+                    el.classList.remove('hidden');
+                    el.classList.add('flex');
+                    pill.className = 'bg-[#2e3e3b] text-[#72b5a4] rounded-full px-4 py-2 font-medium whitespace-nowrap flex items-center gap-2 text-sm transition-all';
+                } else {
+                    el.classList.add('hidden');
+                    el.classList.remove('flex');
+                    pill.className = 'text-on-surface-variant hover:text-on-surface hover:bg-[#24282c]/60 rounded-full px-3.5 py-2 transition-all flex items-center gap-2 text-sm whitespace-nowrap';
+                }
+            });
+        }
+
+        // Fetch Accounts from /api/accounts
+        async function fetchAccounts() {
+            try {
+                const res = await fetch('/api/accounts');
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                currentAccounts = await res.json();
+                renderAccounts();
+            } catch (err) {
+                console.error('Error fetching accounts:', err);
+                showToast('Failed to fetch accounts: ' + err.message, true);
+            }
+        }
+
+        function renderAccounts() {
+            const container = document.getElementById('accountsCardsContainer');
+            const tableBody = document.getElementById('accountsTableBody');
+            if (!currentAccounts || currentAccounts.length === 0) return;
+
+            // Combined balance calculation
+            let totalBalance = 0;
+            currentAccounts.forEach(a => totalBalance += parseFloat(a.balance || 0));
+            document.getElementById('metric-combined-balance').innerText = formatINR(totalBalance);
+            document.getElementById('metric-wallet-count').innerHTML = `${currentAccounts.length} <span class="font-body-md text-body-md text-primary font-normal">Active</span>`;
+            document.getElementById('peer-count-badge').innerText = `Peer Count: ${currentAccounts.length}`;
+
+            // Render Demo Wallet Cards (Alice, Bob, Carol)
+            const roleMap = {
+                alice: { role: 'Primary Sender', badge: 'Active', bg: 'bg-primary/10 text-primary' },
+                bob: { role: 'Merchant / Receiver', badge: 'Verified Point', bg: 'bg-secondary/15 text-secondary' },
+                carol: { role: 'Mesh Relay Peer', badge: 'Active Hop', bg: 'bg-tertiary/15 text-tertiary' }
+            };
+
+            container.innerHTML = currentAccounts.map(acc => {
+                const info = roleMap[acc.id.toLowerCase()] || { role: 'Peer Wallet', badge: 'Active', bg: 'bg-surface-variant text-on-surface' };
+                return `
+                    <div class="bg-surface-container rounded-xl p-6 shadow-sm flex flex-col justify-between hover:bg-surface-container-high transition-colors">
+                        <div>
+                            <div class="flex items-start justify-between mb-6">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-10 h-10 rounded-xl ${info.bg} flex items-center justify-center font-headline-sm font-semibold capitalize">
+                                        ${acc.id.charAt(0)}
+                                    </div>
+                                    <div>
+                                        <h3 class="font-headline-sm text-headline-sm text-on-surface font-semibold capitalize">${acc.id}</h3>
+                                        <span class="font-label-sm text-label-sm text-on-surface-variant">${info.role}</span>
+                                    </div>
+                                </div>
+                                <span class="font-label-sm text-label-sm px-2.5 py-1 rounded-full bg-surface-container-lowest text-primary">v${acc.version ?? 0}</span>
+                            </div>
+                            <div class="bg-surface-container-lowest rounded-xl p-4 mb-5">
+                                <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider block mb-1">Available Balance</span>
+                                <div class="font-headline-xl text-headline-xl text-on-surface font-semibold tracking-tight">
+                                    ${formatINR(acc.balance)}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2 pt-2">
+                            <button onclick="prefillPayment('${acc.id}')" class="px-3 py-2 rounded-lg bg-surface-container-lowest hover:bg-surface-variant text-on-surface font-label-md text-label-md transition-colors flex items-center justify-center gap-1.5">
+                                <span class="material-symbols-outlined text-[16px] text-primary">arrow_upward</span>
+                                <span>Send</span>
+                            </button>
+                            <button onclick="showToast('Invoice listener active on ${acc.id}')" class="px-3 py-2 rounded-lg bg-surface-container-lowest hover:bg-surface-variant text-on-surface-variant font-label-md text-label-md transition-colors flex items-center justify-center gap-1.5">
+                                <span class="material-symbols-outlined text-[16px]">qr_code_2</span>
+                                <span>Receive</span>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            // Table rows
+            tableBody.innerHTML = currentAccounts.map(acc => {
+                const info = roleMap[acc.id.toLowerCase()] || { role: 'Peer Node' };
+                return `
+                    <tr class="hover:bg-surface-container-high transition-colors">
+                        <td class="py-3.5 px-6 font-medium capitalize">${acc.id}</td>
+                        <td class="py-3.5 px-6 text-on-surface-variant font-body-sm">${info.role}</td>
+                        <td class="py-3.5 px-6 font-semibold">${formatINR(acc.balance)}</td>
+                        <td class="py-3.5 px-6 text-on-surface-variant">v${acc.version ?? 0}</td>
+                        <td class="py-3.5 px-6 text-right">
+                            <button onclick="prefillPayment('${acc.id}')" class="text-primary hover:underline text-xs font-medium">Initiate Transfer</button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            updateSenderBalanceDisplay();
+        }
+
+        function prefillPayment(sender) {
+            switchTab('payments');
+            const senderSelect = document.getElementById('senderSelect');
+            if (senderSelect) {
+                senderSelect.value = sender;
+                updateSenderBalanceDisplay();
+            }
+        }
+
+        function updateSenderBalanceDisplay() {
+            const sender = document.getElementById('senderSelect')?.value;
+            const acc = currentAccounts.find(a => a.id.toLowerCase() === (sender || '').toLowerCase());
+            const display = document.getElementById('senderAvailableDisplay');
+            if (display) {
+                display.innerText = acc ? `Available: ${formatINR(acc.balance)}` : 'Available: -';
+            }
+        }
+
+        function setQuickAmount(amt) {
+            document.getElementById('amountInput').value = amt.toFixed(2);
+        }
+
+        // Fetch Transactions from /api/transactions
+        async function fetchTransactions() {
+            try {
+                const res = await fetch('/api/transactions');
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                currentTransactions = await res.json();
+                renderTransactions();
+            } catch (err) {
+                console.error('Error fetching transactions:', err);
+            }
+        }
+
+        function renderTransactions() {
+            const tbody = document.getElementById('ledgerTableBody');
+            const search = (document.getElementById('txSearchInput')?.value || '').toLowerCase();
+            const txCountEl = document.getElementById('tx-stat-count');
+            const txVolumeEl = document.getElementById('tx-stat-volume');
+            const metricTxCount = document.getElementById('metric-tx-count');
+
+            const filtered = (currentTransactions || []).filter(tx => {
+                if (!search) return true;
+                return (tx.fromAccount && tx.fromAccount.toLowerCase().includes(search)) ||
+                       (tx.toAccount && tx.toAccount.toLowerCase().includes(search)) ||
+                       (tx.amount && tx.amount.toString().includes(search));
+            });
+
+            if (txCountEl) txCountEl.innerText = currentTransactions.length;
+            if (metricTxCount) metricTxCount.innerText = `${currentTransactions.length} settled`;
+
+            let volume = 0;
+            currentTransactions.forEach(t => volume += parseFloat(t.amount || 0));
+            if (txVolumeEl) txVolumeEl.innerText = formatINR(volume);
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="5" class="py-8 text-center text-on-surface-variant text-sm">
+                            No ledger entries found. Perform a transfer to settle payments.
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = filtered.map(tx => `
+                <tr class="hover:bg-surface-container-high transition-colors">
+                    <td class="py-3 px-6 text-on-surface-variant text-xs">${formatTimestamp(tx.timestamp)}</td>
+                    <td class="py-3 px-6 font-medium capitalize">
+                        <span class="text-on-surface">${tx.fromAccount}</span>
+                        <span class="text-on-surface-variant mx-1">→</span>
+                        <span class="text-on-surface">${tx.toAccount}</span>
+                    </td>
+                    <td class="py-3 px-6 text-on-surface-variant text-xs font-mono" title="${tx.id}">
+                        ${(tx.id || '').substring(0, 8)}...
+                    </td>
+                    <td class="py-3 px-6 text-right font-semibold text-on-surface">${formatINR(tx.amount)}</td>
+                    <td class="py-3 px-6 text-right">
+                        <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-surface-container-lowest text-primary text-xs font-medium border border-primary/20">
+                            <span class="w-1.5 h-1.5 rounded-full bg-primary"></span>
+                            ${tx.status || 'SETTLED'}
+                        </span>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function filterTransactions() {
+            renderTransactions();
+        }
+
+        let transferMode = 'mesh'; // 'mesh' (Stage 10 default) or 'direct'
+
+        function setTransferMode(mode) {
+            transferMode = mode;
+            const btnMesh = document.getElementById('modeBtnMesh');
+            const btnDirect = document.getElementById('modeBtnDirect');
+            const ttlContainer = document.getElementById('meshTtlContainer');
+            const label = document.getElementById('routingProtocolLabel');
+            const submitBtnText = document.getElementById('submitBtnText');
+
+            if (mode === 'mesh') {
+                btnMesh.className = 'px-3 py-2 rounded-md bg-surface-container text-primary font-medium text-xs flex items-center justify-center gap-1.5 transition-colors';
+                btnDirect.className = 'px-3 py-2 rounded-md text-on-surface-variant hover:text-on-surface font-medium text-xs flex items-center justify-center gap-1.5 transition-colors';
+                if (ttlContainer) ttlContainer.classList.remove('hidden');
+                if (label) label.innerText = 'Multi-Hop Mesh (E2E)';
+                if (submitBtnText) submitBtnText.innerText = 'Simulate & Settle via Offline Mesh';
+            } else {
+                btnDirect.className = 'px-3 py-2 rounded-md bg-surface-container text-primary font-medium text-xs flex items-center justify-center gap-1.5 transition-colors';
+                btnMesh.className = 'px-3 py-2 rounded-md text-on-surface-variant hover:text-on-surface font-medium text-xs flex items-center justify-center gap-1.5 transition-colors';
+                if (ttlContainer) ttlContainer.classList.add('hidden');
+                if (label) label.innerText = 'Direct Core API';
+                if (submitBtnText) submitBtnText.innerText = 'Execute Direct Transfer';
+            }
+        }
+
+        // Execute Transfer via POST /api/mesh/transfer or /api/transfer
+        async function submitTransfer() {
+            const from = document.getElementById('senderSelect').value;
+            const to = document.getElementById('receiverSelect').value;
+            const amount = document.getElementById('amountInput').value;
+            const ttl = document.getElementById('ttlInput')?.value || 5;
+            const submitBtn = document.getElementById('submitTransferBtn');
+
+            if (!from || !to) {
+                showToast('Select both sender and receiver.', true);
+                return;
+            }
+            if (from.toLowerCase() === to.toLowerCase()) {
+                showToast('Sender and receiver must be different.', true);
+                return;
+            }
+            if (!amount || parseFloat(amount) <= 0) {
+                showToast('Transfer amount must be greater than zero.', true);
+                return;
+            }
+
+            // Update journey preview
+            document.getElementById('journeyAmountDisplay').innerText = formatINR(amount);
+            document.getElementById('journeyPartiesDisplay').innerText = `${from} → ${to}`;
+            document.getElementById('journeyStatusText').innerText = transferMode === 'mesh' ? 'Routing through peer mesh...' : 'Direct settlement in progress...';
+
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="material-symbols-outlined text-[20px] animate-spin">sync</span> Processing...';
+
+            try {
+                if (transferMode === 'mesh') {
+                    // Stage 10: End-to-end simulated mesh payment
+                    const params = new URLSearchParams({ from, to, amount, ttl });
+                    const res = await fetch('/api/mesh/transfer?' + params.toString(), { method: 'POST' });
+                    const result = await res.json();
+
+                    if (res.ok && result.success) {
+                        showToast(`✓ Mesh payment settled across ${result.hopsTaken} hops via ${result.routeTrace.join(' → ')}!`);
+                        document.getElementById('journeyStatusText').innerText = `Settled at Bridge (${result.hopsTaken} hops, ${result.roundsRun} rounds)`;
+                        document.getElementById('journeyBadge').innerText = 'Settled (Multi-Hop)';
+                        document.getElementById('journeyBadge').className = 'font-label-sm text-label-sm px-2.5 py-1 rounded-full bg-primary/20 text-primary font-medium';
+
+                        // Update dynamic 4-step details
+                        const s1 = document.getElementById('journey-step-1-desc');
+                        const s2 = document.getElementById('journey-step-2-desc');
+                        const s3 = document.getElementById('journey-step-3-desc');
+                        const s4 = document.getElementById('journey-step-4-desc');
+                        if (s1) s1.innerText = `Instruction ID: ${result.paymentId.substring(0, 8)}... | IV: ${result.ivHex}`;
+                        if (s2) s2.innerText = `Relayed via ${result.routeTrace.join(' → ')} (${result.hopsTaken} hops, ${result.roundsRun} rounds, TTL left: ${result.remainingTtl})`;
+                        if (s3) s3.innerText = `Bridge Gateway: SHA-256 deduplicated, AES-GCM verified & decrypted`;
+                        if (s4) s4.innerText = `Committed to ledger: Balances atomically updated`;
+
+                        appendTelemetryLog(`[E2E-SETTLED] Payment ₹${amount} from ${from} to ${to} settled via ${result.routeTrace.join(' → ')} (hops: ${result.hopsTaken})`);
+                        await refreshAllData();
+                    } else {
+                        const errMsg = result.message || 'Mesh payment failed';
+                        showToast(`Transfer rejected: ${errMsg}`, true);
+                        document.getElementById('journeyStatusText').innerText = `Rejected: ${errMsg}`;
+                        document.getElementById('journeyBadge').innerText = result.status || 'Failed';
+                        document.getElementById('journeyBadge').className = 'font-label-sm text-label-sm px-2.5 py-1 rounded-full bg-error/20 text-error font-medium';
+                        appendTelemetryLog(`[E2E-ERROR] Transfer rejected: ${errMsg}`);
+                    }
+                } else {
+                    // Direct Core Transfer (Stage 9)
+                    const params = new URLSearchParams({ from, to, amount });
+                    const res = await fetch('/api/transfer?' + params.toString(), { method: 'POST' });
+
+                    if (res.ok) {
+                        showToast(`Successfully transferred ${formatINR(amount)} from ${from} to ${to}!`);
+                        document.getElementById('journeyStatusText').innerText = 'Settled via Direct Core API';
+                        document.getElementById('journeyBadge').innerText = 'Settled';
+                        document.getElementById('journeyBadge').className = 'font-label-sm text-label-sm px-2.5 py-1 rounded-full bg-primary/20 text-primary font-medium';
+                        await refreshAllData();
+                    } else {
+                        const errText = await res.text();
+                        showToast(`Transfer failed: ${errText || 'Error ' + res.status}`, true);
+                        document.getElementById('journeyStatusText').innerText = `Rejected: ${errText}`;
+                        document.getElementById('journeyBadge').innerText = 'Failed';
+                        document.getElementById('journeyBadge').className = 'font-label-sm text-label-sm px-2.5 py-1 rounded-full bg-error/20 text-error font-medium';
+                    }
+                }
+            } catch (err) {
+                showToast('Network error: ' + err.message, true);
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<span class="material-symbols-outlined text-[20px]">send_time_extension</span> <span id="submitBtnText">' + (transferMode === 'mesh' ? 'Simulate & Settle via Offline Mesh' : 'Execute Direct Transfer') + '</span>';
+            }
+        }
+
+        // Live Mesh View Quick Simulation Trigger
+        async function runMeshViewSimulation() {
+            const btn = document.getElementById('runSimMeshBtn');
+            const consoleEl = document.getElementById('meshTelemetryConsole');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="material-symbols-outlined text-[20px] animate-spin">sync</span> Running Multi-Hop Gossip Rounds...';
+
+            appendTelemetryLog(`\n================================================`);
+            appendTelemetryLog(`[ROUND 0] Alice generating payment instruction: ₹250.00 to Bob`);
+            appendTelemetryLog(`[CRYPTO] Encrypted using RSA-OAEP + AES-256-GCM. 12-byte IV generated.`);
+
+            try {
+                const params = new URLSearchParams({ from: 'alice', to: 'bob', amount: '250.00', ttl: 5 });
+                const res = await fetch('/api/mesh/transfer?' + params.toString(), { method: 'POST' });
+                const result = await res.json();
+
+                if (res.ok && result.success) {
+                    appendTelemetryLog(`[GOSSIP 1] Enqueued at Alice. Forwarded to Carol (TTL: 4, Hop 1)`);
+                    appendTelemetryLog(`[GOSSIP 2] Carol relayed packet to Bridge Gateway (TTL: 3, Hop 2)`);
+                    appendTelemetryLog(`[BRIDGE] Ingested at Bridge Gateway. Computed SHA-256 canonical hash.`);
+                    appendTelemetryLog(`[IDEMPOTENCY] Atomic claim acquired: tryClaim() succeeded.`);
+                    appendTelemetryLog(`[DECRYPT] Payload decrypted with Bridge Private Key. Nonce verified.`);
+                    appendTelemetryLog(`[SETTLEMENT] SettlementService atomically adjusted balances & committed ledger entry.`);
+                    appendTelemetryLog(`[RESULT] SUCCESS: Settled in ${result.roundsRun} rounds across ${result.hopsTaken} hops.`);
+                    showToast(`✓ Simulated Mesh Payment settled across 2 hops via Carol to Bridge!`);
+                    await refreshAllData();
+                } else {
+                    appendTelemetryLog(`[FAILURE] Mesh simulation rejected: ${result.message || result.status}`);
+                    showToast(`Simulation rejected: ${result.message}`, true);
+                }
+            } catch (err) {
+                appendTelemetryLog(`[ERROR] Network error: ${err.message}`);
+                showToast('Network error: ' + err.message, true);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<span class="material-symbols-outlined text-[20px]">send_time_extension</span> <span>Trigger Multi-Hop Mesh Payment</span>';
+            }
+        }
+
+        function appendTelemetryLog(msg) {
+            const consoleEl = document.getElementById('meshTelemetryConsole');
+            if (!consoleEl) return;
+            const line = document.createElement('div');
+            line.className = msg.includes('SUCCESS') || msg.includes('SETTLED') ? 'text-primary font-semibold' : (msg.includes('FAILURE') || msg.includes('ERROR') ? 'text-error font-semibold' : 'text-on-surface-variant');
+            line.innerText = msg;
+            consoleEl.appendChild(line);
+            consoleEl.scrollTop = consoleEl.scrollHeight;
+
+            const ts = document.getElementById('simTelemetryTimestamp');
+            if (ts) ts.innerText = new Date().toLocaleTimeString('en-IN');
+        }
+
+        // Fetch Topology from /api/mesh/topology
+        async function fetchTopology() {
+            try {
+                const res = await fetch('/api/mesh/topology');
+                if (!res.ok) return;
+                const topo = await res.json();
+                renderTopology(topo);
+            } catch (err) {
+                console.error('Error fetching mesh topology:', err);
+            }
+        }
+
+        function renderTopology(topo) {
+            const tbody = document.getElementById('topologyTableBody');
+            if (!tbody || !topo.devices) return;
+
+            tbody.innerHTML = topo.devices.map(d => {
+                const isBridge = d.isBridge;
+                const roleBadge = isBridge
+                        ? '<span class="px-2 py-0.5 rounded-full bg-secondary/15 text-secondary text-xs font-semibold">Bridge Gateway Sink</span>'
+                        : '<span class="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-semibold">Peer Relay Node</span>';
+                const neighbors = (d.neighbors || []).join(', ') || 'None';
+
+                return `
+                    <tr class="hover:bg-surface-container-high transition-colors">
+                        <td class="py-3.5 px-6 font-medium capitalize flex items-center gap-2">
+                            <span class="material-symbols-outlined text-[18px] ${isBridge ? 'text-secondary' : 'text-primary'}">${isBridge ? 'public' : 'smartphone'}</span>
+                            <span>${d.deviceId}</span>
+                        </td>
+                        <td class="py-3.5 px-6 font-body-sm">${roleBadge}</td>
+                        <td class="py-3.5 px-6 font-mono text-xs text-on-surface-variant">${neighbors}</td>
+                        <td class="py-3.5 px-6 font-body-sm font-medium ${isBridge ? 'text-secondary' : 'text-on-surface-variant'}">${isBridge ? 'Yes (Settlement Sink)' : 'No'}</td>
+                        <td class="py-3.5 px-6 text-right">
+                            <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-surface-container-lowest text-primary text-xs font-medium border border-primary/20">
+                                <span class="w-1.5 h-1.5 rounded-full bg-primary"></span>
+                                Online
+                            </span>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        async function refreshAllData() {
+            const refreshBtn = document.getElementById('globalRefreshBtn');
+            if (refreshBtn) refreshBtn.classList.add('opacity-50');
+            await Promise.all([fetchAccounts(), fetchTransactions(), fetchTopology()]);
+            if (refreshBtn) refreshBtn.classList.remove('opacity-50');
+        }
+
+        // Initial Data Fetch
+        refreshAllData();
+    </script>
+</body>
+</html>
