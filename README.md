@@ -13,6 +13,7 @@
 
 <br/>
 
+[About](#-about-the-project) •
 [Key Capabilities](#-key-capabilities) •
 [Architecture](#-system-architecture) •
 [Security Pipeline](#-cryptographic-security-pipeline) •
@@ -26,11 +27,48 @@
 
 </div>
 
+## 📖 About the Project
+
+### The Connectivity Problem in Digital Payments
+The Unified Payments Interface (UPI) processes billions of transactions monthly, transforming digital commerce. However, its fundamental assumption is **continuous, end-to-end cellular or internet connectivity** between mobile clients, telecom infrastructure, banking switches, and the central NPCI network.
+
+When connectivity drops, digital transactions fail entirely. Real-world scenarios include:
+- **Disaster Zones & Outages**: Earthquakes, cyclones, or power grid failures that sever telecom towers.
+- **Underground & Transit**: Underground metro stations, basements, highway tunnels, and remote railway routes.
+- **High-Density Congestion**: Music festivals, stadiums, or demonstrations where cellular towers face bandwidth exhaustion.
+- **Remote & Rural Areas**: Rural villages and hilly terrains lacking reliable cellular coverage.
+
+---
+
+### The Solution: Multi-Hop Store-and-Forward Mesh
+**UPI Offline Mesh** introduces an opportunistic, multi-hop peer-to-peer architecture for offline payments. Rather than requiring direct cellular access to banking servers at the moment of payment:
+
+1. **Local Offline Signing**: The payer creates a cryptographically signed payment instruction on their device using an asymmetric key pair (**RSASSA-PSS SHA-256**).
+2. **Hybrid Envelope Encryption**: The instruction is encapsulated in an authenticated envelope (**RSA-OAEP** key wrapping + **AES-256-GCM** payload encryption) keyed exclusively to the bank's Bridge Gateway.
+3. **Ad-Hoc Wireless Forwarding**: The encrypted envelope is transferred locally (via simulated peer-to-peer Bluetooth/Wi-Fi Direct hops). Nearby devices forward the opaque packet across the mesh without being able to read or modify its contents.
+4. **Opportunistic Bridge Settlement**: As soon as *any* participating mesh device encounters internet connectivity (an edge bridge or cellular connection), it delivers the packet to the banking core.
+5. **Atomic Ledger Settlement**: The backend bridge authenticates the digital signature, verifies sender balance, guarantees persistent idempotency, and records an immutable double-entry ledger entry.
+
+---
+
+### 🔍 How It Compares
+
+| Feature | Standard Online UPI | UPI Lite X (NFC) | **UPI Offline Mesh** |
+|---|:---:|:---:|:---:|
+| **Internet Required at Payment Time** | ✅ Mandatory (Both parties) | ❌ Offline Tap | ❌ **100% Offline (Zero Internet)** |
+| **Direct Proximity to Merchant Only** | N/A | ✅ Mandatory (1-to-1 Tap) | ❌ **Multi-hop peer forwarding** |
+| **Relay Capability** | ❌ No | ❌ No | ✅ **Peer-to-peer opportunistic relays** |
+| **Intermediate Relay Privacy** | N/A | N/A | ✅ **Zero-Knowledge (Opaque Ciphertext)** |
+| **Replay & Double-Spend Defense** | Central switch validation | Device wallet counters | ✅ **Compound DB constraints & Hash Claims** |
+| **Ledger Reconciliation** | Immediate synchronous | Delayed sync | ✅ **Decoupled audit with mathematical proof** |
+
+---
+
 ## 📌 Executive Summary
 
-Modern Unified Payments Interface (UPI) systems require persistent real-time internet connectivity to bank servers and the NPCI switch. In low-connectivity environments—such as rural regions, underground transit networks, natural disaster relief zones, or congested public events—digital payments fail completely.
+**UPI Offline Mesh** is a deterministic, software-simulated payment infrastructure that models and proves the correctness of **offline peer-to-peer transaction generation, multi-hop mesh forwarding, and deferred atomic settlement**. 
 
-**UPI Offline Mesh** is a deterministic, software-simulated payment infrastructure that enables **offline peer-to-peer transaction generation and wireless multi-hop forwarding**. Payment instructions hop across intermediate peer devices via simulated ad-hoc gossip rounds until reaching an internet-connected **Bridge Gateway**, where they are cryptographically authenticated, deduplicated, and settled atomically into the core ledger.
+The system runs entirely as a self-contained Spring Boot application with zero external hardware requirements, providing a full suite of cryptographic primitives, gossip forwarding simulations, database-level replay protections, and an interactive glassmorphism web dashboard.
 
 ---
 
