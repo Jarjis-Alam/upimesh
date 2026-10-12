@@ -18,7 +18,6 @@
 [Key Capabilities](#-key-capabilities) •
 [Architecture](#-system-architecture) •
 [Security Pipeline](#-cryptographic-security-pipeline) •
-[Interactive Dashboard](#-interactive-dashboard) •
 [Native iOS App](#-native-ios-app-liquid-mesh-upi) •
 [Quickstart](#-quickstart-guide) •
 [API Reference](#-api-reference) •
@@ -70,7 +69,7 @@ When connectivity drops, digital transactions fail entirely. Real-world scenario
 
 **UPI Offline Mesh** is a deterministic, software-simulated payment infrastructure that models and proves the correctness of **offline peer-to-peer transaction generation, multi-hop mesh forwarding, and deferred atomic settlement**. 
 
-The system runs entirely as a self-contained Spring Boot application with zero external hardware requirements, providing a full suite of cryptographic primitives, gossip forwarding simulations, database-level replay protections, and an interactive glassmorphism web dashboard.
+The system runs entirely as a self-contained Spring Boot application with zero external hardware requirements, providing a full suite of cryptographic primitives, gossip forwarding simulations, database-level replay protections, and a native Liquid Mesh iOS mobile application.
 
 ---
 
@@ -81,7 +80,6 @@ The system runs entirely as a self-contained Spring Boot application with zero e
 - **🔄 Multi-Hop Gossip Simulation**: Deterministic discrete rounds with loop suppression, visited-device memory, and Time-To-Live (TTL) hop decrementing without physical radio hardware dependencies.
 - **⚡ Persistent Replay Protection**: Multi-layered defense coupling canonical SHA-256 ciphertext deduplication, global `paymentId` uniqueness, and persistent `(fromAccount, nonce)` uniqueness constraints.
 - **⚖️ Double-Entry Ledger & Audit Reconciliation**: Strict atomic balance movements recorded alongside transactional ledger rows; decoupled read-only reconciliation auditing individual balances against authoritative opening baselines.
-- **🖥️ Stitch Web Dashboard**: Live web UI visualizing account balances, real-time simulated transfers, dynamic mesh topology, and ledger history.
 - **📱 Native iOS Client (Liquid Mesh UPI)**: Production-grade SwiftUI app implementing the Liquid Mesh UPI design system, live multi-account balance synchronization, real-time simulated payment dispatch, and peer discovery radar.
 
 ---
@@ -152,22 +150,9 @@ sequenceDiagram
 
 ---
 
-## 🖥️ Interactive Dashboard
-
-The application includes a responsive web interface located at `/dashboard.html` that interfaces with the Spring Boot backend in real time:
-
-| Screen | Overview |
-|:---:|:---:|
-| **Account Overview & Balances**<br/>Real-time balances for Alice, Bob, and Carol | ![Accounts Screen](stitch_upi_offline_mesh_dashboard/accounts_bottom_pill_nav/screen.png) |
-| **Mesh Topology & Routing**<br/>Simulated multi-hop device graph and bridge connectivity | ![Mesh Network Screen](stitch_upi_offline_mesh_dashboard/mesh_network_bottom_pill_nav/screen.png) |
-| **Simulated Payment Dispatch**<br/>End-to-end cryptographic mesh transfer execution | ![Payments Screen](stitch_upi_offline_mesh_dashboard/payments_bottom_pill_nav/screen.png) |
-| **Transaction Ledger**<br/>Chronological, immutable record of settled transactions | ![Transactions Screen](stitch_upi_offline_mesh_dashboard/transactions_bottom_pill_nav/screen.png) |
-
----
-
 ## 📱 Native iOS App (Liquid Mesh UPI)
 
-In addition to the web dashboard, UPI Offline Mesh includes a native **iOS SwiftUI** application located in [`ios/UPIMesh/`](ios/UPIMesh/), engineered with the **Liquid Mesh UPI** design system.
+UPI Offline Mesh features a native **iOS SwiftUI** application located in [`ios/UPIMesh/`](ios/UPIMesh/), engineered with the **Liquid Mesh UPI** design system.
 
 The iOS app interfaces asynchronously with the Spring Boot backend (`http://localhost:8080` on the Simulator or the Mac host LAN IP on a physical device) to demonstrate live account synchronization, peer radar topology, and multi-hop mesh payment execution.
 
@@ -211,7 +196,6 @@ cd upimesh
 ```
 
 Once started, open your browser:
-- **Interactive Dashboard**: [http://localhost:8080/dashboard.html](http://localhost:8080/dashboard.html)
 - **H2 Web Console**: [http://localhost:8080/h2-console](http://localhost:8080/h2-console)
   - **JDBC URL**: `jdbc:h2:file:./data/upimesh`
   - **User**: `sa`
