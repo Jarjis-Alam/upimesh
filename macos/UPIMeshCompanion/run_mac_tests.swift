@@ -2,9 +2,9 @@ import Foundation
 
 @main
 struct MacCompanionTestRunner {
-    static func main() {
+    static func main() async {
         do {
-            try MacCompanionTests.runAllTests()
+            try await MacCompanionTests.runAllTests()
             exit(0)
         } catch {
             print("MacCompanionTests failed: \(error)")

@@ -145,8 +145,8 @@ public enum PreviewData {
     ]
 
     // MARK: - Transaction Item Model
-    public struct TransactionItem: Identifiable {
-        public enum Category: String {
+    public struct TransactionItem: Identifiable, Equatable, Sendable {
+        public enum Category: String, Equatable, Sendable {
             case settled = "settled"
             case inTransit = "transit"
             case blocked = "blocked"

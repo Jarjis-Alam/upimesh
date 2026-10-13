@@ -77,8 +77,13 @@ class DeviceSignedPaymentSubmissionTest {
         String alicePubKeyBase64 = Base64.getEncoder().encodeToString(aliceDeviceKeyPair.getPublic().getEncoded());
         apiController.registerSenderKey(new KeyRegistrationRequest(aliceDeviceId, alicePubKeyBase64), null, null);
 
-        // Authorize Alice's device for account "alice"
-        apiController.authorizeDevice(new DeviceAuthorizationRequest(aliceDeviceId, "alice"));
+        // Authorize Alice's device for account "alice" with test admin token
+        apiController.setConfiguredAdminToken("test-admin-secret-token");
+        apiController.authorizeDevice(
+                new DeviceAuthorizationRequest(aliceDeviceId, "alice"),
+                "test-admin-secret-token",
+                null
+        );
     }
 
     @Test

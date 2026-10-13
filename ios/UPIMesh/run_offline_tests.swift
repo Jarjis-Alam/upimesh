@@ -20,6 +20,8 @@ struct OfflinePaymentTestRunner {
             exit(1)
         }
 
+        await MeshLedgerViewModelTests.runAllTests()
+
         exit(0)
     }
 }

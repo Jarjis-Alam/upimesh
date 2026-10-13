@@ -8,6 +8,19 @@ public struct MacCompanionView: View {
     @State private var receivedPackets: [MacReceivedPacketRecord] = []
     @State private var macIdentity: MacDeviceIdentity? = nil
 
+    // MARK: - Bridge Registration State
+    @State private var bridgeRegistrationState: BridgeRegistrationState = .unregistered
+    @State private var bridgeErrorMessage: String? = nil
+    @State private var bridgeSuccessMessage: String? = nil
+    @State private var isRegistering: Bool = false
+
+    public enum BridgeRegistrationState: Equatable, Sendable {
+        case unregistered
+        case registering
+        case registered(isNew: Bool)
+        case failed(String)
+    }
+
     private let bgDark = Color(red: 0.04, green: 0.04, blue: 0.05)
     private let cardBg = Color(red: 0.09, green: 0.09, blue: 0.11)
     private let cardBorder = Color.white.opacity(0.08)
@@ -95,6 +108,9 @@ public struct MacCompanionView: View {
     private var leftTransportPanel: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
+                // Bridge Registration Card
+                bridgeRegistrationCard
+
                 // Discovery Action Card
                 VStack(alignment: .leading, spacing: 10) {
                     Text("NEARBY DEVICE DISCOVERY (AWDL / BLE)")
@@ -159,21 +175,124 @@ public struct MacCompanionView: View {
 
                             Divider().background(cardBorder)
 
-                            // Send Test Packet to iPhone button
-                            Button {
-                                Task {
-                                    await transport.sendTestPacket(to: peer)
+                            // Diagnostic Peer Connectivity Section (Non-Financial Ping Test)
+                            VStack(alignment: .leading, spacing: 8) {
+                                HStack {
+                                    Text("PEER CONNECTIVITY TEST")
+                                        .font(.system(size: 9, weight: .bold))
+                                        .foregroundColor(textMuted)
+                                    Spacer()
+                                    Text("NON-FINANCIAL")
+                                        .font(.system(size: 8, weight: .bold))
+                                        .foregroundColor(Color.cyan)
+                                        .padding(.horizontal, 5)
+                                        .padding(.vertical, 2)
+                                        .background(Capsule().fill(Color.cyan.opacity(0.15)))
                                 }
-                            } label: {
-                                HStack(spacing: 6) {
-                                    Image(systemName: "paperplane.fill")
-                                    Text("Send Test Packet (₹15.00) to iPhone")
+
+                                Button {
+                                    Task {
+                                        await transport.sendPing(to: peer)
+                                    }
+                                } label: {
+                                    HStack(spacing: 6) {
+                                        if transport.pingStatus.isSending {
+                                            ProgressView()
+                                                .controlSize(.small)
+                                            Text("Pinging \(peer.displayName)...")
+                                        } else {
+                                            Image(systemName: "bolt.horizontal.fill")
+                                            Text("Ping Peer")
+                                        }
+                                    }
+                                    .frame(maxWidth: .infinity)
                                 }
-                                .frame(maxWidth: .infinity)
+                                .buttonStyle(.borderedProminent)
+                                .tint(Color.cyan)
+                                .foregroundColor(.black)
+                                .font(.system(size: 11, weight: .bold))
+                                .disabled(transport.pingStatus.isSending)
+
+                                // Diagnostic Ping Status Display (Idle / Sending / Success / Failed)
+                                switch transport.pingStatus {
+                                case .idle:
+                                    Text("Transmits a harmless PING/PONG diagnostic message to measure round-trip latency without creating payments, altering balances, or contacting the ledger.")
+                                        .font(.system(size: 10))
+                                        .foregroundColor(textMuted)
+                                case .sending:
+                                    HStack(spacing: 5) {
+                                        ProgressView().controlSize(.small)
+                                        Text("Transmitting PING to \(peer.displayName) and awaiting PONG...")
+                                            .font(.system(size: 10))
+                                            .foregroundColor(textSecondary)
+                                    }
+                                case .success(let ms, let peerName, _):
+                                    HStack {
+                                        Image(systemName: "checkmark.circle.fill")
+                                            .foregroundColor(.green)
+                                            .font(.system(size: 11))
+                                        Text("PONG received · Round-trip: \(ms) ms to \(peerName) ✓")
+                                            .font(.system(size: 10, weight: .bold))
+                                            .foregroundColor(.green)
+                                        Spacer()
+                                        Button("Clear") {
+                                            transport.clearPingStatus()
+                                        }
+                                        .buttonStyle(.plain)
+                                        .font(.system(size: 9))
+                                        .foregroundColor(textMuted)
+                                    }
+                                    .padding(6)
+                                    .background(Color.green.opacity(0.12))
+                                    .cornerRadius(6)
+                                case .failed(let err):
+                                    HStack {
+                                        Image(systemName: "xmark.circle.fill")
+                                            .foregroundColor(.red)
+                                            .font(.system(size: 11))
+                                        Text("Ping failed: \(err)")
+                                            .font(.system(size: 10))
+                                            .foregroundColor(.red)
+                                        Spacer()
+                                        Button("Clear") {
+                                            transport.clearPingStatus()
+                                        }
+                                        .buttonStyle(.plain)
+                                        .font(.system(size: 9))
+                                        .foregroundColor(textMuted)
+                                    }
+                                    .padding(6)
+                                    .background(Color.red.opacity(0.12))
+                                    .cornerRadius(6)
+                                }
                             }
-                            .buttonStyle(.bordered)
-                            .tint(meshGold)
-                            .font(.system(size: 11, weight: .semibold))
+                            .padding(10)
+                            .background(Color.white.opacity(0.03))
+                            .cornerRadius(8)
+
+                            Divider().background(cardBorder)
+
+                            // Send Test Packet to iPhone button (Offline Payment Prototype)
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text("OFFLINE PAYMENT TEST PACKET")
+                                    .font(.system(size: 9, weight: .bold))
+                                    .foregroundColor(textMuted)
+
+                                Button {
+                                    Task {
+                                        await transport.sendTestPacket(to: peer)
+                                    }
+                                } label: {
+                                    HStack(spacing: 6) {
+                                        Image(systemName: "paperplane.fill")
+                                        Text("Send Test Packet (₹15.00) to iPhone")
+                                    }
+                                    .frame(maxWidth: .infinity)
+                                }
+                                .buttonStyle(.bordered)
+                                .tint(meshGold)
+                                .font(.system(size: 11, weight: .semibold))
+                            }
                         }
                     } else {
                         HStack {
@@ -438,6 +557,207 @@ public struct MacCompanionView: View {
         .padding(.vertical, 8)
         .background(Color.black.opacity(0.6))
         .overlay(Rectangle().frame(height: 1).foregroundColor(cardBorder), alignment: .top)
+    }
+
+    // MARK: - Bridge & Device Authorization Card
+
+    private var bridgeRegistrationCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("MAC IDENTITY & BACKEND BRIDGE")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundColor(textMuted)
+                Spacer()
+                Text("REST / HTTP")
+                    .font(.system(size: 9, weight: .bold, design: .monospaced))
+                    .foregroundColor(meshGold.opacity(0.8))
+            }
+
+            // Identity Metadata
+            if let id = macIdentity {
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(alignment: .top) {
+                        Text("Device ID:")
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundColor(textMuted)
+                            .frame(width: 72, alignment: .leading)
+                        Text(id.deviceId)
+                            .font(.system(size: 10, design: .monospaced))
+                            .foregroundColor(textPrimary)
+                    }
+
+                    HStack(alignment: .top) {
+                        Text("Key Spec:")
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundColor(textMuted)
+                            .frame(width: 72, alignment: .leading)
+                        Text("\(id.algorithm) · \(id.keyType)")
+                            .font(.system(size: 10, design: .monospaced))
+                            .foregroundColor(textSecondary)
+                    }
+
+                    HStack(alignment: .top) {
+                        Text("Fingerprint:")
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundColor(textMuted)
+                            .frame(width: 72, alignment: .leading)
+                        Text(id.publicKeyFingerprint)
+                            .font(.system(size: 10, design: .monospaced))
+                            .foregroundColor(textSecondary)
+                            .lineLimit(2)
+                    }
+                }
+                .padding(10)
+                .background(Color.white.opacity(0.03))
+                .cornerRadius(6)
+            }
+
+            Divider().background(cardBorder)
+
+            // Step 1: Public Key Registration
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Text("1. PUBLIC KEY REGISTRATION")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundColor(textMuted)
+                    Spacer()
+                    keyStatusBadge
+                }
+
+                Text("Registers this Mac's public verification key with POST /api/keys/register. Does not transmit private key.")
+                    .font(.system(size: 10))
+                    .foregroundColor(textMuted)
+
+                Button {
+                    registerMacPublicKey()
+                } label: {
+                    HStack(spacing: 6) {
+                        if isRegistering {
+                            ProgressView()
+                                .controlSize(.small)
+                            Text("Registering Key...")
+                        } else {
+                            Image(systemName: "key.fill")
+                            Text("Register Mac Public Key")
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(meshGold)
+                .foregroundColor(.black)
+                .font(.system(size: 11, weight: .bold))
+                .disabled(isRegistering || macIdentity == nil)
+
+                if let success = bridgeSuccessMessage {
+                    HStack(spacing: 5) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundColor(.green)
+                            .font(.system(size: 10))
+                        Text(success)
+                            .font(.system(size: 10))
+                            .foregroundColor(.green)
+                    }
+                }
+
+                if let err = bridgeErrorMessage {
+                    HStack(spacing: 5) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundColor(.red)
+                            .font(.system(size: 10))
+                        Text(err)
+                            .font(.system(size: 10))
+                            .foregroundColor(.red)
+                    }
+                }
+            }
+
+            Divider().background(cardBorder)
+
+            // Step 2: Account Authorization Status (Security Diagnostics)
+            VStack(alignment: .leading, spacing: 6) {
+                HStack {
+                    Text("2. CAROL ACCOUNT AUTHORIZATION")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundColor(textMuted)
+                    Spacer()
+                    HStack(spacing: 4) {
+                        Circle().fill(Color.orange).frame(width: 5, height: 5)
+                        Text("BLOCKED — UNAUTHENTICATED")
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundColor(Color.orange)
+                    }
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(Capsule().fill(Color.orange.opacity(0.15)))
+                }
+
+                Text("Security Boundary Note: Public key registration confirms the Mac holds a genuine RSA keypair, but does NOT grant debit authority over bank account 'carol'. Prototype endpoint /api/devices/authorize currently lacks account-owner proof (OTP/signature). In accordance with Stage 6.4B.6 security policy, Carol debit authorization is explicitly blocked.")
+                    .font(.system(size: 10))
+                    .foregroundColor(textMuted)
+            }
+        }
+        .padding(14)
+        .background(cardBg)
+        .cornerRadius(10)
+        .overlay(RoundedRectangle(cornerRadius: 10).stroke(cardBorder, lineWidth: 1))
+    }
+
+    private var keyStatusBadge: some View {
+        HStack(spacing: 4) {
+            switch bridgeRegistrationState {
+            case .unregistered:
+                Circle().fill(Color.gray).frame(width: 5, height: 5)
+                Text("UNREGISTERED")
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundColor(Color.gray)
+            case .registering:
+                Circle().fill(meshGold).frame(width: 5, height: 5)
+                Text("REGISTERING")
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundColor(meshGold)
+            case .registered(let isNew):
+                Circle().fill(Color.green).frame(width: 5, height: 5)
+                Text(isNew ? "REGISTERED (NEW)" : "REGISTERED (IDEMPOTENT)")
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundColor(Color.green)
+            case .failed:
+                Circle().fill(Color.red).frame(width: 5, height: 5)
+                Text("FAILED")
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundColor(Color.red)
+            }
+        }
+        .padding(.horizontal, 6)
+        .padding(.vertical, 2)
+        .background(Capsule().fill(Color.white.opacity(0.06)))
+    }
+
+    private func registerMacPublicKey() {
+        guard let identity = macIdentity else {
+            self.bridgeErrorMessage = "Mac identity not loaded"
+            return
+        }
+        guard !isRegistering else { return }
+
+        isRegistering = true
+        bridgeErrorMessage = nil
+        bridgeSuccessMessage = nil
+        bridgeRegistrationState = .registering
+
+        Task { @MainActor in
+            do {
+                let response = try await MacBridgeClient.shared.registerIdentity(identity)
+                self.isRegistering = false
+                self.bridgeRegistrationState = .registered(isNew: response.isNewlyRegistered)
+                self.bridgeSuccessMessage = response.message
+            } catch {
+                self.isRegistering = false
+                let desc = error.localizedDescription
+                self.bridgeRegistrationState = .failed(desc)
+                self.bridgeErrorMessage = desc
+            }
+        }
     }
 
     private func reloadPackets() {

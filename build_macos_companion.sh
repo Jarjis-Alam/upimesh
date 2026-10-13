@@ -22,8 +22,10 @@ swiftc -framework SwiftUI \
        "$PROJECT_ROOT/ios/UPIMesh/UPIMesh/PaymentInstruction.swift" \
        "$PROJECT_ROOT/ios/UPIMesh/UPIMesh/OfflinePaymentPacket.swift" \
        "$PROJECT_ROOT/ios/UPIMesh/UPIMesh/PeerTransferMessage.swift" \
+       "$PROJECT_ROOT/ios/UPIMesh/UPIMesh/PeerDiagnosticMessage.swift" \
        "$PROJECT_ROOT/macos/UPIMeshCompanion/MacDeviceIdentityManager.swift" \
        "$PROJECT_ROOT/macos/UPIMeshCompanion/MacReceivedPacketStore.swift" \
+       "$PROJECT_ROOT/macos/UPIMeshCompanion/MacBridgeClient.swift" \
        "$PROJECT_ROOT/macos/UPIMeshCompanion/MacPeerTransportService.swift" \
        "$PROJECT_ROOT/macos/UPIMeshCompanion/MacCompanionView.swift" \
        "$PROJECT_ROOT/macos/UPIMeshCompanion/UPIMeshCompanionApp.swift" \

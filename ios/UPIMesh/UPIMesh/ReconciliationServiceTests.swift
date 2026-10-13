@@ -7,7 +7,7 @@ import CryptoKit
 public final class ReconciliationServiceTests {
 
     public static func runAllTests() async throws {
-        print("=== Running ReconciliationServiceTests (8 tests) ===")
+        print("=== Running ReconciliationServiceTests (14 tests) ===")
         try await testValidReceivedPacketSubmittedWithOriginalSignerDeviceId()
         try await testSuccessfulResultTransitionsToSettled()
         try await testDefinitiveInsufficientFundsRejectionTransitionsToFailed()
@@ -16,7 +16,15 @@ public final class ReconciliationServiceTests {
         try await testInvalidStatusCannotBeSubmitted()
         try await testConcurrentDuplicateAttemptsPrevented()
         try await testOriginalSignedInstructionAndSignatureUnchanged()
-        print("=== ReconciliationServiceTests: All 8 passed cleanly! ===")
+
+        // Stage 6.4B.3 UI Reconciliation Workflow Tests
+        try await testUIReconciliationSuccessOutcomeAndState()
+        try await testUIDefinitiveRejectionOutcomeAndReason()
+        try await testUINetworkTimeoutLeavesRetryableForUIRetry()
+        try await testUIAmbiguousDuplicateLeavesRetryable()
+        try await testUIRetrySettlingPacketAllowed()
+        try await testUIInFlightConcurrencyGuard()
+        print("=== ReconciliationServiceTests: All 14 passed cleanly! ===")
     }
 
     private static func assert(_ condition: Bool, _ message: String) throws {
@@ -481,5 +489,228 @@ public final class ReconciliationServiceTests {
         try assert(valid, "Signature must remain mathematically valid after reconciliation")
 
         print("  ✓ PASS: testOriginalSignedInstructionAndSignatureUnchanged")
+    }
+
+    // MARK: - Stage 6.4B.3 UI Reconciliation Workflow Integration Tests
+
+    public static func testUIReconciliationSuccessOutcomeAndState() async throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let store = ReceivedPacketStore(fileURL: tempDir.appendingPathComponent("ui1.json"))
+        let (packet, _) = try createSampleSignedPacket(amount: 75.00)
+        let record = try ReceivedPacketRecord(
+            packet: packet,
+            receivedFromPeer: "Alice-iPhone",
+            isSignatureMathematicallyValid: true,
+            trustStatusNote: "Held in local inbox"
+        )
+        try store.save(record)
+
+        let mock = MockMeshPaymentSubmitter()
+        mock.resultToReturn = sampleSettledResult(paymentId: packet.paymentId)
+
+        let service = OfflineReconciliationService(packetStore: store, apiClient: mock)
+        let outcome = await service.reconcile(paymentId: packet.paymentId)
+
+        guard case .settled(let id, let result) = outcome else {
+            try assert(false, "Outcome must be settled, was \(outcome)")
+            return
+        }
+        try assert(id == packet.paymentId, "Payment ID must match")
+        try assert(result.status.uppercased() == "SETTLED", "Result status must be SETTLED")
+
+        // Assert record is now SETTLED in store
+        let stored = store.get(paymentId: packet.paymentId)
+        try assert(stored?.reconciliationStatus == .settled, "Stored status must be SETTLED")
+        try assert(stored?.failureReason == nil, "Failure reason must be nil")
+
+        print("  ✓ PASS: testUIReconciliationSuccessOutcomeAndState")
+    }
+
+    public static func testUIDefinitiveRejectionOutcomeAndReason() async throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let store = ReceivedPacketStore(fileURL: tempDir.appendingPathComponent("ui2.json"))
+        let (packet, _) = try createSampleSignedPacket(amount: 5000.00)
+        let record = try ReceivedPacketRecord(
+            packet: packet,
+            receivedFromPeer: "Alice-iPhone",
+            isSignatureMathematicallyValid: true,
+            trustStatusNote: "Held in local inbox"
+        )
+        try store.save(record)
+
+        let mock = MockMeshPaymentSubmitter()
+        mock.errorToThrow = APIError.paymentFailed("Insufficient funds for account alice: required 5000.00, available 4970.00")
+
+        let service = OfflineReconciliationService(packetStore: store, apiClient: mock)
+        let outcome = await service.reconcile(paymentId: packet.paymentId)
+
+        guard case .rejected(let id, let reason) = outcome else {
+            try assert(false, "Outcome must be rejected, was \(outcome)")
+            return
+        }
+        try assert(id == packet.paymentId, "Payment ID must match")
+        try assert(reason.contains("Insufficient funds"), "Rejection reason must contain 'Insufficient funds'")
+
+        // Assert record is now FAILED in store and failureReason is preserved for UI rendering
+        let stored = store.get(paymentId: packet.paymentId)
+        try assert(stored?.reconciliationStatus == .failed, "Stored status must be FAILED")
+        try assert(stored?.failureReason?.contains("Insufficient funds") == true, "Failure reason must be stored for UI")
+
+        print("  ✓ PASS: testUIDefinitiveRejectionOutcomeAndReason")
+    }
+
+    public static func testUINetworkTimeoutLeavesRetryableForUIRetry() async throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let store = ReceivedPacketStore(fileURL: tempDir.appendingPathComponent("ui3.json"))
+        let (packet, _) = try createSampleSignedPacket(amount: 10.00)
+        let record = try ReceivedPacketRecord(
+            packet: packet,
+            receivedFromPeer: "Alice-iPhone",
+            isSignatureMathematicallyValid: true,
+            trustStatusNote: "Held in local inbox"
+        )
+        try store.save(record)
+
+        let mock = MockMeshPaymentSubmitter()
+        mock.errorToThrow = APIError.networkError("The request timed out.")
+
+        let service = OfflineReconciliationService(packetStore: store, apiClient: mock)
+        let outcome = await service.reconcile(paymentId: packet.paymentId)
+
+        guard case .retryable(let id, let reason) = outcome else {
+            try assert(false, "Outcome must be retryable on network timeout, was \(outcome)")
+            return
+        }
+        try assert(id == packet.paymentId, "Payment ID must match")
+        try assert(reason.contains("Network connection failure"), "Reason must note network connection failure")
+
+        // Assert record remains in SETTLING on disk (retryable), not FAILED or SETTLED
+        let stored = store.get(paymentId: packet.paymentId)
+        try assert(stored?.reconciliationStatus == .settling, "Stored status must remain SETTLING on timeout")
+        try assert(stored?.failureReason == nil, "Must not set terminal failureReason on timeout")
+
+        print("  ✓ PASS: testUINetworkTimeoutLeavesRetryableForUIRetry")
+    }
+
+    public static func testUIAmbiguousDuplicateLeavesRetryable() async throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let store = ReceivedPacketStore(fileURL: tempDir.appendingPathComponent("ui4.json"))
+        let (packet, _) = try createSampleSignedPacket(amount: 15.00)
+        let record = try ReceivedPacketRecord(
+            packet: packet,
+            receivedFromPeer: "Alice-iPhone",
+            isSignatureMathematicallyValid: true,
+            trustStatusNote: "Held in local inbox"
+        )
+        try store.save(record)
+
+        let mock = MockMeshPaymentSubmitter()
+        mock.errorToThrow = APIError.paymentFailed("Duplicate payment rejected (paymentId already settled): \(packet.paymentId)")
+
+        let service = OfflineReconciliationService(packetStore: store, apiClient: mock)
+        let outcome = await service.reconcile(paymentId: packet.paymentId)
+
+        guard case .retryable(let id, let reason) = outcome else {
+            try assert(false, "Outcome must be retryable on duplicate response, was \(outcome)")
+            return
+        }
+        try assert(id == packet.paymentId, "Payment ID must match")
+        try assert(reason.contains("Ambiguous duplicate"), "Reason must explain duplicate ambiguity")
+
+        // Record must remain in SETTLING
+        let stored = store.get(paymentId: packet.paymentId)
+        try assert(stored?.reconciliationStatus == .settling, "Stored status must remain SETTLING for ambiguous duplicate")
+
+        print("  ✓ PASS: testUIAmbiguousDuplicateLeavesRetryable")
+    }
+
+    public static func testUIRetrySettlingPacketAllowed() async throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let store = ReceivedPacketStore(fileURL: tempDir.appendingPathComponent("ui5.json"))
+        let (packet, _) = try createSampleSignedPacket(amount: 25.00)
+        // Record is already in SETTLING from a previous interrupted request
+        let record = try ReceivedPacketRecord(
+            packet: packet,
+            receivedFromPeer: "Alice-iPhone",
+            isSignatureMathematicallyValid: true,
+            trustStatusNote: "Held in local inbox",
+            reconciliationStatus: .settling
+        )
+        try store.save(record)
+
+        let mock = MockMeshPaymentSubmitter()
+        mock.resultToReturn = sampleSettledResult(paymentId: packet.paymentId)
+
+        let service = OfflineReconciliationService(packetStore: store, apiClient: mock)
+        // User taps Retry Settlement Verification in UI
+        let outcome = await service.reconcile(paymentId: packet.paymentId)
+
+        guard case .settled(let id, _) = outcome else {
+            try assert(false, "Outcome must be settled when retrying SETTLING packet, was \(outcome)")
+            return
+        }
+        try assert(id == packet.paymentId, "Payment ID must match")
+
+        let stored = store.get(paymentId: packet.paymentId)
+        try assert(stored?.reconciliationStatus == .settled, "Stored status must transition from SETTLING to SETTLED")
+
+        print("  ✓ PASS: testUIRetrySettlingPacketAllowed")
+    }
+
+    public static func testUIInFlightConcurrencyGuard() async throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let store = ReceivedPacketStore(fileURL: tempDir.appendingPathComponent("ui6.json"))
+        let (packet, _) = try createSampleSignedPacket(amount: 30.00)
+        let record = try ReceivedPacketRecord(
+            packet: packet,
+            receivedFromPeer: "Alice-iPhone",
+            isSignatureMathematicallyValid: true,
+            trustStatusNote: "Held in local inbox"
+        )
+        try store.save(record)
+
+        let mock = MockMeshPaymentSubmitter()
+        mock.delayNanoseconds = 200_000_000 // 200ms
+        mock.resultToReturn = sampleSettledResult(paymentId: packet.paymentId)
+
+        let service = OfflineReconciliationService(packetStore: store, apiClient: mock)
+
+        async let firstCall = service.reconcile(paymentId: packet.paymentId)
+        try await Task.sleep(nanoseconds: 20_000_000) // 20ms
+        let secondCall = await service.reconcile(paymentId: packet.paymentId)
+
+        let firstOutcome = await firstCall
+
+        guard case .settled = firstOutcome else {
+            try assert(false, "First call must settle")
+            return
+        }
+
+        guard case .invalidState(_, let currentStatus, let reason) = secondCall else {
+            try assert(false, "Second call must be rejected as invalidState due to in-flight lock, was \(secondCall)")
+            return
+        }
+        try assert(currentStatus == .settling, "Current status must be settling")
+        try assert(reason.contains("already in progress"), "Reason must mention already in progress")
+
+        print("  ✓ PASS: testUIInFlightConcurrencyGuard")
     }
 }

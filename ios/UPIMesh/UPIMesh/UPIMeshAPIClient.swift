@@ -232,10 +232,18 @@ public protocol MeshPaymentSubmitting: Sendable {
     ) async throws -> MeshPaymentResultDTO
 }
 
+// MARK: - Mesh Transaction Fetching Protocol
+
+/// Abstraction for fetching authoritative ledger transactions from the backend bridge.
+/// Enables mock injection and unit testing without network dependencies.
+public protocol MeshTransactionFetching: Sendable {
+    func fetchTransactions() async throws -> [TransactionDTO]
+}
+
 // MARK: - API Client
 
 /// Lightweight HTTP API client for UPI Offline Mesh backend integration.
-public final class UPIMeshAPIClient: MeshPaymentSubmitting, Sendable {
+public final class UPIMeshAPIClient: MeshPaymentSubmitting, MeshTransactionFetching, Sendable {
     public static let shared = UPIMeshAPIClient()
 
     private let session: URLSession

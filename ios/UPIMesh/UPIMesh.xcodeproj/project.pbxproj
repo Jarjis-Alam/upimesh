@@ -33,6 +33,9 @@
 		A1000024 /* PeerTransportTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000026 /* PeerTransportTests.swift */; };
 		A1000025 /* OfflineReconciliationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000027 /* OfflineReconciliationService.swift */; };
 		A1000026 /* ReconciliationServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000028 /* ReconciliationServiceTests.swift */; };
+		A1000027 /* MeshLedgerViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000029 /* MeshLedgerViewModel.swift */; };
+		A1000028 /* MeshLedgerViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000030 /* MeshLedgerViewModelTests.swift */; };
+		A1000029 /* PeerDiagnosticMessage.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000031 /* PeerDiagnosticMessage.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -64,6 +67,9 @@
 		A2000026 /* PeerTransportTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PeerTransportTests.swift; sourceTree = "<group>"; };
 		A2000027 /* OfflineReconciliationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfflineReconciliationService.swift; sourceTree = "<group>"; };
 		A2000028 /* ReconciliationServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReconciliationServiceTests.swift; sourceTree = "<group>"; };
+		A2000029 /* MeshLedgerViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeshLedgerViewModel.swift; sourceTree = "<group>"; };
+		A2000030 /* MeshLedgerViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeshLedgerViewModelTests.swift; sourceTree = "<group>"; };
+		A2000031 /* PeerDiagnosticMessage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PeerDiagnosticMessage.swift; sourceTree = "<group>"; };
 		A2000099 /* UPIMesh.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = UPIMesh.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -114,6 +120,9 @@
 				A2000026 /* PeerTransportTests.swift */,
 				A2000027 /* OfflineReconciliationService.swift */,
 				A2000028 /* ReconciliationServiceTests.swift */,
+				A2000029 /* MeshLedgerViewModel.swift */,
+				A2000030 /* MeshLedgerViewModelTests.swift */,
+				A2000031 /* PeerDiagnosticMessage.swift */,
 				A2000014 /* Info.plist */,
 				A2000010 /* Assets.xcassets */,
 				A4000004 /* Preview Content */,
@@ -231,6 +240,9 @@
 				A1000024 /* PeerTransportTests.swift in Sources */,
 				A1000025 /* OfflineReconciliationService.swift in Sources */,
 				A1000026 /* ReconciliationServiceTests.swift in Sources */,
+				A1000027 /* MeshLedgerViewModel.swift in Sources */,
+				A1000028 /* MeshLedgerViewModelTests.swift in Sources */,
+				A1000029 /* PeerDiagnosticMessage.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

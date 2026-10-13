@@ -35,6 +35,14 @@ public final class MacPeerTransportService: NSObject, ObservableObject, @uncheck
     @Published public private(set) var errorMessage: String? = nil
     @Published public private(set) var sendStatus: String? = nil
 
+    // MARK: - Diagnostic Ping State (Non-Financial Connectivity Test)
+    @Published public private(set) var pingStatus: PingStatus = .idle
+    @Published public private(set) var lastPingLatencyMs: Int? = nil
+
+    private var pendingPingId: String? = nil
+    private var pendingPingStartTime: Date? = nil
+    private var pendingPingTimeoutTask: Task<Void, Never>? = nil
+
     public override init() {
         let rawName = Host.current().localizedName ?? "MacBook Air"
         let cleanName = rawName.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -89,9 +97,15 @@ public final class MacPeerTransportService: NSObject, ObservableObject, @uncheck
 
     @MainActor
     public func disconnect() {
+        pendingPingTimeoutTask?.cancel()
+        pendingPingTimeoutTask = nil
+        pendingPingId = nil
+        pendingPingStartTime = nil
+
         session.disconnect()
         connectedPeer = nil
         connectionState = "Disconnected"
+        pingStatus = .idle
         statusMessage = "Disconnected from peer"
     }
 
@@ -100,6 +114,72 @@ public final class MacPeerTransportService: NSObject, ObservableObject, @uncheck
         errorMessage = nil
         statusMessage = nil
         sendStatus = nil
+    }
+
+    @MainActor
+    public func clearPingStatus() {
+        pendingPingTimeoutTask?.cancel()
+        pendingPingTimeoutTask = nil
+        pendingPingId = nil
+        pendingPingStartTime = nil
+        pingStatus = .idle
+    }
+
+    // MARK: - Diagnostic Ping Round-Trip (Harmless Connectivity Test)
+
+    /// Transmits a non-financial diagnostic PING to the connected iPhone.
+    /// Strictly decoupled from payment processing, Keychain signing, accounts, and settlement.
+    @MainActor
+    public func sendPing(to peer: MCPeerID, timeoutSeconds: TimeInterval = 5.0) async {
+        guard connectedPeer == peer, session.connectedPeers.contains(peer) else {
+            pingStatus = .failed("Not connected to \(peer.displayName)")
+            errorMessage = "Cannot ping: Not connected to \(peer.displayName)"
+            return
+        }
+
+        pendingPingTimeoutTask?.cancel()
+
+        let pingId = UUID().uuidString.lowercased()
+        let deviceId = (try? MacDeviceIdentityManager.shared.getOrCreateIdentity().deviceId) ?? "mac-companion"
+        let pingMessage = PeerDiagnosticMessage(
+            messageType: .ping,
+            diagnosticId: pingId,
+            senderDeviceId: deviceId,
+            timestamp: PaymentInstant.now().isoString,
+            replyToId: nil
+        )
+
+        let startTime = Date()
+        pendingPingId = pingId
+        pendingPingStartTime = startTime
+
+        pingStatus = .sending(pingId: pingId, startedAt: startTime)
+        statusMessage = "Pinging \(peer.displayName)..."
+
+        do {
+            let data = try pingMessage.encode()
+            try session.send(data, toPeers: [peer], with: .reliable)
+        } catch {
+            pendingPingId = nil
+            pendingPingStartTime = nil
+
+            pingStatus = .failed(error.localizedDescription)
+            errorMessage = "Ping send failed: \(error.localizedDescription)"
+            return
+        }
+
+        // Arm timeout timer
+        pendingPingTimeoutTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: UInt64(timeoutSeconds * 1_000_000_000))
+            guard let self = self, !Task.isCancelled else { return }
+
+            if self.pendingPingId == pingId {
+                self.pendingPingId = nil
+                self.pendingPingStartTime = nil
+                self.pingStatus = .failed("Ping timed out after \(Int(timeoutSeconds))s (no response from \(peer.displayName))")
+                self.errorMessage = "Diagnostic ping to \(peer.displayName) timed out."
+            }
+        }
     }
 
     // MARK: - Send Test Packet to Connected iPhone
@@ -167,6 +247,94 @@ public final class MacPeerTransportService: NSObject, ObservableObject, @uncheck
             return
         }
 
+        // Route inbound data safely between diagnostic and payment pipelines
+        let route = InboundTransportProbe.probe(data: data)
+        switch route {
+        case .diagnosticPing:
+            handleInboundDiagnosticPing(data, from: peer)
+        case .diagnosticPong:
+            handleInboundDiagnosticPong(data, from: peer)
+        case .invalidDiagnostic(let type):
+            DispatchQueue.main.async {
+                self.errorMessage = "Rejected invalid diagnostic message type '\(type)' from \(peer.displayName)"
+            }
+        case .paymentTransfer:
+            handleInboundPaymentPacket(data, from: peer)
+        case .unknown:
+            DispatchQueue.main.async {
+                self.errorMessage = "Rejected unrecognized or malformed payload from \(peer.displayName)"
+            }
+        }
+    }
+
+    // MARK: - Diagnostic Inbound Handlers (Strictly Non-Financial)
+
+    private func handleInboundDiagnosticPing(_ data: Data, from peer: MCPeerID) {
+        do {
+            let pingMsg = try PeerDiagnosticMessage.decodeAndValidate(from: data)
+            let myDeviceId = (try? MacDeviceIdentityManager.shared.getOrCreateIdentity().deviceId) ?? "mac-companion"
+            let pongMsg = PeerDiagnosticMessage(
+                messageType: .pong,
+                diagnosticId: UUID().uuidString.lowercased(),
+                senderDeviceId: myDeviceId,
+                timestamp: PaymentInstant.now().isoString,
+                replyToId: pingMsg.diagnosticId
+            )
+            let pongData = try pongMsg.encode()
+            try session.send(pongData, toPeers: [peer], with: .reliable)
+
+            DispatchQueue.main.async {
+                self.statusMessage = "Responded to diagnostic PING from \(peer.displayName) with PONG ✓"
+            }
+        } catch {
+            DispatchQueue.main.async {
+                self.errorMessage = "Rejected invalid diagnostic PING from \(peer.displayName): \(error.localizedDescription)"
+            }
+        }
+    }
+
+    private func handleInboundDiagnosticPong(_ data: Data, from peer: MCPeerID) {
+        do {
+            let pongMsg = try PeerDiagnosticMessage.decodeAndValidate(from: data)
+            guard let replyTo = pongMsg.replyToId else {
+                DispatchQueue.main.async {
+                    self.errorMessage = "Rejected PONG from \(peer.displayName): missing replyToId"
+                }
+                return
+            }
+
+            let expectedPingId = pendingPingId
+            let startTime = pendingPingStartTime
+            if expectedPingId == replyTo, let startTime = startTime {
+                pendingPingId = nil
+                pendingPingStartTime = nil
+                pendingPingTimeoutTask?.cancel()
+                pendingPingTimeoutTask = nil
+
+                let durationMs = max(1, Int(Date().timeIntervalSince(startTime) * 1000))
+                DispatchQueue.main.async {
+                    self.lastPingLatencyMs = durationMs
+                    self.pingStatus = .success(
+                        roundTripDurationMs: durationMs,
+                        peerName: peer.displayName,
+                        pingId: replyTo
+                    )
+                    self.statusMessage = "Ping round-trip: \(durationMs) ms to \(peer.displayName) ✓"
+                }
+            } else {
+                // Unmatched response: ignore safely without marking success
+                print("[MacPeerTransportService] Ignored unmatched PONG referencing '\(replyTo)' (expected: '\(expectedPingId ?? "none")')")
+            }
+        } catch {
+            DispatchQueue.main.async {
+                self.errorMessage = "Rejected invalid diagnostic PONG from \(peer.displayName): \(error.localizedDescription)"
+            }
+        }
+    }
+
+    // MARK: - Inbound Payment Packet Handler
+
+    private func handleInboundPaymentPacket(_ data: Data, from peer: MCPeerID) {
         let decoder = JSONDecoder()
         let message: PeerTransferMessage
         do {
@@ -294,8 +462,17 @@ extension MacPeerTransportService: MCNearbyServiceBrowserDelegate {
         DispatchQueue.main.async {
             self.discoveredPeers.removeAll { $0 == peerID }
             if self.connectedPeer == peerID {
+                self.pendingPingTimeoutTask?.cancel()
+                self.pendingPingTimeoutTask = nil
+                let wasPending = (self.pendingPingId != nil)
+                self.pendingPingId = nil
+                self.pendingPingStartTime = nil
+
                 self.connectedPeer = nil
                 self.connectionState = "Disconnected"
+                if wasPending {
+                    self.pingStatus = .failed("Peer disconnected during diagnostic round-trip")
+                }
                 self.statusMessage = "\(peerID.displayName) disconnected"
             }
         }
@@ -321,8 +498,17 @@ extension MacPeerTransportService: MCSessionDelegate {
                 self.connectionState = "Connecting to \(peerID.displayName)..."
             case .notConnected:
                 if self.connectedPeer == peerID {
+                    self.pendingPingTimeoutTask?.cancel()
+                    self.pendingPingTimeoutTask = nil
+                    let wasPending = (self.pendingPingId != nil)
+                    self.pendingPingId = nil
+                    self.pendingPingStartTime = nil
+
                     self.connectedPeer = nil
                     self.connectionState = "Disconnected"
+                    if wasPending {
+                        self.pingStatus = .failed("Peer disconnected during diagnostic round-trip")
+                    }
                     self.statusMessage = "Disconnected from \(peerID.displayName)"
                 }
             @unknown default:
@@ -332,7 +518,9 @@ extension MacPeerTransportService: MCSessionDelegate {
     }
 
     public func session(_ session: MCSession, didReceive data: Data, fromPeer peerID: MCPeerID) {
-        processIncomingData(data, from: peerID)
+        DispatchQueue.main.async {
+            self.processIncomingData(data, from: peerID)
+        }
     }
 
     public func session(_ session: MCSession, didReceive stream: InputStream, withName streamName: String, fromPeer peerID: MCPeerID) {}

@@ -6,7 +6,7 @@
 
 [![Java](https://img.shields.io/badge/Java-17%2B-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white)](https://openjdk.org/)
 [![Spring Boot](https://img.shields.io/badge/Spring_Boot-4.2.0_M2-6DB33F?style=for-the-badge&logo=spring-boot&logoColor=white)](https://spring.io/projects/spring-boot)
-[![Tests](https://img.shields.io/badge/Tests-173%20Passed-brightgreen?style=for-the-badge&logo=junit5&logoColor=white)](https://github.com/Jarjis-Alam/upimesh)
+[![Tests](https://img.shields.io/badge/Tests-211%20Passed-brightgreen?style=for-the-badge&logo=junit5&logoColor=white)](https://github.com/Jarjis-Alam/upimesh)
 [![Cryptography](https://img.shields.io/badge/Security-P--256%20ECDSA%20%7C%20RSA--PSS%20%7C%20AES--GCM-blueviolet?style=for-the-badge&logo=lock&logoColor=white)](https://github.com/Jarjis-Alam/upimesh)
 [![Database](https://img.shields.io/badge/Database-H2_File--Backed-blue?style=for-the-badge&logo=database&logoColor=white)](https://github.com/Jarjis-Alam/upimesh)
 [![iOS & macOS](https://img.shields.io/badge/Apple-iOS%2017%2B%20%7C%20macOS%2014%2B%20%7C%20SwiftUI-007AFF?style=for-the-badge&logo=swift&logoColor=white)](https://github.com/Jarjis-Alam/upimesh)
@@ -76,7 +76,7 @@ When connectivity drops, digital transactions fail entirely. Real-world scenario
 - A **Spring Boot 4.2** backend providing atomic double-entry ledger transactions, persistent device authorization registries, replay protections, and an automated continuous audit reconciliation engine.
 - A **Native iOS SwiftUI Client (Liquid Mesh UPI)** featuring device-side key generation (Keychain / Secure Enclave), canonical instruction signing, local packet queues, Apple Multipeer Connectivity direct transport, and received-packet lifecycle management.
 - A **Native macOS Test Companion** enabling zero-infrastructure cross-device physical testing between MacBooks and iPhones.
-- **173 Automated Tests** (135 Java + 38 Swift) with 100% pass rates across cryptographic verification, peer transport protocols, and reconciliation edge cases.
+- **211 Automated Tests** (144 Java + 67 Swift) with 100% pass rates across cryptographic verification, peer transport protocols, and reconciliation edge cases.
 
 ---
 
@@ -449,21 +449,22 @@ The project enforces strict automated test verification across both backend and 
 
 ```
 [INFO] Results:
-[INFO] Tests run: 135, Failures: 0, Errors: 0, Skipped: 0
+[INFO] Tests run: 144, Failures: 0, Errors: 0, Skipped: 0
 [INFO] BUILD SUCCESS
 
 ==================================================
-All 38 offline tests PASSED!
+All 67 offline tests PASSED!
 ==================================================
 ```
 
-### Comprehensive Test Matrix (173 Passing Tests)
+### Comprehensive Test Matrix (211 Passing Tests)
 
 | Language / Framework | Suite | Tests | Verification Area |
 |---|---|:---:|---|
 | **Java (Spring Boot)** | `OperationalHardeningTest` | 13 | Restart persistence, DataSeeder non-overwrite, sanitized API errors |
 | | `BackendIntegrationLayerTest` | 15 | Bridge public key export, external packet ingestion, atomic settlement |
 | | `DeviceSignedPaymentSubmissionTest` | 8 | Public key verification, device authorization, balance & replay defense |
+| | `SecureDeviceAuthorizationTest` | 9 | Timing-safe admin token validation, environment secret resolution, unauthorized & duplicate guards |
 | | `PersistentDeviceRegistryTest` | 6 | Device registration persistence, key updates, account binding |
 | | `CrossLanguageCanonicalizationTest` | 1 | RFC 8785 byte-for-byte serialization match between Java & Swift |
 | | `LedgerReconciliationTest` | 9 | Double-entry invariants, circular transfers, tampering detection |
@@ -479,10 +480,11 @@ All 38 offline tests PASSED!
 | | `IdempotencyServiceTest` | 5 | Atomic in-memory claims, state lifecycle transitions |
 | | `UpimeshApplicationTests` | 1 | Spring Boot ApplicationContext bootstrapping |
 | **Swift (iOS / macOS)** | `OfflinePaymentPacketTests` | 9 | Packet creation, canonicalization, P-256 signing, deduplication |
-| | `PeerTransportTests` | 16 | Multipeer handshake, packet serialization, tamper detection, inbox lifecycle |
-| | `ReconciliationServiceTests` | 8 | Settlement transitions, terminal rejections, timeout recovery, idempotency |
-| | `MacCompanionTests` | 5 | macOS packet decoding, deduplication, tampering rejection, lifecycle states |
-| **Total** | **21 Test Suites** | **173** | **Zero Failures, Zero Flakiness** |
+| | `PeerTransportTests` | 22 | Multipeer handshake, packet serialization, tamper detection, inbox lifecycle, diagnostic ping/pong & latency |
+| | `ReconciliationServiceTests` | 14 | Settlement transitions, terminal rejections, timeout recovery, idempotency & retry handling |
+| | `MeshLedgerViewModelTests` | 7 | Live backend transaction sync, offline local counts, connection handling, preview isolation |
+| | `MacCompanionTests` | 15 | macOS packet decoding, deduplication, tampering rejection, lifecycle states, diagnostic ping responder & latency |
+| **Total** | **23 Test Suites** | **211** | **Zero Failures, Zero Flakiness** |
 
 ---
 
@@ -497,7 +499,11 @@ All 38 offline tests PASSED!
 - [x] **Stage 6.4A**: Reconciliation architecture inspection and backend idempotency audit.
 - [x] **Stage 6.4B.1**: Persistent received-packet lifecycle state machine (`RECEIVED`, `SETTLING`, `SETTLED`, `FAILED`).
 - [x] **Stage 6.4B.2**: Focused iOS client `OfflineReconciliationService` with concurrency locks, original signer identity forwarding, and safe retryable recovery.
-- [ ] **Stage 6.4B.3**: Received Packets inbox UI with explicit reconciliation actions and status feedback.
+- [x] **Stage 6.4B.3**: Received Packets inbox UI with explicit user-controlled reconciliation actions and granular status feedback.
+- [x] **Stage 6.4B.4**: Connect iOS Mesh Ledger to live backend transactions and dynamic balances with offline in-transit counts.
+- [x] **Stage 6.4B.5 & 6.4B.6**: Mac Companion Bridge registration client (`POST /api/keys/register`) and registration UI.
+- [x] **Stage 6.4B.7**: Secure development device authorization via environment administrator pairing token (`POST /api/devices/authorize`).
+- [x] **Safe Peer Connectivity Test**: Non-financial peer diagnostic Ping/Pong protocol with round-trip latency measurement over Multipeer Connectivity.
 
 ---
 

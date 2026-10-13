@@ -39,7 +39,14 @@ public struct OfflinePayView: View {
     @State private var senderBalance: Double? = nil
     @State private var isLiveBalance: Bool = false
 
-    public init() {}
+    // Reconciliation Service & Interactive State (Stage 6.4B.3)
+    private let reconciliationService: OfflineReconciliationService
+    @State private var reconcilingPaymentIds: Set<String> = []
+    @State private var lastReconciliationOutcome: [String: ReconciliationOutcome] = [:]
+
+    public init(reconciliationService: OfflineReconciliationService = .shared) {
+        self.reconciliationService = reconciliationService
+    }
 
     public var body: some View {
         ScrollView(showsIndicators: false) {
@@ -1096,8 +1103,122 @@ public struct OfflinePayView: View {
                     }
                 }
             } else if let peer = transportService.connectedPeer {
-                // Connected Actions: Select & Send Queued Packet
-                VStack(spacing: 8) {
+                // Connected Actions: Diagnostic Ping & Packet Transfer
+                VStack(spacing: 12) {
+                    // Diagnostic Peer Connectivity Section (Non-Financial Ping Test)
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Text("PEER CONNECTIVITY TEST")
+                                .font(DesignTokens.Typography.labelCaps)
+                                .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
+                            Spacer()
+                            Text("NON-FINANCIAL")
+                                .font(DesignTokens.Typography.labelCaps)
+                                .foregroundColor(DesignTokens.Colors.primary)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(Capsule().fill(DesignTokens.Colors.primary.opacity(0.15)))
+                        }
+
+                        Button {
+                            Task {
+                                await transportService.sendPing(to: peer)
+                            }
+                        } label: {
+                            HStack(spacing: 8) {
+                                if transportService.pingStatus.isSending {
+                                    ProgressView()
+                                        .scaleEffect(0.8)
+                                        .tint(DesignTokens.Colors.onPrimary)
+                                    Text("Pinging \(peer.displayName)...")
+                                        .font(DesignTokens.Typography.bodySm)
+                                        .fontWeight(.semibold)
+                                        .foregroundColor(DesignTokens.Colors.onPrimary)
+                                } else {
+                                    Image(systemName: "bolt.horizontal.fill")
+                                        .font(.system(size: 13))
+                                        .foregroundColor(DesignTokens.Colors.onPrimary)
+                                    Text("Ping Peer")
+                                        .font(DesignTokens.Typography.bodySm)
+                                        .fontWeight(.semibold)
+                                        .foregroundColor(DesignTokens.Colors.onPrimary)
+                                }
+                            }
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 38)
+                            .background(Capsule().fill(DesignTokens.Colors.primary))
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(transportService.pingStatus.isSending)
+
+                        // Diagnostic Ping Status Display (Idle / Sending / Success / Failed)
+                        switch transportService.pingStatus {
+                        case .idle:
+                            if let answered = transportService.lastDiagnosticPingAnswered {
+                                HStack(spacing: 5) {
+                                    Image(systemName: "arrow.uturn.backward.circle.fill")
+                                        .foregroundColor(DesignTokens.Colors.primary)
+                                        .font(.system(size: 11))
+                                    Text("Last inbound: \(answered)")
+                                        .font(DesignTokens.Typography.caption)
+                                        .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
+                                }
+                            } else {
+                                Text("Transmits a non-financial diagnostic PING/PONG to test transport latency.")
+                                    .font(DesignTokens.Typography.caption)
+                                    .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
+                            }
+                        case .sending:
+                            HStack(spacing: 6) {
+                                ProgressView().scaleEffect(0.7)
+                                Text("Awaiting diagnostic PONG response from \(peer.displayName)...")
+                                    .font(DesignTokens.Typography.caption)
+                                    .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
+                            }
+                        case .success(let ms, let peerName, _):
+                            HStack {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .foregroundColor(DesignTokens.Colors.primary)
+                                    .font(.system(size: 12))
+                                Text("PONG received · \(ms) ms round-trip to \(peerName) ✓")
+                                    .font(DesignTokens.Typography.caption)
+                                    .fontWeight(.bold)
+                                    .foregroundColor(DesignTokens.Colors.primary)
+                                Spacer()
+                                Button("Clear") {
+                                    transportService.clearPingStatus()
+                                }
+                                .font(DesignTokens.Typography.caption)
+                                .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
+                            }
+                            .padding(8)
+                            .background(RoundedRectangle(cornerRadius: 6).fill(DesignTokens.Colors.primary.opacity(0.15)))
+                        case .failed(let err):
+                            HStack {
+                                Image(systemName: "xmark.circle.fill")
+                                    .foregroundColor(DesignTokens.Colors.error)
+                                    .font(.system(size: 12))
+                                Text("Ping failed: \(err)")
+                                    .font(DesignTokens.Typography.caption)
+                                    .foregroundColor(DesignTokens.Colors.error)
+                                Spacer()
+                                Button("Clear") {
+                                    transportService.clearPingStatus()
+                                }
+                                .font(DesignTokens.Typography.caption)
+                                .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
+                            }
+                            .padding(8)
+                            .background(RoundedRectangle(cornerRadius: 6).fill(DesignTokens.Colors.error.opacity(0.15)))
+                        }
+                    }
+                    .padding(10)
+                    .background(
+                        RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.base)
+                            .fill(DesignTokens.Colors.surfaceContainerHigh.opacity(0.4))
+                    )
+
+                    // Offline Payment Packet Transfer Section
                     if queuedPackets.isEmpty {
                         Text("No queued offline packets available. Create one above to transfer.")
                             .font(DesignTokens.Typography.caption)
@@ -1218,7 +1339,7 @@ public struct OfflinePayView: View {
         .liquidCard(strokeColor: DesignTokens.Colors.glassStrokeLight)
     }
 
-    // MARK: - Received Packets Inbox Section (Stage 6.3B)
+    // MARK: - Received Packets Inbox Section (Stage 6.3B / 6.4B.3)
     private var receivedPacketsInboxSection: some View {
         VStack(spacing: 12) {
             HStack {
@@ -1249,6 +1370,27 @@ public struct OfflinePayView: View {
                 )
             }
 
+            // Trust Boundary Banner (Stage 6.4B.3)
+            HStack(alignment: .top, spacing: 8) {
+                Image(systemName: "shield.lefthalf.filled")
+                    .foregroundColor(Color(red: 0.95, green: 0.65, blue: 0.1))
+                    .font(.system(size: 13))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Offline Trust Boundary")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundColor(DesignTokens.Colors.onSurface)
+                    Text("An offline packet is not guaranteed payment until settled by the backend bridge. Balances credit only upon authoritative ledger confirmation.")
+                        .font(.system(size: 10))
+                        .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
+                }
+            }
+            .padding(8)
+            .background(
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(Color(red: 0.95, green: 0.65, blue: 0.1).opacity(0.08))
+                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color(red: 0.95, green: 0.65, blue: 0.1).opacity(0.25), lineWidth: 1))
+            )
+
             if receivedPackets.isEmpty {
                 VStack(spacing: 6) {
                     Image(systemName: "tray")
@@ -1278,7 +1420,11 @@ public struct OfflinePayView: View {
 
     private func receivedPacketRow(_ record: ReceivedPacketRecord) -> some View {
         let packet = record.packet
+        let isReconciling = reconcilingPaymentIds.contains(record.id)
+        let outcome = lastReconciliationOutcome[record.id]
+
         return VStack(alignment: .leading, spacing: 8) {
+            // Header: Amount, Sender & Status Badge
             HStack {
                 HStack(spacing: 6) {
                     Text(CurrencyFormatter.format(amount: packet.amountDouble))
@@ -1294,22 +1440,10 @@ public struct OfflinePayView: View {
 
                 Spacer()
 
-                // Crucial prominent status badge: RECEIVED — NOT SETTLED
-                HStack(spacing: 4) {
-                    Circle()
-                        .fill(Color(red: 0.95, green: 0.65, blue: 0.1))
-                        .frame(width: 6, height: 6)
-                    Text("RECEIVED — NOT SETTLED")
-                        .font(.system(size: 9, weight: .bold))
-                        .foregroundColor(Color(red: 0.95, green: 0.65, blue: 0.1))
-                }
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
-                .background(
-                    Capsule().fill(Color(red: 0.95, green: 0.65, blue: 0.1).opacity(0.18))
-                )
+                reconciliationStatusBadge(record.reconciliationStatus)
             }
 
+            // Peer & ID Metadata
             HStack {
                 Text("Peer: \(record.receivedFromPeer) · ID: \(packet.paymentId.prefix(12))…")
                     .font(.system(size: 10, design: .monospaced))
@@ -1323,27 +1457,143 @@ public struct OfflinePayView: View {
                     .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
             }
 
-            // Trust boundary breakdown
+            // Trust & Cryptographic Status Breakdown
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 4) {
                     Image(systemName: record.isSignatureMathematicallyValid ? "checkmark.shield.fill" : "xmark.shield.fill")
                         .font(.system(size: 10))
                         .foregroundColor(record.isSignatureMathematicallyValid ? DesignTokens.Colors.primary : DesignTokens.Colors.error)
-                    Text(record.isSignatureMathematicallyValid ? "RSASSA-PSS: Mathematically Valid" : "Signature Invalid")
+                    Text(record.isSignatureMathematicallyValid ? "Signature: Mathematically Valid" : "Signature Invalid")
                         .font(.system(size: 10, weight: .semibold))
                         .foregroundColor(record.isSignatureMathematicallyValid ? DesignTokens.Colors.primary : DesignTokens.Colors.error)
 
                     Text("·")
                         .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
 
-                    Text("Identity: Unverified Offline")
-                        .font(.system(size: 10, weight: .medium))
+                    Text("Signer: \(packet.deviceId.prefix(12))…")
+                        .font(.system(size: 10, design: .monospaced))
                         .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
                 }
 
-                Text("Held in local inbox. Does not update account balance until submitted to bridge.")
-                    .font(.system(size: 9))
-                    .foregroundColor(DesignTokens.Colors.onSurfaceVariant.opacity(0.8))
+                reconciliationStatusExplanation(record.reconciliationStatus)
+            }
+
+            // Failure Reason if status is FAILED
+            if record.reconciliationStatus == .failed, let reason = record.failureReason, !reason.isEmpty {
+                HStack(alignment: .top, spacing: 6) {
+                    Image(systemName: "xmark.octagon.fill")
+                        .font(.system(size: 11))
+                        .foregroundColor(DesignTokens.Colors.error)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Terminal Rejection")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundColor(DesignTokens.Colors.error)
+                        Text(reason)
+                            .font(.system(size: 9))
+                            .foregroundColor(DesignTokens.Colors.onSurface)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                .padding(8)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(
+                    RoundedRectangle(cornerRadius: 6)
+                        .fill(DesignTokens.Colors.error.opacity(0.12))
+                )
+            }
+
+            // Reconciliation Actions
+            if record.reconciliationStatus == .received {
+                Button {
+                    Task {
+                        await reconcileReceivedPacket(paymentId: record.id)
+                    }
+                } label: {
+                    HStack(spacing: 6) {
+                        if isReconciling {
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle(tint: DesignTokens.Colors.onPrimary))
+                                .scaleEffect(0.7)
+                            Text("Reconciling with Bridge…")
+                                .font(.system(size: 11, weight: .semibold))
+                        } else {
+                            Image(systemName: "arrow.triangle.2.circlepath.circle.fill")
+                                .font(.system(size: 12))
+                            Text("Reconcile with Bridge")
+                                .font(.system(size: 11, weight: .semibold))
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 7)
+                    .foregroundColor(DesignTokens.Colors.onPrimary)
+                    .background(
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(isReconciling ? DesignTokens.Colors.primary.opacity(0.5) : DesignTokens.Colors.primary)
+                    )
+                }
+                .disabled(isReconciling)
+                .padding(.top, 2)
+            } else if record.reconciliationStatus == .settling {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Confirmation pending or previous attempt dropped. Tap to re-check ledger or retry submission.")
+                        .font(.system(size: 9))
+                        .foregroundColor(DesignTokens.Colors.secondary)
+
+                    Button {
+                        Task {
+                            await reconcileReceivedPacket(paymentId: record.id)
+                        }
+                    } label: {
+                        HStack(spacing: 6) {
+                            if isReconciling {
+                                ProgressView()
+                                    .progressViewStyle(CircularProgressViewStyle(tint: DesignTokens.Colors.onSecondary))
+                                    .scaleEffect(0.7)
+                                Text("Verifying with Bridge…")
+                                    .font(.system(size: 11, weight: .semibold))
+                            } else {
+                                Image(systemName: "arrow.clockwise.circle.fill")
+                                    .font(.system(size: 12))
+                                Text("Retry Settlement Verification")
+                                    .font(.system(size: 11, weight: .semibold))
+                            }
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 7)
+                        .foregroundColor(DesignTokens.Colors.onSecondary)
+                        .background(
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(isReconciling ? DesignTokens.Colors.secondary.opacity(0.5) : DesignTokens.Colors.secondary)
+                        )
+                    }
+                    .disabled(isReconciling)
+                }
+                .padding(.top, 2)
+            } else if record.reconciliationStatus == .settled {
+                HStack(spacing: 6) {
+                    Image(systemName: "checkmark.seal.fill")
+                        .font(.system(size: 12))
+                        .foregroundColor(DesignTokens.Colors.primary)
+                    Text("Settled on Authoritative Ledger · Balance Credited")
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundColor(DesignTokens.Colors.primary)
+                }
+                .padding(.vertical, 2)
+            } else if record.reconciliationStatus == .failed {
+                HStack(spacing: 6) {
+                    Image(systemName: "xmark.seal.fill")
+                        .font(.system(size: 12))
+                        .foregroundColor(DesignTokens.Colors.error)
+                    Text("Settlement Rejected · Unsettled")
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundColor(DesignTokens.Colors.error)
+                }
+                .padding(.vertical, 2)
+            }
+
+            // Outcome banner for immediate interactive feedback
+            if let outcome = outcome {
+                reconciliationOutcomeBanner(outcome, record: record)
             }
         }
         .padding(10)
@@ -1354,9 +1604,188 @@ public struct OfflinePayView: View {
         )
     }
 
+    @ViewBuilder
+    private func reconciliationStatusBadge(_ status: ReceivedReconciliationStatus) -> some View {
+        switch status {
+        case .received:
+            HStack(spacing: 4) {
+                Circle()
+                    .fill(Color(red: 0.95, green: 0.65, blue: 0.1))
+                    .frame(width: 6, height: 6)
+                Text("RECEIVED — NOT SETTLED")
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundColor(Color(red: 0.95, green: 0.65, blue: 0.1))
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(Capsule().fill(Color(red: 0.95, green: 0.65, blue: 0.1).opacity(0.18)))
+
+        case .settling:
+            HStack(spacing: 4) {
+                Circle()
+                    .fill(DesignTokens.Colors.secondary)
+                    .frame(width: 6, height: 6)
+                Text("SETTLING — CONFIRMATION PENDING")
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundColor(DesignTokens.Colors.secondary)
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(Capsule().fill(DesignTokens.Colors.secondary.opacity(0.18)))
+
+        case .settled:
+            HStack(spacing: 4) {
+                Circle()
+                    .fill(DesignTokens.Colors.primary)
+                    .frame(width: 6, height: 6)
+                Text("SETTLED ON LEDGER")
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundColor(DesignTokens.Colors.primary)
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(Capsule().fill(DesignTokens.Colors.primary.opacity(0.18)))
+
+        case .failed:
+            HStack(spacing: 4) {
+                Circle()
+                    .fill(DesignTokens.Colors.error)
+                    .frame(width: 6, height: 6)
+                Text("FAILED — NOT SETTLED")
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundColor(DesignTokens.Colors.error)
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(Capsule().fill(DesignTokens.Colors.error.opacity(0.18)))
+        }
+    }
+
+    @ViewBuilder
+    private func reconciliationStatusExplanation(_ status: ReceivedReconciliationStatus) -> some View {
+        switch status {
+        case .received:
+            Text("Held in local inbox. Does not update account balance until submitted to bridge.")
+                .font(.system(size: 9))
+                .foregroundColor(DesignTokens.Colors.onSurfaceVariant.opacity(0.8))
+        case .settling:
+            Text("In-flight or interrupted. Awaiting authoritative ledger proof. Safe to retry check.")
+                .font(.system(size: 9))
+                .foregroundColor(DesignTokens.Colors.secondary.opacity(0.9))
+        case .settled:
+            Text("Confirmed on double-entry ledger. Account balance updated.")
+                .font(.system(size: 9))
+                .foregroundColor(DesignTokens.Colors.primary.opacity(0.9))
+        case .failed:
+            Text("Terminal rejection confirmed by bank bridge. Not credited.")
+                .font(.system(size: 9))
+                .foregroundColor(DesignTokens.Colors.error.opacity(0.9))
+        }
+    }
+
+    @ViewBuilder
+    private func reconciliationOutcomeBanner(_ outcome: ReconciliationOutcome, record: ReceivedPacketRecord) -> some View {
+        switch outcome {
+        case .settled(_, let result):
+            HStack(alignment: .top, spacing: 6) {
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: 11))
+                    .foregroundColor(DesignTokens.Colors.primary)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Settlement Confirmed")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundColor(DesignTokens.Colors.primary)
+                    Text("₹\(CurrencyFormatter.format(amount: record.packet.amountDouble)) settled on ledger. Ref: \(result.paymentId.prefix(12))…")
+                        .font(.system(size: 9))
+                        .foregroundColor(DesignTokens.Colors.onSurface)
+                }
+            }
+            .padding(8)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(RoundedRectangle(cornerRadius: 6).fill(DesignTokens.Colors.primary.opacity(0.12)))
+
+        case .rejected(_, let reason):
+            HStack(alignment: .top, spacing: 6) {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.system(size: 11))
+                    .foregroundColor(DesignTokens.Colors.error)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Reconciliation Rejected")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundColor(DesignTokens.Colors.error)
+                    Text(reason)
+                        .font(.system(size: 9))
+                        .foregroundColor(DesignTokens.Colors.onSurface)
+                }
+            }
+            .padding(8)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(RoundedRectangle(cornerRadius: 6).fill(DesignTokens.Colors.error.opacity(0.12)))
+
+        case .retryable(_, let reason):
+            HStack(alignment: .top, spacing: 6) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.system(size: 11))
+                    .foregroundColor(Color(red: 0.95, green: 0.65, blue: 0.1))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Retryable / Ambiguous Result")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundColor(Color(red: 0.95, green: 0.65, blue: 0.1))
+                    Text(reason)
+                        .font(.system(size: 9))
+                        .foregroundColor(DesignTokens.Colors.onSurface)
+                    Text("Bridge host: \(APIConfiguration.shared.baseURL.absoluteString). Record kept in SETTLING.")
+                        .font(.system(size: 8))
+                        .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
+                }
+            }
+            .padding(8)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(RoundedRectangle(cornerRadius: 6).fill(Color(red: 0.95, green: 0.65, blue: 0.1).opacity(0.12)))
+
+        case .invalidState(_, let currentStatus, let reason):
+            HStack(alignment: .top, spacing: 6) {
+                Image(systemName: "info.circle.fill")
+                    .font(.system(size: 11))
+                    .foregroundColor(DesignTokens.Colors.secondary)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Action Ineligible (\(currentStatus.rawValue))")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundColor(DesignTokens.Colors.secondary)
+                    Text(reason)
+                        .font(.system(size: 9))
+                        .foregroundColor(DesignTokens.Colors.onSurface)
+                }
+            }
+            .padding(8)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(RoundedRectangle(cornerRadius: 6).fill(DesignTokens.Colors.secondary.opacity(0.12)))
+        }
+    }
+
     @MainActor
     private func reloadReceivedPackets() {
         self.receivedPackets = ReceivedPacketStore.shared.getAll()
+    }
+
+    @MainActor
+    private func reconcileReceivedPacket(paymentId: String) async {
+        guard !reconcilingPaymentIds.contains(paymentId) else { return }
+        withAnimation(.easeInOut(duration: 0.2)) {
+            reconcilingPaymentIds.insert(paymentId)
+        }
+
+        let outcome = await reconciliationService.reconcile(paymentId: paymentId)
+
+        withAnimation(.easeInOut(duration: 0.25)) {
+            reconcilingPaymentIds.remove(paymentId)
+            lastReconciliationOutcome[paymentId] = outcome
+            reloadReceivedPackets()
+        }
+
+        if case .settled = outcome {
+            NotificationCenter.default.post(name: .meshAccountsUpdated, object: nil)
+        }
     }
 
     // MARK: - Actions
