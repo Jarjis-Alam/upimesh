@@ -1,0 +1,316 @@
+/* ==========================================================================
+   UPI OFFLINE MESH — 3:4 Cinematic Portrait Teaser Stylesheet
+   Matte Black (#050505) + Signal Yellow (#FFD400) Dominant Accent
+   ========================================================================== */
+
+:root {
+  --bg-matte: #050505;
+  --bg-outer: #020202;
+  --bg-surface: #0c0e12;
+  --accent-yellow: #FFD400;
+  --accent-yellow-dim: rgba(255, 212, 0, 0.22);
+  --accent-yellow-glow: rgba(255, 212, 0, 0.45);
+  --text-primary: #F5F5F5;
+  --text-muted: #8E929E;
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-accent: rgba(255, 212, 0, 0.35);
+  --font-display: 'Bricolage Grotesque', 'Space Grotesk', -apple-system, sans-serif;
+  --font-body: 'Inter', -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  background-color: var(--bg-outer);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  overflow: hidden;
+  user-select: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+#app-wrapper {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at center, #0a0b0e 0%, var(--bg-outer) 100%);
+}
+
+/* 3:4 Portrait Screen Container */
+#viewport-container {
+  position: relative;
+  aspect-ratio: 3 / 4;
+  height: min(94vh, calc(94vw * 4 / 3));
+  width: min(calc(94vh * 3 / 4), 94vw);
+  background-color: var(--bg-matte);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 0 100px rgba(0, 0, 0, 0.95), 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+
+/* Canvas Scales Responsively maintaining 3:4 Aspect Ratio */
+#teaser-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  background-color: var(--bg-matte);
+}
+
+/* Cinematic Film Vignette */
+#cinematic-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  background: radial-gradient(circle at center, transparent 40%, rgba(5, 5, 5, 0.75) 100%);
+  z-index: 10;
+}
+
+/* HUD Top Header */
+#hud-header {
+  position: absolute;
+  top: 18px;
+  left: 20px;
+  right: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  z-index: 20;
+  pointer-events: none;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  opacity: 0.9;
+  transition: opacity 0.4s ease;
+}
+
+.hud-left, .hud-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.hud-live-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 3px;
+  background: rgba(255, 212, 0, 0.1);
+  border: 1px solid var(--accent-yellow-dim);
+  color: var(--accent-yellow);
+  font-weight: 700;
+  font-family: var(--font-mono);
+}
+
+.pulse-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--accent-yellow);
+  box-shadow: 0 0 8px var(--accent-yellow);
+  animation: pulse-glow 1.5s infinite alternate ease-in-out;
+}
+
+@keyframes pulse-glow {
+  0% { transform: scale(0.85); opacity: 0.7; }
+  100% { transform: scale(1.25); opacity: 1; }
+}
+
+.hud-item {
+  color: var(--text-muted);
+}
+
+.mono {
+  font-family: var(--font-mono);
+}
+
+#scene-tag {
+  color: var(--accent-yellow);
+  font-weight: 700;
+}
+
+/* Bottom Floating Control Bar */
+#hud-footer {
+  position: absolute;
+  bottom: 16px;
+  left: 16px;
+  right: 16px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: rgba(12, 14, 18, 0.88);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  z-index: 30;
+  transition: opacity 0.5s ease, transform 0.4s ease;
+}
+
+#viewport-container.idle-playing #hud-footer,
+#viewport-container.idle-playing #hud-header {
+  opacity: 0.08;
+  pointer-events: auto;
+}
+
+#viewport-container.idle-playing #hud-footer:hover,
+#viewport-container.idle-playing #hud-header:hover {
+  opacity: 1;
+}
+
+.controls-left, .controls-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.scrubber-container {
+  flex-grow: 1;
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+/* Custom Minimalist Scrubber Input */
+#timeline-scrubber {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 5px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.15);
+  outline: none;
+  cursor: pointer;
+  transition: height 0.15s ease;
+}
+
+#timeline-scrubber:hover {
+  height: 7px;
+}
+
+#timeline-scrubber::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  background: var(--accent-yellow);
+  box-shadow: 0 0 10px var(--accent-yellow);
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+#timeline-scrubber::-webkit-slider-thumb:hover {
+  transform: scale(1.3);
+}
+
+/* Buttons and Selectors */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  background: var(--accent-yellow);
+  color: #000000;
+  border: 1px solid var(--accent-yellow);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn:hover {
+  background: #FFE033;
+  box-shadow: 0 0 12px var(--accent-yellow-dim);
+  transform: translateY(-1px);
+}
+
+.btn-secondary {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-primary);
+  border: 1px solid var(--border-subtle);
+}
+
+.btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.25);
+  box-shadow: none;
+}
+
+select.btn-secondary {
+  outline: none;
+  padding-right: 8px;
+}
+
+select.btn-secondary option {
+  background: #0d0f13;
+  color: #FFFFFF;
+}
+
+.btn-accent {
+  background: transparent;
+  color: var(--accent-yellow);
+  border: 1px solid var(--border-accent);
+}
+
+.btn-accent:hover {
+  background: rgba(255, 212, 0, 0.12);
+  border-color: var(--accent-yellow);
+  box-shadow: 0 0 12px var(--accent-yellow-dim);
+}
+
+.rec-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #FF3344;
+  box-shadow: 0 0 6px #FF3344;
+}
+
+/* Recording Banner */
+#recording-banner {
+  position: absolute;
+  top: 54px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(255, 51, 68, 0.15);
+  border: 1px solid #FF3344;
+  color: #FFFFFF;
+  padding: 8px 18px;
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  z-index: 40;
+}
+
+.rec-pulse {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #FF3344;
+  animation: pulse-glow 0.8s infinite alternate ease-in-out;
+}
+
+.hidden {
+  display: none !important;
+}

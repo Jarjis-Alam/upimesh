@@ -1,0 +1,6 @@
+UPI OFFLINE MESH.
+
+What happens when connectivity drops, but digital commerce can't stop?
+Exploring offline-first peer-to-peer payment architecture with cryptographic instruction signing, relay zero-knowledge, and deferred ledger reconciliation.
+
+Coming soon.

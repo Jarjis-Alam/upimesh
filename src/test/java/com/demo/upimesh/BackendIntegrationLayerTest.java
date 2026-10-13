@@ -84,6 +84,7 @@ class BackendIntegrationLayerTest {
         processedPacketRepository.deleteAll();
         transactionRepository.deleteAll();
         accountRepository.deleteAll();
+        senderKeyRegistry.clearForTesting();
 
         accountRepository.saveAll(List.of(
                 new Account("alice", new BigDecimal("5000.00")),

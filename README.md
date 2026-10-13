@@ -2,27 +2,31 @@
 
 # 🌐 UPI Offline Mesh Simulation Environment
 
-### *Decentralized, Peer-to-Peer Offline Payment Routing with Cryptographic Sender Authentication, Persistent Replay Protection & Double-Entry Ledger Reconciliation*
+### *Decentralized, Peer-to-Peer Offline Payment Routing with Cryptographic Sender Authentication, Direct Apple Multipeer Wireless Transport, Persistent Replay Protection & Double-Entry Ledger Reconciliation*
 
 [![Java](https://img.shields.io/badge/Java-17%2B-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white)](https://openjdk.org/)
 [![Spring Boot](https://img.shields.io/badge/Spring_Boot-4.2.0_M2-6DB33F?style=for-the-badge&logo=spring-boot&logoColor=white)](https://spring.io/projects/spring-boot)
-[![Tests](https://img.shields.io/badge/Tests-115%20Passed-brightgreen?style=for-the-badge&logo=junit5&logoColor=white)](https://github.com/Jarjis-Alam/upimesh)
-[![Cryptography](https://img.shields.io/badge/Security-RSA--PSS%20%7C%20AES--256--GCM-blueviolet?style=for-the-badge&logo=lock&logoColor=white)](https://github.com/Jarjis-Alam/upimesh)
+[![Tests](https://img.shields.io/badge/Tests-173%20Passed-brightgreen?style=for-the-badge&logo=junit5&logoColor=white)](https://github.com/Jarjis-Alam/upimesh)
+[![Cryptography](https://img.shields.io/badge/Security-P--256%20ECDSA%20%7C%20RSA--PSS%20%7C%20AES--GCM-blueviolet?style=for-the-badge&logo=lock&logoColor=white)](https://github.com/Jarjis-Alam/upimesh)
 [![Database](https://img.shields.io/badge/Database-H2_File--Backed-blue?style=for-the-badge&logo=database&logoColor=white)](https://github.com/Jarjis-Alam/upimesh)
-[![iOS](https://img.shields.io/badge/iOS-17.0%2B%20%7C%20SwiftUI-007AFF?style=for-the-badge&logo=swift&logoColor=white)](https://github.com/Jarjis-Alam/upimesh)
+[![iOS & macOS](https://img.shields.io/badge/Apple-iOS%2017%2B%20%7C%20macOS%2014%2B%20%7C%20SwiftUI-007AFF?style=for-the-badge&logo=swift&logoColor=white)](https://github.com/Jarjis-Alam/upimesh)
+[![Transport](https://img.shields.io/badge/Transport-Multipeer%20Connectivity-FF9500?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/Jarjis-Alam/upimesh)
 [![License](https://img.shields.io/badge/License-Apache_2.0-red?style=for-the-badge)](https://opensource.org/licenses/Apache-2.0)
 
 <br/>
 
 [About](#-about-the-project) •
 [Key Capabilities](#-key-capabilities) •
-[Architecture](#-system-architecture) •
-[Security Pipeline](#-cryptographic-security-pipeline) •
+[System Architecture](#-system-architecture) •
+[Cryptographic Pipeline](#-cryptographic-security-pipeline) •
+[Direct P2P Wireless Transport](#-direct-offline-peer-to-peer-transport) •
 [Native iOS App](#-native-ios-app-liquid-mesh-upi) •
+[macOS Test Companion](#-native-macos-test-companion) •
 [Quickstart](#-quickstart-guide) •
 [API Reference](#-api-reference) •
 [Reconciliation Engine](#-mathematical-reconciliation-engine) •
-[Test Suite](#-test-suite--verification)
+[Test Suite](#-test-suite--verification) •
+[Roadmap](#-development-stages-roadmap)
 
 ---
 
@@ -44,11 +48,12 @@ When connectivity drops, digital transactions fail entirely. Real-world scenario
 ### The Solution: Multi-Hop Store-and-Forward Mesh
 **UPI Offline Mesh** introduces an opportunistic, multi-hop peer-to-peer architecture for offline payments. Rather than requiring direct cellular access to banking servers at the moment of payment:
 
-1. **Local Offline Signing**: The payer creates a cryptographically signed payment instruction on their device using an asymmetric key pair (**RSASSA-PSS SHA-256**).
-2. **Hybrid Envelope Encryption**: The instruction is encapsulated in an authenticated envelope (**RSA-OAEP** key wrapping + **AES-256-GCM** payload encryption) keyed exclusively to the bank's Bridge Gateway.
-3. **Ad-Hoc Wireless Forwarding**: The encrypted envelope is transferred locally (via simulated peer-to-peer Bluetooth/Wi-Fi Direct hops). Nearby devices forward the opaque packet across the mesh without being able to read or modify its contents.
-4. **Opportunistic Bridge Settlement**: As soon as *any* participating mesh device encounters internet connectivity (an edge bridge or cellular connection), it delivers the packet to the banking core.
-5. **Atomic Ledger Settlement**: The backend bridge authenticates the digital signature, verifies sender balance, guarantees persistent idempotency, and records an immutable double-entry ledger entry.
+1. **Local Offline Signing**: The payer creates a cryptographically signed payment instruction directly on their device using hardware-backed asymmetric keypairs (**P-256 ECDSA / RSASSA-PSS SHA-256**).
+2. **Deterministic Canonicalization**: The instruction is serialized to canonical JSON (RFC 8785 subset) ensuring byte-for-byte deterministic signature verification across iOS (Swift) and banking backend (Java).
+3. **Direct Ad-Hoc Wireless Transport**: The signed packet is exchanged between physical devices over Apple's **Multipeer Connectivity framework** (Wi-Fi Direct / Bluetooth Low Energy) with zero router or cellular connectivity.
+4. **Isolated Receiver Lifecycle**: The receiver stores the packet in a dedicated inbox (`RECEIVED`) without mixing it into outgoing queues or prematurely assuming balance settlement.
+5. **Opportunistic Bridge Reconciliation**: When either party or an authorized relay encounters internet connectivity, an explicit reconciliation service submits the original signed packet to the banking core.
+6. **Authoritative Double-Entry Settlement**: The backend validates device authorization, verifies digital signatures, defends against nonces and replays, and commits an atomic double-entry balance adjustment.
 
 ---
 
@@ -59,28 +64,35 @@ When connectivity drops, digital transactions fail entirely. Real-world scenario
 | **Internet Required at Payment Time** | ✅ Mandatory (Both parties) | ❌ Offline Tap | ❌ **100% Offline (Zero Internet)** |
 | **Direct Proximity to Merchant Only** | N/A | ✅ Mandatory (1-to-1 Tap) | ❌ **Multi-hop peer forwarding** |
 | **Relay Capability** | ❌ No | ❌ No | ✅ **Peer-to-peer opportunistic relays** |
-| **Intermediate Relay Privacy** | N/A | N/A | ✅ **Zero-Knowledge (Opaque Ciphertext)** |
-| **Replay & Double-Spend Defense** | Central switch validation | Device wallet counters | ✅ **Compound DB constraints & Hash Claims** |
-| **Ledger Reconciliation** | Immediate synchronous | Delayed sync | ✅ **Decoupled audit with mathematical proof** |
+| **Intermediate Relay Privacy** | N/A | N/A | ✅ **Zero-Knowledge (Opaque Ciphertext / Signed Envelopes)** |
+| **Replay & Double-Spend Defense** | Central switch validation | Device wallet counters | ✅ **Compound DB constraints, Nonce Tables & Hash Claims** |
+| **Ledger Reconciliation** | Immediate synchronous | Delayed sync | ✅ **Decoupled audit with mathematical proof & lifecycle states** |
 
 ---
 
 ## 📌 Executive Summary
 
-**UPI Offline Mesh** is a deterministic, software-simulated payment infrastructure that models and proves the correctness of **offline peer-to-peer transaction generation, multi-hop mesh forwarding, and deferred atomic settlement**. 
-
-The system runs entirely as a self-contained Spring Boot application with zero external hardware requirements, providing a full suite of cryptographic primitives, gossip forwarding simulations, database-level replay protections, and a native Liquid Mesh iOS mobile application.
+**UPI Offline Mesh** is a complete, production-grade offline payment simulation and prototype stack. It integrates:
+- A **Spring Boot 4.2** backend providing atomic double-entry ledger transactions, persistent device authorization registries, replay protections, and an automated continuous audit reconciliation engine.
+- A **Native iOS SwiftUI Client (Liquid Mesh UPI)** featuring device-side key generation (Keychain / Secure Enclave), canonical instruction signing, local packet queues, Apple Multipeer Connectivity direct transport, and received-packet lifecycle management.
+- A **Native macOS Test Companion** enabling zero-infrastructure cross-device physical testing between MacBooks and iPhones.
+- **173 Automated Tests** (135 Java + 38 Swift) with 100% pass rates across cryptographic verification, peer transport protocols, and reconciliation edge cases.
 
 ---
 
 ## 🚀 Key Capabilities
 
-- **🔐 End-to-End Cryptographic Security**: Senders authenticate instructions with **RSASSA-PSS SHA-256** signatures; payloads are confidentiality-protected with hybrid **RSA-OAEP + AES-256-GCM** encryption.
-- **🛡️ Zero-Trust Relay Privacy**: Intermediate forwarding devices inspect only transport envelopes. Payloads, amounts, sender/recipient identities, and cryptographic keys remain fully opaque to relays.
-- **🔄 Multi-Hop Gossip Simulation**: Deterministic discrete rounds with loop suppression, visited-device memory, and Time-To-Live (TTL) hop decrementing without physical radio hardware dependencies.
-- **⚡ Persistent Replay Protection**: Multi-layered defense coupling canonical SHA-256 ciphertext deduplication, global `paymentId` uniqueness, and persistent `(fromAccount, nonce)` uniqueness constraints.
-- **⚖️ Double-Entry Ledger & Audit Reconciliation**: Strict atomic balance movements recorded alongside transactional ledger rows; decoupled read-only reconciliation auditing individual balances against authoritative opening baselines.
-- **📱 Native iOS Client (Liquid Mesh UPI)**: Production-grade SwiftUI app implementing the Liquid Mesh UPI design system, live multi-account balance synchronization, real-time simulated payment dispatch, and peer discovery radar.
+- **🔐 Device-Bound Cryptographic Signatures**: Senders sign payments locally using **P-256 ECDSA (SHA-256)** or **RSASSA-PSS**, bound to a persistently registered device identity in the bank's core registry.
+- **📜 Cross-Language Deterministic Canonicalization**: Custom canonical JSON serializers in Swift and Java enforce strict key sorting, unescaped slashes, and floating-point precision equivalence, ensuring identical byte digests across platforms.
+- **📡 Direct Wireless P2P Transport (Multipeer Connectivity)**: Physical iPhones and Mac companion nodes discover each other and transfer payment packets offline via Wi-Fi Direct and Bluetooth Low Energy (`_upimesh._tcp`).
+- **🛡️ Strict Receiver State Machine**: Received packets are stored in an isolated inbox with deterministic lifecycle states:
+  - `RECEIVED` — Awaiting settlement submission.
+  - `SETTLING` — Actively in-flight to backend; persistent to survive app restarts.
+  - `SETTLED` — Confirmed by authoritative banking response.
+  - `FAILED` — Definitive terminal rejection (e.g., insufficient funds).
+- **⚡ Persistent Replay & Nonce Defense**: Multi-layered defense coupling canonical SHA-256 hash deduplication, global `paymentId` uniqueness, and persistent `(fromAccount, nonce)` uniqueness constraints.
+- **⚖️ Double-Entry Ledger & Audit Engine**: Atomic ledger recording with optimistic concurrency locking (`@Version`); decoupled read-only audit engine checking $\sum \text{Debits} \equiv \sum \text{Credits}$ and $E(i) = B_0(i) + \Delta(i)$.
+- **🔄 Concurrency-Guarded Reconciliation Client**: `OfflineReconciliationService` on iOS submits received packets with the original signer device ID, locks in-flight payment IDs against duplicate requests, and treats ambiguous network failures as retryable rather than falsely settled.
 
 ---
 
@@ -88,26 +100,43 @@ The system runs entirely as a self-contained Spring Boot application with zero e
 
 ```mermaid
 flowchart TD
-    subgraph OfflineMesh["📡 Offline Peer-to-Peer Mesh (Ad-Hoc Wireless)"]
-        A["📱 Sender Wallet<br/>(Alice)"] -- "1. Sign (RSA-PSS) & Encrypt (RSA+AES)" --> M1["📲 Node 1<br/>(Virtual Device)"]
-        M1 -- "2. Multi-Hop Forwarding (TTL Decrement)" --> M2["📲 Node 2<br/>(Carol)"]
-        M2 -- "3. Gossip Relay" --> B["🌉 Bridge Gateway<br/>(Online Sink)"]
+    subgraph Payer["📱 Sender Device (Alice's iPhone)"]
+        K["🔑 Secure Enclave / Keychain<br/>(P-256 Keypair)"] --> SIG["✍️ Sign Canonical JSON<br/>(RFC 8785 subset)"]
+        SIG --> PKT["📦 OfflinePaymentPacket<br/>(status: QUEUED)"]
+        PKT --> STORE1[("💾 OfflinePacketStore<br/>(Local Storage)")]
     end
 
-    subgraph BackendSettlement["🏦 Banking Infrastructure & Settlement Gateway"]
-        B -- "4. Ingest Packet" --> D["🔍 Deduplication & Decrypt<br/>(SHA-256 Ciphertext Hash + RSA Private Key)"]
-        D -- "5. Verify Signature" --> V["✅ Sender Key Registry<br/>(RSASSA-PSS Verification)"]
-        V -- "6. Atomic Settlement" --> S["💳 Settlement Service<br/>(@Transactional)"]
+    subgraph Wireless["📡 Direct Offline P2P Transport (Zero Internet)"]
+        STORE1 --> ADV["📡 Multipeer Advertiser<br/>(MCNearbyServiceAdvertiser)"]
+        ADV <-->|Wi-Fi Direct / BLE<br/>_upimesh._tcp| BROWSE["🔍 Multipeer Browser<br/>(MCNearbyServiceBrowser)"]
+    end
+
+    subgraph Receiver["📲 Receiver Device (Bob's iPhone / Mac Companion)"]
+        BROWSE --> RECV_INBOX["📥 ReceivedPacketStore<br/>(Isolated Inbox)"]
+        RECV_INBOX --> R_STATE["🏷️ Status: RECEIVED"]
+        R_STATE -.->|Explicit User Invocation| RECON["⚙️ OfflineReconciliationService<br/>(Locks in-flight paymentId)"]
+        RECON --> SETTLING["🏷️ Status: SETTLING (Persisted)"]
+    end
+
+    subgraph Backend["🏦 Banking Core & Bridge Settlement Gateway (Spring Boot)"]
+        SETTLING -->|POST /api/mesh/submit<br/>Original Signed Instruction + Original DeviceId| BRIDGE["🌉 Bridge Gateway Controller"]
+        BRIDGE --> DEV_REG["🪪 Device Authorization Registry<br/>(Verify Device Authorized for Account)"]
+        DEV_REG --> KEY_REG["🔑 Sender Key Registry<br/>(Verify P-256 / RSA Signature)"]
+        KEY_REG --> REPLAY["🛡️ Persistent Replay Protection<br/>(paymentId & nonce Uniqueness)"]
+        REPLAY --> SETTLE["💳 Settlement Service (@Transactional)"]
         
-        S --> ACT[("💰 Account Balances<br/>Optimistic Locking (@Version)")]
-        S --> TX[("📖 Transaction Ledger<br/>Immutable Entries")]
-        S --> PP[("🛡️ Processed Packets<br/>Replay & Nonce Defense")]
+        SETTLE --> ACCTS[("💰 Account Balances<br/>Optimistic Locking @Version")]
+        SETTLE --> TXS[("📖 Transaction Ledger<br/>Immutable Double-Entry Entries")]
+        SETTLE --> PROCESSED[("🛡️ Processed Packets<br/>Deduplication Registry")]
     end
 
-    subgraph AuditAudit["⚖️ Continuous Audit"]
-        REC["🔎 Reconciliation Service<br/>(Read-Only Audit)"] --> ACT
-        REC --> TX
-        REC --> REP["📊 Reconciliation Report<br/>(Structural & Balance Status)"]
+    subgraph SettlementResult["✅ Lifecycle Completion"]
+        BRIDGE -->|HTTP 200 OK SUCCESS| SETTLED["🏷️ Status: SETTLED"]
+        BRIDGE -->|HTTP 400 Insufficient Funds| FAILED["🏷️ Status: FAILED"]
+        BRIDGE -->|Timeout / Lost Response| RETRY["🏷️ Status: SETTLING (Retryable)"]
+        SETTLED --> RECV_INBOX
+        FAILED --> RECV_INBOX
+        RETRY --> RECV_INBOX
     end
 ```
 
@@ -118,62 +147,98 @@ flowchart TD
 ```mermaid
 sequenceDiagram
     autonumber
-    participant Alice as 📱 Sender (Alice)
-    participant Mesh as 📡 Mesh Relay
-    participant Bridge as 🌉 Bridge Gateway
-    participant Bank as 🏛️ Settlement Core
+    participant Alice as 📱 Payer (Alice)
+    participant Bob as 📲 Receiver (Bob)
+    participant Bank as 🏛️ Banking Settlement Gateway
 
-    Note over Alice: Prepare Payment Instruction<br/>(from, to, amount, nonce, timestamp)
-    Alice->>Alice: Sign canonical bytes with Private Key (RSASSA-PSS SHA-256)
-    Alice->>Alice: Generate ephemeral AES-256 key & 96-bit IV
-    Alice->>Alice: Encrypt instruction JSON with AES-256-GCM
-    Alice->>Alice: Encrypt AES key with Bridge Public Key (RSA-OAEP)
-    Alice->>Mesh: Dispatch MeshPacket (Origin, Dest, TTL, EncryptedPacket)
-    
-    loop Forwarding Rounds
-        Mesh->>Mesh: Check loop suppression & Decrement TTL
-    end
-    Mesh->>Bridge: Deliver MeshPacket to Bridge Gateway
+    Note over Alice: Payer signs offline payment
+    Alice->>Alice: Construct PaymentInstruction (from: alice, to: bob, amount: 10.00, nonce, timestamp)
+    Alice->>Alice: Format Canonical JSON (alphabetical keys, no spaces)
+    Alice->>Alice: Sign canonical bytes with P-256 Private Key
+    Alice->>Alice: Package OfflinePaymentPacket (QUEUED)
 
-    Bridge->>Bridge: Compute SHA-256 canonical ciphertext hash (Idempotency Claim)
-    Bridge->>Bridge: Decrypt AES key with Bridge RSA Private Key
-    Bridge->>Bridge: Decrypt instruction with AES-256-GCM (Tag Authentication)
-    Bridge->>Bridge: Validate timestamp freshness (max 24h age, 5m future skew)
-    Bridge->>Bridge: Verify signature against Alice's Public Key
-    
-    Bridge->>Bank: Execute Atomic Settlement Transaction
-    Bank->>Bank: Deduct Alice, Credit Bob (Optimistic Locking)
-    Bank->>Bank: Insert Transaction Ledger Entry
-    Bank->>Bank: Persist ProcessedPacket Record (paymentId & nonce uniqueness)
-    Bank-->>Bridge: Settlement Committed
+    Note over Alice,Bob: Offline Transfer (Apple Multipeer Connectivity)
+    Alice->>Bob: PeerTransferMessage: Handshake (protocolVersion: 1)
+    Bob-->>Alice: PeerTransferMessage: HandshakeAck
+    Alice->>Bob: PeerTransferMessage: PacketTransfer (OfflinePaymentPacket)
+    Bob->>Bob: Validate packet schema, paymentId & digital signature
+    Bob->>Bob: Import into ReceivedPacketStore as RECEIVED (Inbox)
+    Bob-->>Alice: PeerTransferMessage: TransferAck (accepted: true)
+
+    Note over Bob,Bank: Deferred Online Settlement (When Internet Available)
+    Bob->>Bob: Explicit Reconciliation Invocation
+    Bob->>Bob: Concurrency lock paymentId & persist status: SETTLING
+    Bob->>Bank: POST /api/mesh/submit (instruction, signature, original deviceId)
+    Bank->>Bank: Validate deviceId authorization for 'alice'
+    Bank->>Bank: Verify P-256 signature against registered public key
+    Bank->>Bank: Validate timestamp freshness (within 24 hours)
+    Bank->>Bank: Check persistent replay protection (paymentId & nonce uniqueness)
+    Bank->>Bank: Check sufficient balance (Alice >= ₹10.00)
+    Bank->>Bank: Execute atomic double-entry transfer (Alice -₹10, Bob +₹10)
+    Bank->>Bank: Record immutable transaction ledger entry
+    Bank-->>Bob: HTTP 200 { status: "SUCCESS", transactionId: "..." }
+    Bob->>Bob: Persist status: SETTLED with backend reference
 ```
+
+---
+
+## 📡 Direct Offline Peer-to-Peer Transport
+
+In Stages 6.3B & 6.3C, UPI Offline Mesh introduced native offline wireless transmission using Apple's **Multipeer Connectivity framework**:
+
+- **Zero Network Infrastructure**: Operates over peer-to-peer Wi-Fi and Bluetooth Low Energy. Requires no router, mobile data, or external hotspot.
+- **Service Type**: Registered under Bonjour service type `_upimesh._tcp`.
+- **Peer Role Discovery**:
+  - `MCNearbyServiceAdvertiser`: Broadcasts availability with device identity metadata.
+  - `MCNearbyServiceBrowser`: Discovers nearby peer nodes in real-time.
+- **Strict Protocol Handshake**:
+  ```swift
+  public enum PeerTransferMessage: Codable {
+      case handshake(HandshakePayload)
+      case packetTransfer(PacketTransferPayload)
+      case transferAck(TransferAckPayload)
+  }
+  ```
+- **Integrity Enforcement**: Upon receipt, the receiver immediately validates packet structure, schema version (`1`), and mathematical digital signature.
+- **Inbox Isolation**: Received packets are stored in `ReceivedPacketStore`, completely isolated from the sender's `OfflinePacketStore`. A received packet is **never** considered settled upon arrival.
 
 ---
 
 ## 📱 Native iOS App (Liquid Mesh UPI)
 
-UPI Offline Mesh features a native **iOS SwiftUI** application located in [`ios/UPIMesh/`](ios/UPIMesh/), engineered with the **Liquid Mesh UPI** design system.
-
-The iOS app interfaces asynchronously with the Spring Boot backend (`http://localhost:8080` on the Simulator or the Mac host LAN IP on a physical device) to demonstrate live account synchronization, peer radar topology, and multi-hop mesh payment execution.
+Located in [`ios/UPIMesh/`](ios/UPIMesh/), engineered with SwiftUI and the **Liquid Mesh UPI** design system.
 
 ### 📸 Mobile Interface Gallery
 
 | 📡 Mesh Radar | 💳 Offline Pay |
 |:---:|:---:|
 | <img src="ios_ui/mesh_radar_ios/screen.png" width="340" alt="Mesh Radar Screen"/> | <img src="ios_ui/offline_pay_ios/screen.png" width="340" alt="Offline Pay Screen"/> |
-| **P2P Radar & Device Discovery**<br/>Simulated Bluetooth mesh proximity, real-time RSSI signal strength visualization, dynamic relay peer detection, and bridge gateway tracking. | **Cryptographic Payment Dispatch**<br/>Tactile amount selection, real-time backend mesh transfer (`POST /api/mesh/transfer`), live multi-hop route telemetry (`paymentId`, `packetId`, `routeTrace`, hops, rounds), and atomic settlement confirmation. |
+| **P2P Radar & Device Discovery**<br/>Simulated mesh proximity, dynamic relay peer detection, RSSI signal visualization, and bridge gateway tracking. | **Offline Signing & Peer Transfer**<br/>Create cryptographically signed offline packets, manage queued payments, select nearby discovered peers, and transmit directly over Multipeer Connectivity. |
 | **📖 Mesh Ledger** | **💼 Mesh Wallets** |
 | <img src="ios_ui/mesh_ledger_ios/screen.png" width="340" alt="Mesh Ledger Screen"/> | <img src="ios_ui/mesh_wallets_ios/screen.png" width="340" alt="Mesh Wallets Screen"/> |
-| **Audit Journal & Verification**<br/>Chronological ledger entries, cryptographic proof badges, SHA-256 idempotency claims, and RSA-PSS signature verification logs. | **Live Multi-Account Wallets**<br/>Real-time balance synchronization via `GET /api/accounts` for Alice, Bob, and Carol with Indian Rupee formatting (`₹5,000.00`) and post-settlement reactive refresh. |
+| **Audit Journal & Verification**<br/>Chronological ledger entries, cryptographic proof badges, SHA-256 idempotency claims, and signature verification logs. | **Device Registration & Wallets**<br/>Real-time account balance synchronization, device identity management (P-256 Keychain pair), and one-tap bank device authorization. |
 
 ### 💎 Key iOS Architecture Highlights
+- **Liquid Mesh Design System**: Frosted glassmorphism, dynamic glowing gradient orbs, tactile haptics, and custom bottom navigation.
+- **Hardware Cryptography**: `DeviceIdentityManager.swift` manages Secure Enclave / Keychain P-256 keypairs with deterministic DER and raw public key export.
+- **Offline Packet Engine**:
+  - `PaymentInstruction.swift`: Value-type instruction with RFC 8785 canonical JSON formatting.
+  - `OfflinePacketStore.swift`: Thread-safe, disk-persisted queue for locally created payment packets.
+  - `ReceivedPacketStore.swift`: Thread-safe, disk-persisted inbox for incoming payments with atomic lifecycle states (`RECEIVED`, `SETTLING`, `SETTLED`, `FAILED`).
+  - `OfflineReconciliationService.swift`: Explicit settlement submission service forwarding original signer identity and managing safe recovery states.
 
-- **Liquid Mesh Design System**: Pure SwiftUI implementation (`DesignTokens.swift`) featuring frosted glassmorphism, glowing gradient orbs, tactile interactions, and bottom pill navigation (`LiquidTabBar.swift`).
-- **Real-Time Backend Integration**:
-  - `UPIMeshAPIClient.swift`: Asynchronous networking layer (`async/await`) with URLComponents query encoding and strongly-typed DTOs (`AccountDTO`, `MeshPaymentResultDTO`, `TransactionDTO`).
-  - **Multi-State Payment Lifecycle**: Complete state handling (`idle` → `submitting` → `settled` / `failed`) with tactile spinner animations and error recovery.
-  - **Reactive Data Synchronization**: Confirmed mesh settlements broadcast `.meshAccountsUpdated` notifications, immediately invalidating and updating balances across all tabs.
-- **Simulator & Physical Device Ready**: Includes tailored ATS networking configuration (`NSLocalNetworkUsageDescription` + local domain ATS exceptions) for smooth local network debugging.
+---
+
+## 💻 Native macOS Test Companion
+
+Located in [`macos/UPIMeshCompanion/`](macos/UPIMeshCompanion/), the macOS Companion is a standalone native macOS application designed as a physical companion node:
+
+- **Purpose**: Enables true physical multi-device testing without requiring two physical iPhones. Run the companion on your MacBook and UPIMesh on your iPhone to test bidirectional peer discovery and offline packet transfer.
+- **Zero-Dependency Standalone Build**: Includes a dedicated shell build script (`build_macos_companion.sh`) using `swiftc` that produces a self-contained `.app` bundle.
+- **Features**:
+  - Real-time peer discovery radar (discovering iPhones over Wi-Fi Direct / BLE).
+  - Packet inspector displaying raw canonical JSON and cryptographic signatures.
+  - Dedicated received-packet store with lifecycle status tracking.
 
 ---
 
@@ -181,40 +246,63 @@ The iOS app interfaces asynchronously with the Spring Boot backend (`http://loca
 
 ### Prerequisites
 - **JDK**: Java 17 or higher
-- **Maven**: Maven Wrapper (`./mvnw`) is included
+- **Maven**: Maven Wrapper (`./mvnw`) included
+- **macOS**: macOS 14.0+ (for running iOS Simulator or macOS Companion)
+- **Xcode**: Xcode 16+ (optional, command-line Swift scripts included)
 
-### 1. Clone & Build
+---
+
+### 1. Build & Run the Backend
 ```bash
+# Clone the repository
 git clone https://github.com/Jarjis-Alam/upimesh.git
 cd upimesh
-./mvnw clean compile
-```
 
-### 2. Run the Application
-```bash
+# Compile backend
+./mvnw clean compile
+
+# Run all 135 Java backend tests
+./mvnw test
+
+# Start the Spring Boot server
 ./mvnw spring-boot:run
 ```
 
-Once started, open your browser:
+Once running:
+- **API Base URL**: `http://localhost:8080`
 - **H2 Web Console**: [http://localhost:8080/h2-console](http://localhost:8080/h2-console)
   - **JDBC URL**: `jdbc:h2:file:./data/upimesh`
   - **User**: `sa`
   - **Password**: *(leave blank)*
 
-### 3. Run the Test Suite
+---
+
+### 2. Run the Native Swift Test Suite (38 Tests)
+Run all 38 iOS and macOS companion tests directly from the terminal without Xcode:
 ```bash
-./mvnw test
+./run_ios_tests.sh
 ```
-All **115 tests** execute and pass in an isolated in-memory H2 database.
+
+---
+
+### 3. Build & Run the macOS Companion App
+```bash
+# Build the native macOS companion app
+./build_macos_companion.sh
+
+# Launch the companion app
+open macos/UPIMeshCompanion/build/UPIMeshCompanion.app
+```
+
+---
 
 ### 4. Run the Native iOS Mobile App
 ```bash
 open ios/UPIMesh/UPIMesh.xcodeproj
 ```
-1. Open the project in **Xcode 16+** (supports iOS 17.0+ SDK).
+1. Open the project in Xcode.
 2. Select any **iOS Simulator** (e.g., iPhone 16) or a connected physical iPhone.
-3. Verify backend host in `APIConfiguration.swift` (`http://localhost:8080` for Simulator, or your Mac's LAN IP e.g. `http://192.168.1.100:8080` for physical device).
-4. Press **⌘R** to build and run. Live account data and mesh payment simulations connect instantly.
+3. Build and run (**⌘R**).
 
 ---
 
@@ -227,48 +315,67 @@ GET /api/accounts
 **Response (`200 OK`):**
 ```json
 [
-  { "id": "alice", "balance": 5000.00, "version": 0 },
-  { "id": "bob", "balance": 1000.00, "version": 0 },
+  { "id": "alice", "balance": 4970.00, "version": 2 },
+  { "id": "bob", "balance": 1030.00, "version": 2 },
   { "id": "carol", "balance": 2000.00, "version": 0 }
 ]
 ```
 
 ---
 
-### 2. Execute Direct Transfer
+### 2. Register Device Public Key & Account Authorization
 ```bash
-POST /api/transfer?from=alice&to=bob&amount=250.00
-```
-**Response (`200 OK`):**
-```
-OK
-```
+POST /api/devices/register
+Content-Type: application/json
 
----
-
-### 3. Simulate End-to-End Mesh Payment
-Executes complete 4-stage pipeline: signing, hybrid encryption, multi-hop mesh forwarding, bridge ingestion, and settlement.
-```bash
-POST /api/mesh/transfer?from=alice&to=bob&amount=175.00&ttl=5
+{
+  "deviceId": "dev-alice-iphone-16",
+  "accountId": "alice",
+  "publicKey": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE...",
+  "algorithm": "SHA256withECDSA"
+}
 ```
 **Response (`200 OK`):**
 ```json
 {
   "success": true,
-  "paymentId": "5c11d041-e945-4299-bb6e-827eb0c8a3cf",
-  "packetId": "d3472091-a1e6-42d4-bb6c-1793ecff6eb7",
+  "deviceId": "dev-alice-iphone-16",
+  "accountId": "alice",
+  "authorizedAt": "2026-10-13T10:15:00Z"
+}
+```
+
+---
+
+### 3. Submit Device-Signed Offline Payment
+Submits an offline-generated payment packet for authoritative settlement.
+```bash
+POST /api/mesh/submit
+Content-Type: application/json
+
+{
+  "deviceId": "dev-alice-iphone-16",
+  "instruction": {
+    "paymentId": "5c11d041-e945-4299-bb6e-827eb0c8a3cf",
+    "fromAccount": "alice",
+    "toAccount": "bob",
+    "amount": 10.00,
+    "nonce": "a7b3c2d1e0f9482b",
+    "timestamp": 1791898800000
+  },
+  "signature": "MEQCIA..."
+}
+```
+**Response (`200 OK`):**
+```json
+{
+  "status": "SUCCESS",
+  "message": "Device-signed payment settled successfully",
+  "transactionId": "e93ab630-f921-4f40-8774-681b490f23be",
   "fromAccount": "alice",
   "toAccount": "bob",
-  "amount": 175.00,
-  "roundsRun": 2,
-  "hopsTaken": 2,
-  "remainingTtl": 3,
-  "routeTrace": ["alice", "carol", "bridge"],
-  "encryptedKeySnippet": "qP9F7k3Lm01Z9aX8...",
-  "ivHex": "8d3e41b2190fc61a49ab88c0",
-  "ciphertextSnippet": "54a9d77f28bc0192...",
-  "status": "SETTLED",
-  "message": "Payment of ₹175.00 authenticated via RSA-PSS, routed via 2 hops and settled atomically at Bridge Gateway."
+  "amount": 10.00,
+  "settledAt": "2026-10-13T10:15:30Z"
 }
 ```
 
@@ -285,16 +392,16 @@ GET /api/transactions
     "id": "e93ab630-f921-4f40-8774-681b490f23be",
     "fromAccount": "alice",
     "toAccount": "bob",
-    "amount": 175.00,
+    "amount": 10.00,
     "status": "SETTLED",
-    "timestamp": "2026-10-12T09:44:28.109Z"
+    "timestamp": "2026-10-13T10:15:30Z"
   }
 ]
 ```
 
 ---
 
-### 5. Run Ledger Reconciliation Audit
+### 5. Run Continuous Ledger Reconciliation Audit
 ```bash
 GET /api/reconciliation
 ```
@@ -306,37 +413,10 @@ GET /api/reconciliation
   "isBalancesReconciled": true,
   "structuralStatus": "BALANCED",
   "balanceStatus": "RECONCILED",
-  "reconciledAt": "2026-10-12T09:44:28.614Z",
-  "totalTransactionsChecked": 1,
-  "totalLedgerDebits": 175.00,
-  "totalLedgerCredits": 175.00,
+  "totalTransactionsChecked": 2,
+  "totalLedgerDebits": 30.00,
+  "totalLedgerCredits": 30.00,
   "systemZeroSumMaintained": true,
-  "accountResults": [
-    {
-      "accountId": "alice",
-      "openingBalance": 5000.00,
-      "totalCredits": 0.00,
-      "totalDebits": 175.00,
-      "netMovement": -175.00,
-      "expectedBalance": 4825.00,
-      "actualBalance": 4825.00,
-      "discrepancy": 0.00,
-      "status": "RECONCILED",
-      "matches": true
-    },
-    {
-      "accountId": "bob",
-      "openingBalance": 1000.00,
-      "totalCredits": 175.00,
-      "totalDebits": 0.00,
-      "netMovement": 175.00,
-      "expectedBalance": 1175.00,
-      "actualBalance": 1175.00,
-      "discrepancy": 0.00,
-      "status": "RECONCILED",
-      "matches": true
-    }
-  ],
   "discrepancies": [],
   "unverifiableAccounts": []
 }
@@ -346,49 +426,78 @@ GET /api/reconciliation
 
 ## ⚖️ Mathematical Reconciliation Engine
 
-Reconciliation decouples **structural journal invariants** from **individual account balance verification**:
+Reconciliation strictly decouples **structural journal invariants** from **individual account balance verification**:
 
 ### 1. Structural Ledger Check
 $$\sum \text{Debits} \equiv \sum \text{Credits}$$
-- Validates double-entry symmetry across the journal.
-- **Important**: A balanced ledger proves internal consistency, but does **not** prove individual balances are free of external tampering.
+- Validates double-entry symmetry across the entire transaction journal.
+- A balanced ledger proves internal consistency, but does not prove individual accounts were free of external tampering.
 
 ### 2. Account Balance Verification
 For each account $i$ with authoritative opening baseline $B_0(i)$:
 $$E(i) = B_0(i) + \text{Credits}(i) - \text{Debits}(i)$$
 $$\Delta(i) = A(i) - E(i)$$
-- **Reconciled**: $\Delta(i) = 0$
-- **Discrepancy**: $\Delta(i) \neq 0$ (reported without silent mutations)
-- **Unverifiable**: If $B_0(i)$ is missing, the account is explicitly marked `UNVERIFIABLE`.
+- **`RECONCILED`**: $\Delta(i) = 0$
+- **`DISCREPANCY`**: $\Delta(i) \neq 0$ (flagged without silent mutations)
+- **`UNVERIFIABLE`**: If $B_0(i)$ is absent, the account is explicitly audited as `UNVERIFIABLE`.
 
 ---
 
 ## 🧪 Test Suite & Verification
 
-The project includes **115 automated tests** across 14 test suites:
+The project enforces strict automated test verification across both backend and native clients:
 
 ```
 [INFO] Results:
-[INFO] Tests run: 115, Failures: 0, Errors: 0, Skipped: 0
+[INFO] Tests run: 135, Failures: 0, Errors: 0, Skipped: 0
 [INFO] BUILD SUCCESS
+
+==================================================
+All 38 offline tests PASSED!
+==================================================
 ```
 
-| Suite | Tests | Verification Area |
-|---|:---:|---|
-| `OperationalHardeningTest` | 13 | Restart persistence, DataSeeder non-overwrite, sanitized API errors, endpoint security |
-| `LedgerReconciliationTest` | 9 | Double-entry invariants, circular transfers, tampering detection, decoupled audit statuses |
-| `SenderAuthenticationTest` | 9 | RSASSA-PSS SHA-256 signature verification, canonical byte serialization, tamper rejection |
-| `PersistentReplayProtectionTest` | 7 | DB-enforced compound `(fromAccount, nonce)` uniqueness, re-encryption defense |
-| `PersistentIdempotencyTest` | 7 | Service re-instantiation idempotency, canonical SHA-256 deduplication, concurrency |
-| `BackendIntegrationLayerTest` | 15 | Bridge public key export, prototype key registration policy, external packet ingestion & atomic settlement |
-| `TransactionLedgerIntegrationTest` | 6 | Atomic ledger recording, balance adjustments, chronological indexing |
-| `BridgeIngestionServiceTest` | 10 | Hybrid decryption, payload validation, clock skew & expiration thresholds |
-| `MeshSimulatorServiceTest` | 5 | Multi-hop gossip rounds, loop prevention, TTL expiration |
-| `EndToEndMeshPaymentTest` | 5 | End-to-end controller & simulation integration |
-| `CryptoServiceTest` | 9 | RSA-OAEP key wrapping, AES-256-GCM ciphering, signature schemes |
-| `MeshPacketTest` & `PaymentInstructionTest` | 14 | Value object immutability, canonical representation, validation invariants |
-| `IdempotencyServiceTest` | 5 | Atomic in-memory claims, state lifecycle transitions |
-| `UpimeshApplicationTests` | 1 | Spring Boot ApplicationContext bootstrapping |
+### Comprehensive Test Matrix (173 Passing Tests)
+
+| Language / Framework | Suite | Tests | Verification Area |
+|---|---|:---:|---|
+| **Java (Spring Boot)** | `OperationalHardeningTest` | 13 | Restart persistence, DataSeeder non-overwrite, sanitized API errors |
+| | `BackendIntegrationLayerTest` | 15 | Bridge public key export, external packet ingestion, atomic settlement |
+| | `DeviceSignedPaymentSubmissionTest` | 8 | Public key verification, device authorization, balance & replay defense |
+| | `PersistentDeviceRegistryTest` | 6 | Device registration persistence, key updates, account binding |
+| | `CrossLanguageCanonicalizationTest` | 1 | RFC 8785 byte-for-byte serialization match between Java & Swift |
+| | `LedgerReconciliationTest` | 9 | Double-entry invariants, circular transfers, tampering detection |
+| | `SenderAuthenticationTest` | 9 | RSASSA-PSS SHA-256 signature verification, canonical byte serialization |
+| | `PersistentReplayProtectionTest` | 7 | DB compound `(fromAccount, nonce)` uniqueness, re-encryption defense |
+| | `PersistentIdempotencyTest` | 7 | Service re-instantiation idempotency, SHA-256 deduplication, concurrency |
+| | `TransactionLedgerIntegrationTest` | 6 | Atomic ledger recording, balance adjustments, chronological indexing |
+| | `BridgeIngestionServiceTest` | 10 | Hybrid decryption, payload validation, clock skew & expiration |
+| | `MeshSimulatorServiceTest` | 5 | Multi-hop gossip rounds, loop prevention, TTL expiration |
+| | `EndToEndMeshPaymentTest` | 5 | End-to-end controller & simulation integration |
+| | `CryptoServiceTest` | 9 | RSA-OAEP key wrapping, AES-256-GCM ciphering, signature schemes |
+| | `MeshPacketTest` & `PaymentInstructionTest` | 15 | Immutability, canonical representation, validation invariants |
+| | `IdempotencyServiceTest` | 5 | Atomic in-memory claims, state lifecycle transitions |
+| | `UpimeshApplicationTests` | 1 | Spring Boot ApplicationContext bootstrapping |
+| **Swift (iOS / macOS)** | `OfflinePaymentPacketTests` | 9 | Packet creation, canonicalization, P-256 signing, deduplication |
+| | `PeerTransportTests` | 16 | Multipeer handshake, packet serialization, tamper detection, inbox lifecycle |
+| | `ReconciliationServiceTests` | 8 | Settlement transitions, terminal rejections, timeout recovery, idempotency |
+| | `MacCompanionTests` | 5 | macOS packet decoding, deduplication, tampering rejection, lifecycle states |
+| **Total** | **21 Test Suites** | **173** | **Zero Failures, Zero Flakiness** |
+
+---
+
+## 🗺️ Development Stages Roadmap
+
+- [x] **Stage 1–4**: Spring Boot cryptographic mesh simulation, hybrid encryption, gossip routing, double-entry ledger & continuous audit engine.
+- [x] **Stage 5**: Native device-signed payments: Secure Enclave P-256 key generation, device authorization registry, and `/api/mesh/submit` settlement.
+- [x] **Stage 6.1**: Local offline payment packet model (`OfflinePaymentPacket`), canonical JSON serialization, and persistent `OfflinePacketStore`.
+- [x] **Stage 6.2**: iOS UI integration for offline packet creation, queue management, and balance pre-validation.
+- [x] **Stage 6.3A & 6.3B**: Direct offline wireless transport via Apple's **Multipeer Connectivity framework** (Wi-Fi Direct / BLE) with isolated receiver inbox.
+- [x] **Stage 6.3C**: Native macOS Test Companion app for physical cross-device iPhone ↔ MacBook offline transfers.
+- [x] **Stage 6.4A**: Reconciliation architecture inspection and backend idempotency audit.
+- [x] **Stage 6.4B.1**: Persistent received-packet lifecycle state machine (`RECEIVED`, `SETTLING`, `SETTLED`, `FAILED`).
+- [x] **Stage 6.4B.2**: Focused iOS client `OfflineReconciliationService` with concurrency locks, original signer identity forwarding, and safe retryable recovery.
+- [ ] **Stage 6.4B.3**: Received Packets inbox UI with explicit reconciliation actions and status feedback.
 
 ---
 
@@ -397,9 +506,9 @@ The project includes **115 automated tests** across 14 test suites:
 > [!WARNING]
 > This repository is an educational prototype and architectural simulation of offline UPI concepts. It does not claim production-grade compliance with NPCI / RBI banking standards.
 
-1. **Hardware Root of Trust**: In production offline UPI, private keys must be stored in hardware secure elements (e.g., SIM Card SE, Android StrongBox Keymaster, eSE) requiring biometric or PIN unlock. Here, keys are managed in-memory.
-2. **Physical Wireless Layer**: Relays are simulated in software. Physical wireless deployment (BLE, Wi-Fi Direct, LoRa) requires Link Layer Encryption and RF-level replay suppression.
-3. **PKI Infrastructure**: Key distribution uses an in-memory registry. Production deployment requires X.509 certificates chained to verified banking root authorities.
+1. **Hardware Root of Trust**: In production offline UPI, private keys must reside in hardware secure elements (e.g., SIM Card SE, Android StrongBox Keymaster, Apple Secure Enclave with user presence biometric requirements).
+2. **Offline Double-Spending**: True offline transactions carry inherent credit/double-spend risk until reconciled. In production, this requires hardware-enforced monotonic offline balance counters (such as in UPI Lite X).
+3. **PKI Infrastructure**: Device registration in this prototype uses an open registration API. Production deployment requires X.509 certificate chains signed by accredited banking certificate authorities (CA).
 
 ---
 

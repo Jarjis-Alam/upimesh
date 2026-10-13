@@ -1,4 +1,5 @@
 import SwiftUI
+import MultipeerConnectivity
 
 /// Offline Pay Screen (`ios_ui/offline_pay_ios/`)
 ///
@@ -17,11 +18,23 @@ public struct OfflinePayView: View {
         case failed(String)
     }
 
-    @State private var amount: Double = 500.00
+    public enum OfflinePacketCreationState: Equatable {
+        case idle
+        case creating
+        case created(OfflinePaymentPacket)
+        case failed(String)
+    }
+
+    @State private var amount: Double = 10.00
     @State private var memo: String = "Lunch payment (Offline)"
     @State private var senderId: String = "alice"
     @State private var recipientId: String = "bob"
     @State private var submissionState: PaymentSubmissionState = .idle
+    @State private var offlineCreationState: OfflinePacketCreationState = .idle
+    @State private var queuedPackets: [OfflinePaymentPacket] = []
+    @ObservedObject private var transportService = MeshPeerTransportService.shared
+    @State private var receivedPackets: [ReceivedPacketRecord] = []
+    @State private var selectedPacketForTransfer: OfflinePaymentPacket? = nil
     @State private var showQRModal: Bool = false
     @State private var senderBalance: Double? = nil
     @State private var isLiveBalance: Bool = false
@@ -47,6 +60,15 @@ public struct OfflinePayView: View {
                 // MARK: - Live Mesh Journey Telemetry
                 journeyTelemetryCard
 
+                // MARK: - Locally Stored Queued Offline Packets (Stage 6.2)
+                queuedPacketsSection
+
+                // MARK: - Nearby Mesh Peer Discovery & Transport (Stage 6.3B)
+                peerTransportSection
+
+                // MARK: - Received Packets Inbox (Stage 6.3B)
+                receivedPacketsInboxSection
+
                 // Bottom spacer for detached floating tab bar
                 Spacer(minLength: 88)
             }
@@ -55,14 +77,30 @@ public struct OfflinePayView: View {
         }
         .task {
             await loadSenderBalance()
+            reloadQueuedPackets()
+            reloadReceivedPackets()
+        }
+        .onAppear {
+            reloadQueuedPackets()
+            reloadReceivedPackets()
         }
         .refreshable {
             await loadSenderBalance()
+            reloadQueuedPackets()
+            reloadReceivedPackets()
         }
         .onReceive(NotificationCenter.default.publisher(for: .meshAccountsUpdated)) { _ in
             Task {
                 await loadSenderBalance()
+                reloadQueuedPackets()
+                reloadReceivedPackets()
             }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .offlinePacketReceived)) { _ in
+            reloadReceivedPackets()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .offlinePacketSent)) { _ in
+            reloadQueuedPackets()
         }
     }
 
@@ -346,14 +384,14 @@ public struct OfflinePayView: View {
                     case .submitting:
                         ProgressView()
                             .tint(DesignTokens.Colors.onMeshGold)
-                        Text("Simulating Mesh Ingestion...")
+                        Text("Signing & Submitting to Mesh...")
                             .font(DesignTokens.Typography.headlineSm)
                             .fontWeight(.bold)
 
                     case .settled:
                         Image(systemName: "checkmark.circle.fill")
                             .font(.system(size: 20, weight: .bold))
-                        Text("Settled on Bridge Ledger!")
+                        Text("Device-Signed & Settled!")
                             .font(DesignTokens.Typography.headlineSm)
                             .fontWeight(.bold)
 
@@ -437,6 +475,148 @@ public struct OfflinePayView: View {
                 )
             }
 
+            // MARK: - Create Offline Packet Action (Stage 6.2)
+            Button {
+                Task {
+                    await createOfflinePacketAction()
+                }
+            } label: {
+                HStack(spacing: 8) {
+                    switch offlineCreationState {
+                    case .creating:
+                        ProgressView()
+                            .tint(DesignTokens.Colors.secondary)
+                        Text("Signing & Storing Offline...")
+                            .font(DesignTokens.Typography.bodyMd)
+                            .fontWeight(.semibold)
+
+                    case .created:
+                        Image(systemName: "tray.fill")
+                            .font(.system(size: 16, weight: .bold))
+                            .foregroundColor(DesignTokens.Colors.meshGold)
+                        Text("Packet Queued Locally!")
+                            .font(DesignTokens.Typography.bodyMd)
+                            .fontWeight(.semibold)
+
+                    case .failed:
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .font(.system(size: 16, weight: .bold))
+                            .foregroundColor(DesignTokens.Colors.error)
+                        Text("Queue Failed — Tap to Retry")
+                            .font(DesignTokens.Typography.bodyMd)
+                            .fontWeight(.semibold)
+
+                    case .idle:
+                        Image(systemName: "tray.and.arrow.down.fill")
+                            .font(.system(size: 16, weight: .bold))
+                            .foregroundColor(DesignTokens.Colors.secondary)
+                        Text("Create Offline Packet")
+                            .font(DesignTokens.Typography.bodyMd)
+                            .fontWeight(.semibold)
+                    }
+                }
+                .foregroundColor(offlineButtonForegroundColor)
+                .frame(maxWidth: .infinity)
+                .frame(height: 50)
+                .background(
+                    Capsule()
+                        .fill(DesignTokens.Colors.surfaceContainerHigh.opacity(0.85))
+                        .overlay(
+                            Capsule()
+                                .stroke(offlineButtonStrokeColor, lineWidth: 1.5)
+                        )
+                )
+            }
+            .disabled(offlineCreationState == .creating || submissionState == .submitting || amount <= 0)
+            .buttonStyle(.plain)
+
+            // Inline Feedback for Offline Packet Creation
+            if case .created(let packet) = offlineCreationState {
+                HStack(alignment: .top, spacing: 10) {
+                    Image(systemName: "tray.fill")
+                        .foregroundColor(DesignTokens.Colors.meshGold)
+                        .font(.system(size: 16))
+                        .padding(.top, 2)
+
+                    VStack(alignment: .leading, spacing: 3) {
+                        HStack(spacing: 6) {
+                            Text("Packet Queued Locally")
+                                .font(DesignTokens.Typography.bodySm)
+                                .fontWeight(.bold)
+                                .foregroundColor(DesignTokens.Colors.onSurface)
+
+                            Text("NOT SETTLED")
+                                .font(.system(size: 9, weight: .bold))
+                                .foregroundColor(DesignTokens.Colors.meshGold)
+                                .padding(.horizontal, 5)
+                                .padding(.vertical, 1)
+                                .background(Capsule().fill(DesignTokens.Colors.meshGold.opacity(0.15)))
+                        }
+
+                        Text("Payment of \(CurrencyFormatter.format(amount: packet.amountDouble)) to \(packet.toAccount.capitalized) was cryptographically signed and stored in local device storage. It will remain queued until propagated across the mesh.")
+                            .font(DesignTokens.Typography.caption)
+                            .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
+                            .fixedSize(horizontal: false, vertical: true)
+
+                        Text("Payment ID: \(packet.paymentId)")
+                            .font(.system(size: 10, design: .monospaced))
+                            .foregroundColor(DesignTokens.Colors.onSurfaceVariant.opacity(0.8))
+                            .lineLimit(1)
+                            .padding(.top, 2)
+                    }
+
+                    Spacer()
+
+                    Button {
+                        withAnimation {
+                            offlineCreationState = .idle
+                        }
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
+                            .padding(6)
+                    }
+                }
+                .padding(12)
+                .background(
+                    RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.base)
+                        .fill(DesignTokens.Colors.surfaceContainerHigh.opacity(0.7))
+                        .overlay(RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.base).stroke(DesignTokens.Colors.meshGold.opacity(0.35), lineWidth: 1))
+                )
+            }
+
+            if case .failed(let errorMsg) = offlineCreationState {
+                HStack(spacing: 8) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundColor(DesignTokens.Colors.error)
+                        .font(.system(size: 14))
+
+                    Text(errorMsg)
+                        .font(DesignTokens.Typography.caption)
+                        .foregroundColor(DesignTokens.Colors.onSurface)
+                        .lineLimit(2)
+
+                    Spacer()
+
+                    Button {
+                        withAnimation {
+                            offlineCreationState = .idle
+                        }
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
+                    }
+                }
+                .padding(10)
+                .background(
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(DesignTokens.Colors.error.opacity(0.12))
+                        .overlay(RoundedRectangle(cornerRadius: 10).stroke(DesignTokens.Colors.error.opacity(0.3), lineWidth: 1))
+                )
+            }
+
             Button {
                 showQRModal.toggle()
             } label: {
@@ -517,11 +697,11 @@ public struct OfflinePayView: View {
 
             VStack(alignment: .leading, spacing: 14) {
                 if case .settled(let result) = submissionState {
-                    // Step 1: Authenticated Sender (Alice)
+                    // Step 1: Device Cryptographic Signer (Alice)
                     journeyStepRow(
                         stepNumber: "1",
-                        title: "1. Authenticated Sender (\(result.fromAccount.capitalized))",
-                        subtitle: "RSA-PSS signed · Verified against SenderKeyRegistry",
+                        title: "1. Device Cryptographic Signer (\(result.fromAccount.capitalized))",
+                        subtitle: "RSASSA-PSS-SHA256 device-signed · Verified with registered public key",
                         icon: "checkmark",
                         iconBg: DesignTokens.Colors.meshGold,
                         iconFg: DesignTokens.Colors.onMeshGold,
@@ -555,8 +735,8 @@ public struct OfflinePayView: View {
                     // Idle / Submitting State
                     journeyStepRow(
                         stepNumber: "1",
-                        title: "1. Authenticate Sender (Alice)",
-                        subtitle: "RSA-PSS signing in backend simulation",
+                        title: "1. Hardware Enclave / Keychain Signer",
+                        subtitle: "RSASSA-PSS-SHA256 signing on-device · Canonical V1 bytes",
                         icon: submissionState == .submitting ? "arrow.triangle.2.circlepath" : "lock.shield",
                         iconBg: DesignTokens.Colors.meshGold,
                         iconFg: DesignTokens.Colors.onMeshGold,
@@ -634,7 +814,597 @@ public struct OfflinePayView: View {
         }
     }
 
+    private var offlineButtonForegroundColor: Color {
+        if case .failed = offlineCreationState {
+            return DesignTokens.Colors.error
+        }
+        return DesignTokens.Colors.onSurface
+    }
+
+    private var offlineButtonStrokeColor: Color {
+        switch offlineCreationState {
+        case .created:
+            return DesignTokens.Colors.meshGold.opacity(0.6)
+        case .creating:
+            return DesignTokens.Colors.secondary.opacity(0.6)
+        case .failed:
+            return DesignTokens.Colors.error.opacity(0.6)
+        case .idle:
+            return DesignTokens.Colors.secondary.opacity(0.4)
+        }
+    }
+
+    // MARK: - Locally Stored Queued Offline Packets Section (Stage 6.2)
+    private var queuedPacketsSection: some View {
+        VStack(spacing: 12) {
+            HStack {
+                HStack(spacing: 6) {
+                    Image(systemName: "tray.full.fill")
+                        .foregroundColor(DesignTokens.Colors.meshGold)
+                        .font(.system(size: 16))
+                    Text("Local Queued Packets")
+                        .font(DesignTokens.Typography.bodyMd)
+                        .fontWeight(.semibold)
+                        .foregroundColor(DesignTokens.Colors.onSurface)
+                }
+
+                Spacer()
+
+                HStack(spacing: 4) {
+                    Circle()
+                        .fill(DesignTokens.Colors.meshGold)
+                        .frame(width: 6, height: 6)
+                    Text("\(queuedPackets.count) QUEUED")
+                        .font(DesignTokens.Typography.labelCaps)
+                        .foregroundColor(DesignTokens.Colors.meshGold)
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 3)
+                .background(
+                    Capsule().fill(DesignTokens.Colors.meshGold.opacity(0.15))
+                )
+            }
+
+            if queuedPackets.isEmpty {
+                VStack(spacing: 6) {
+                    Image(systemName: "tray")
+                        .font(.system(size: 24))
+                        .foregroundColor(DesignTokens.Colors.onSurfaceVariant.opacity(0.6))
+                    Text("No offline packets in local queue")
+                        .font(DesignTokens.Typography.bodySm)
+                        .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
+                    Text("Tap 'Create Offline Packet' above to sign and persist a payment locally without network.")
+                        .font(DesignTokens.Typography.caption)
+                        .foregroundColor(DesignTokens.Colors.onSurfaceVariant.opacity(0.7))
+                        .multilineTextAlignment(.center)
+                }
+                .padding(.vertical, 16)
+                .frame(maxWidth: .infinity)
+            } else {
+                VStack(spacing: 8) {
+                    ForEach(queuedPackets) { packet in
+                        queuedPacketRow(packet)
+                    }
+                }
+            }
+        }
+        .padding(DesignTokens.Spacing.md)
+        .liquidCard(strokeColor: DesignTokens.Colors.glassStrokeLight)
+    }
+
+    private func queuedPacketRow(_ packet: OfflinePaymentPacket) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                HStack(spacing: 6) {
+                    Text(CurrencyFormatter.format(amount: packet.amountDouble))
+                        .font(DesignTokens.Typography.headlineSm)
+                        .fontWeight(.bold)
+                        .foregroundColor(DesignTokens.Colors.onSurface)
+
+                    Text("→ \(packet.toAccount.capitalized)")
+                        .font(DesignTokens.Typography.bodySm)
+                        .fontWeight(.medium)
+                        .foregroundColor(DesignTokens.Colors.secondary)
+                }
+
+                Spacer()
+
+                HStack(spacing: 4) {
+                    Circle()
+                        .fill(DesignTokens.Colors.meshGold)
+                        .frame(width: 6, height: 6)
+                    Text("QUEUED")
+                        .font(DesignTokens.Typography.labelCaps)
+                        .foregroundColor(DesignTokens.Colors.meshGold)
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 3)
+                .background(
+                    Capsule().fill(DesignTokens.Colors.surfaceContainerHighest)
+                )
+            }
+
+            HStack {
+                Text("ID: \(packet.paymentId)")
+                    .font(.system(size: 10, design: .monospaced))
+                    .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
+                    .lineLimit(1)
+
+                Spacer()
+
+                Text(packet.createdAt.isoString)
+                    .font(.system(size: 10, design: .monospaced))
+                    .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
+            }
+
+            Text("From: \(packet.fromAccount.capitalized) · Local Signed Packet · Awaiting Mesh / Bridge")
+                .font(.system(size: 10))
+                .foregroundColor(DesignTokens.Colors.onSurfaceVariant.opacity(0.8))
+        }
+        .padding(10)
+        .background(
+            RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.base)
+                .fill(DesignTokens.Colors.surfaceContainerLow.opacity(0.8))
+                .overlay(RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.base).stroke(DesignTokens.Colors.glassStrokeDim, lineWidth: 1))
+        )
+    }
+
+    // MARK: - Nearby Mesh Peer Discovery & Transport (Stage 6.3B)
+    private var peerTransportSection: some View {
+        VStack(spacing: 12) {
+            // Header Row
+            HStack {
+                HStack(spacing: 6) {
+                    Image(systemName: "antenna.radiowaves.left.and.right")
+                        .foregroundColor(DesignTokens.Colors.meshGold)
+                        .font(.system(size: 16))
+                    Text("Nearby Peer Transport")
+                        .font(DesignTokens.Typography.bodyMd)
+                        .fontWeight(.semibold)
+                        .foregroundColor(DesignTokens.Colors.onSurface)
+                }
+
+                Spacer()
+
+                // Discovery status badge
+                HStack(spacing: 4) {
+                    Circle()
+                        .fill(transportService.isDiscovering ? DesignTokens.Colors.meshGold : DesignTokens.Colors.onSurfaceVariant)
+                        .frame(width: 6, height: 6)
+                    Text(transportService.isDiscovering ? "DISCOVERING" : "IDLE")
+                        .font(DesignTokens.Typography.labelCaps)
+                        .foregroundColor(transportService.isDiscovering ? DesignTokens.Colors.meshGold : DesignTokens.Colors.onSurfaceVariant)
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 3)
+                .background(
+                    Capsule().fill(transportService.isDiscovering ? DesignTokens.Colors.meshGold.opacity(0.15) : DesignTokens.Colors.surfaceContainerHighest)
+                )
+            }
+
+            // Connection State Capsule
+            HStack(spacing: 8) {
+                Image(systemName: transportService.connectedPeer != nil ? "link.circle.fill" : "link.badge.plus")
+                    .foregroundColor(transportService.connectedPeer != nil ? DesignTokens.Colors.primary : DesignTokens.Colors.onSurfaceVariant)
+                    .font(.system(size: 15))
+
+                if let peer = transportService.connectedPeer {
+                    Text("Connected to \(peer.displayName)")
+                        .font(DesignTokens.Typography.bodySm)
+                        .fontWeight(.medium)
+                        .foregroundColor(DesignTokens.Colors.onSurface)
+
+                    Spacer()
+
+                    Button {
+                        transportService.disconnect()
+                    } label: {
+                        Text("Disconnect")
+                            .font(DesignTokens.Typography.caption)
+                            .foregroundColor(DesignTokens.Colors.error)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3)
+                            .background(Capsule().fill(DesignTokens.Colors.error.opacity(0.15)))
+                    }
+                } else {
+                    Text(transportService.connectionState == .connecting ? "Connecting to peer..." : "Not connected to any peer")
+                        .font(DesignTokens.Typography.bodySm)
+                        .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
+                    Spacer()
+                }
+            }
+            .padding(10)
+            .background(
+                RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.base)
+                    .fill(DesignTokens.Colors.surfaceContainerLow.opacity(0.7))
+            )
+
+            // Discovery Controls & Discovered Peers
+            if transportService.connectedPeer == nil {
+                VStack(spacing: 8) {
+                    Button {
+                        if transportService.isDiscovering {
+                            transportService.stopDiscovery()
+                        } else {
+                            transportService.startDiscovery()
+                        }
+                    } label: {
+                        HStack(spacing: 8) {
+                            Image(systemName: transportService.isDiscovering ? "stop.circle.fill" : "play.circle.fill")
+                                .font(.system(size: 16))
+                                .foregroundColor(transportService.isDiscovering ? DesignTokens.Colors.error : DesignTokens.Colors.meshGold)
+                            Text(transportService.isDiscovering ? "Stop Discovery" : "Scan for Nearby iPhones")
+                                .font(DesignTokens.Typography.bodySm)
+                                .fontWeight(.semibold)
+                                .foregroundColor(DesignTokens.Colors.onSurface)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 40)
+                        .background(
+                            Capsule()
+                                .fill(DesignTokens.Colors.surfaceContainerHigh.opacity(0.8))
+                                .overlay(Capsule().stroke(DesignTokens.Colors.meshGold.opacity(0.3), lineWidth: 1))
+                        )
+                    }
+                    .buttonStyle(.plain)
+
+                    if transportService.isDiscovering {
+                        if transportService.discoveredPeers.isEmpty {
+                            HStack(spacing: 8) {
+                                ProgressView()
+                                    .scaleEffect(0.8)
+                                    .tint(DesignTokens.Colors.meshGold)
+                                Text("Looking for nearby iPhones (AWDL / BLE)...")
+                                    .font(DesignTokens.Typography.caption)
+                                    .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
+                            }
+                            .padding(.vertical, 6)
+                        } else {
+                            VStack(spacing: 6) {
+                                ForEach(transportService.discoveredPeers, id: \.self) { peer in
+                                    HStack {
+                                        Image(systemName: "iphone.gen3")
+                                            .foregroundColor(DesignTokens.Colors.meshGold)
+                                            .font(.system(size: 14))
+                                        Text(peer.displayName)
+                                            .font(DesignTokens.Typography.bodySm)
+                                            .foregroundColor(DesignTokens.Colors.onSurface)
+
+                                        Spacer()
+
+                                        Button {
+                                            transportService.invitePeer(peer)
+                                        } label: {
+                                            Text("Connect")
+                                                .font(DesignTokens.Typography.caption)
+                                                .fontWeight(.semibold)
+                                                .foregroundColor(DesignTokens.Colors.onMeshGold)
+                                                .padding(.horizontal, 10)
+                                                .padding(.vertical, 4)
+                                                .background(Capsule().fill(DesignTokens.Colors.meshGold))
+                                        }
+                                        .buttonStyle(.plain)
+                                    }
+                                    .padding(8)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.base)
+                                            .fill(DesignTokens.Colors.surfaceContainerHigh.opacity(0.5))
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            } else if let peer = transportService.connectedPeer {
+                // Connected Actions: Select & Send Queued Packet
+                VStack(spacing: 8) {
+                    if queuedPackets.isEmpty {
+                        Text("No queued offline packets available. Create one above to transfer.")
+                            .font(DesignTokens.Typography.caption)
+                            .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
+                            .padding(.vertical, 4)
+                    } else {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("SELECT PACKET TO TRANSMIT:")
+                                .font(DesignTokens.Typography.labelCaps)
+                                .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
+
+                            ForEach(queuedPackets) { packet in
+                                let isSelected = (selectedPacketForTransfer?.paymentId == packet.paymentId)
+                                Button {
+                                    selectedPacketForTransfer = packet
+                                } label: {
+                                    HStack {
+                                        Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                                            .foregroundColor(isSelected ? DesignTokens.Colors.meshGold : DesignTokens.Colors.onSurfaceVariant)
+                                            .font(.system(size: 16))
+
+                                        Text(CurrencyFormatter.format(amount: packet.amountDouble))
+                                            .font(DesignTokens.Typography.bodySm)
+                                            .fontWeight(.bold)
+                                            .foregroundColor(DesignTokens.Colors.onSurface)
+
+                                        Text("→ \(packet.toAccount.capitalized)")
+                                            .font(DesignTokens.Typography.caption)
+                                            .foregroundColor(DesignTokens.Colors.secondary)
+
+                                        Spacer()
+
+                                        Text(packet.paymentId.prefix(8) + "…")
+                                            .font(.system(size: 10, design: .monospaced))
+                                            .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
+                                    }
+                                    .padding(8)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.base)
+                                            .fill(isSelected ? DesignTokens.Colors.meshGold.opacity(0.12) : DesignTokens.Colors.surfaceContainerHigh.opacity(0.4))
+                                            .overlay(RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.base).stroke(isSelected ? DesignTokens.Colors.meshGold.opacity(0.5) : Color.clear, lineWidth: 1))
+                                    )
+                                }
+                                .buttonStyle(.plain)
+                            }
+
+                            // Send Button
+                            let targetPacket = selectedPacketForTransfer ?? queuedPackets.first
+                            Button {
+                                if let pkt = targetPacket {
+                                    Task {
+                                        try? await transportService.sendPacket(pkt, to: peer)
+                                    }
+                                }
+                            } label: {
+                                HStack(spacing: 8) {
+                                    if case .sending = transportService.sendStatus {
+                                        ProgressView()
+                                            .tint(DesignTokens.Colors.onMeshGold)
+                                            .scaleEffect(0.8)
+                                    } else {
+                                        Image(systemName: "paperplane.fill")
+                                            .font(.system(size: 14))
+                                            .foregroundColor(DesignTokens.Colors.onMeshGold)
+                                    }
+                                    Text("Send Packet to \(peer.displayName)")
+                                        .font(DesignTokens.Typography.bodySm)
+                                        .fontWeight(.semibold)
+                                        .foregroundColor(DesignTokens.Colors.onMeshGold)
+                                }
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 42)
+                                .background(
+                                    Capsule()
+                                        .fill(DesignTokens.Colors.meshGold)
+                                )
+                            }
+                            .buttonStyle(.plain)
+                            .disabled(targetPacket == nil || transportService.sendStatus == .sending(targetPacket?.paymentId ?? ""))
+                        }
+                    }
+                }
+            }
+
+            // Transport Status & Error Banners
+            if let err = transportService.errorMessage {
+                HStack(spacing: 6) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundColor(DesignTokens.Colors.error)
+                        .font(.system(size: 12))
+                    Text(err)
+                        .font(DesignTokens.Typography.caption)
+                        .foregroundColor(DesignTokens.Colors.error)
+                    Spacer()
+                    Button { transportService.clearBanners() } label: {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 10))
+                            .foregroundColor(DesignTokens.Colors.error)
+                    }
+                }
+                .padding(8)
+                .background(RoundedRectangle(cornerRadius: 8).fill(DesignTokens.Colors.error.opacity(0.12)))
+            } else if let msg = transportService.statusMessage {
+                HStack(spacing: 6) {
+                    Image(systemName: "info.circle.fill")
+                        .foregroundColor(DesignTokens.Colors.meshGold)
+                        .font(.system(size: 12))
+                    Text(msg)
+                        .font(DesignTokens.Typography.caption)
+                        .foregroundColor(DesignTokens.Colors.onSurface)
+                    Spacer()
+                }
+                .padding(8)
+                .background(RoundedRectangle(cornerRadius: 8).fill(DesignTokens.Colors.surfaceContainerHigh.opacity(0.6)))
+            }
+        }
+        .padding(DesignTokens.Spacing.md)
+        .liquidCard(strokeColor: DesignTokens.Colors.glassStrokeLight)
+    }
+
+    // MARK: - Received Packets Inbox Section (Stage 6.3B)
+    private var receivedPacketsInboxSection: some View {
+        VStack(spacing: 12) {
+            HStack {
+                HStack(spacing: 6) {
+                    Image(systemName: "tray.and.arrow.down.fill")
+                        .foregroundColor(DesignTokens.Colors.secondary)
+                        .font(.system(size: 16))
+                    Text("Received Packets Inbox")
+                        .font(DesignTokens.Typography.bodyMd)
+                        .fontWeight(.semibold)
+                        .foregroundColor(DesignTokens.Colors.onSurface)
+                }
+
+                Spacer()
+
+                HStack(spacing: 4) {
+                    Circle()
+                        .fill(DesignTokens.Colors.secondary)
+                        .frame(width: 6, height: 6)
+                    Text("\(receivedPackets.count) RECEIVED")
+                        .font(DesignTokens.Typography.labelCaps)
+                        .foregroundColor(DesignTokens.Colors.secondary)
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 3)
+                .background(
+                    Capsule().fill(DesignTokens.Colors.secondary.opacity(0.15))
+                )
+            }
+
+            if receivedPackets.isEmpty {
+                VStack(spacing: 6) {
+                    Image(systemName: "tray")
+                        .font(.system(size: 24))
+                        .foregroundColor(DesignTokens.Colors.onSurfaceVariant.opacity(0.6))
+                    Text("No received offline packets in inbox")
+                        .font(DesignTokens.Typography.bodySm)
+                        .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
+                    Text("When a nearby iPhone transfers an offline packet to you, it will appear here awaiting bridge settlement.")
+                        .font(DesignTokens.Typography.caption)
+                        .foregroundColor(DesignTokens.Colors.onSurfaceVariant.opacity(0.7))
+                        .multilineTextAlignment(.center)
+                }
+                .padding(.vertical, 16)
+                .frame(maxWidth: .infinity)
+            } else {
+                VStack(spacing: 8) {
+                    ForEach(receivedPackets) { record in
+                        receivedPacketRow(record)
+                    }
+                }
+            }
+        }
+        .padding(DesignTokens.Spacing.md)
+        .liquidCard(strokeColor: DesignTokens.Colors.glassStrokeLight)
+    }
+
+    private func receivedPacketRow(_ record: ReceivedPacketRecord) -> some View {
+        let packet = record.packet
+        return VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                HStack(spacing: 6) {
+                    Text(CurrencyFormatter.format(amount: packet.amountDouble))
+                        .font(DesignTokens.Typography.headlineSm)
+                        .fontWeight(.bold)
+                        .foregroundColor(DesignTokens.Colors.onSurface)
+
+                    Text("from \(packet.fromAccount.capitalized)")
+                        .font(DesignTokens.Typography.bodySm)
+                        .fontWeight(.medium)
+                        .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
+                }
+
+                Spacer()
+
+                // Crucial prominent status badge: RECEIVED — NOT SETTLED
+                HStack(spacing: 4) {
+                    Circle()
+                        .fill(Color(red: 0.95, green: 0.65, blue: 0.1))
+                        .frame(width: 6, height: 6)
+                    Text("RECEIVED — NOT SETTLED")
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundColor(Color(red: 0.95, green: 0.65, blue: 0.1))
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(
+                    Capsule().fill(Color(red: 0.95, green: 0.65, blue: 0.1).opacity(0.18))
+                )
+            }
+
+            HStack {
+                Text("Peer: \(record.receivedFromPeer) · ID: \(packet.paymentId.prefix(12))…")
+                    .font(.system(size: 10, design: .monospaced))
+                    .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
+                    .lineLimit(1)
+
+                Spacer()
+
+                Text(record.receivedAt.isoString)
+                    .font(.system(size: 10, design: .monospaced))
+                    .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
+            }
+
+            // Trust boundary breakdown
+            VStack(alignment: .leading, spacing: 3) {
+                HStack(spacing: 4) {
+                    Image(systemName: record.isSignatureMathematicallyValid ? "checkmark.shield.fill" : "xmark.shield.fill")
+                        .font(.system(size: 10))
+                        .foregroundColor(record.isSignatureMathematicallyValid ? DesignTokens.Colors.primary : DesignTokens.Colors.error)
+                    Text(record.isSignatureMathematicallyValid ? "RSASSA-PSS: Mathematically Valid" : "Signature Invalid")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundColor(record.isSignatureMathematicallyValid ? DesignTokens.Colors.primary : DesignTokens.Colors.error)
+
+                    Text("·")
+                        .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
+
+                    Text("Identity: Unverified Offline")
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
+                }
+
+                Text("Held in local inbox. Does not update account balance until submitted to bridge.")
+                    .font(.system(size: 9))
+                    .foregroundColor(DesignTokens.Colors.onSurfaceVariant.opacity(0.8))
+            }
+        }
+        .padding(10)
+        .background(
+            RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.base)
+                .fill(DesignTokens.Colors.surfaceContainerLow.opacity(0.8))
+                .overlay(RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.base).stroke(DesignTokens.Colors.glassStrokeDim, lineWidth: 1))
+        )
+    }
+
+    @MainActor
+    private func reloadReceivedPackets() {
+        self.receivedPackets = ReceivedPacketStore.shared.getAll()
+    }
+
     // MARK: - Actions
+
+    @MainActor
+    private func createOfflinePacketAction() async {
+        guard offlineCreationState != .creating else { return }
+
+        guard amount > 0 else {
+            withAnimation(.easeInOut(duration: 0.2)) {
+                offlineCreationState = .failed("Transfer amount must be strictly greater than zero.")
+            }
+            return
+        }
+        guard senderId.caseInsensitiveCompare(recipientId) != .orderedSame else {
+            withAnimation(.easeInOut(duration: 0.2)) {
+                offlineCreationState = .failed("Sender and recipient accounts must be different.")
+            }
+            return
+        }
+
+        withAnimation(.easeInOut(duration: 0.2)) {
+            offlineCreationState = .creating
+        }
+
+        do {
+            let packet = try OfflinePaymentService.shared.createAndQueueOfflinePayment(
+                fromAccount: senderId,
+                toAccount: recipientId,
+                amount: amount,
+                memo: memo
+            )
+
+            withAnimation(.spring(response: 0.4, dampingFraction: 0.75)) {
+                offlineCreationState = .created(packet)
+            }
+            reloadQueuedPackets()
+        } catch {
+            withAnimation(.easeInOut(duration: 0.2)) {
+                offlineCreationState = .failed(error.localizedDescription)
+            }
+        }
+    }
+
+    @MainActor
+    private func reloadQueuedPackets() {
+        self.queuedPackets = OfflinePaymentService.shared.getQueuedPackets()
+    }
 
     @MainActor
     private func executeMeshPayment() async {
@@ -654,11 +1424,27 @@ public struct OfflinePayView: View {
         }
 
         do {
-            let result = try await UPIMeshAPIClient.shared.submitMeshTransfer(
-                from: senderId,
-                to: recipientId,
-                amount: amount,
-                ttl: 5
+            // 1. Obtain local device identity with hardware-backed RSA key
+            let identity = try DeviceIdentityManager.shared.getOrCreateIdentity()
+
+            // 2. Construct canonical PaymentInstruction
+            let instruction = try PaymentInstruction.create(
+                fromAccount: senderId,
+                toAccount: recipientId,
+                amountDouble: amount
+            )
+
+            // 3. Digitally sign the exact canonical UTF-8 bytes using device's private key
+            let canonicalBytes = instruction.toCanonicalBytes()
+            let signatureBase64 = try DeviceIdentityManager.shared.signBase64(message: canonicalBytes)
+
+            // 4. Attach signature to instruction
+            let signedInstruction = try instruction.withSignature(signatureBase64)
+
+            // 5. Submit signed instruction via structured API path (POST /api/mesh/submit)
+            let result = try await UPIMeshAPIClient.shared.submitSignedMeshPayment(
+                instruction: signedInstruction,
+                deviceId: identity.deviceId
             )
 
             withAnimation(.spring(response: 0.4, dampingFraction: 0.75)) {

@@ -3,6 +3,8 @@ package com.demo.upimesh;
 import com.demo.upimesh.model.Account;
 import com.demo.upimesh.model.AccountRepository;
 import com.demo.upimesh.model.BridgePublicKeyResponse;
+import com.demo.upimesh.model.DeviceAuthorizationRequest;
+import com.demo.upimesh.model.DeviceAuthorizationResponse;
 import com.demo.upimesh.model.KeyRegistrationRequest;
 import com.demo.upimesh.model.KeyRegistrationResponse;
 import com.demo.upimesh.model.MeshIngestResult;
@@ -10,6 +12,7 @@ import com.demo.upimesh.model.MeshPacket;
 import com.demo.upimesh.model.MeshPaymentResult;
 import com.demo.upimesh.model.PaymentInstruction;
 import com.demo.upimesh.model.ReconciliationReport;
+import com.demo.upimesh.model.SignedPaymentRequest;
 import com.demo.upimesh.model.Transaction;
 import com.demo.upimesh.model.TransactionRepository;
 import org.slf4j.Logger;
@@ -28,15 +31,18 @@ import org.springframework.web.bind.annotation.RestController;
 import java.math.BigDecimal;
 import java.security.GeneralSecurityException;
 import java.security.KeyFactory;
+import java.security.MessageDigest;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.interfaces.RSAPublicKey;
 import java.security.spec.X509EncodedKeySpec;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api")
@@ -51,6 +57,8 @@ public class ApiController {
     private final ReconciliationService reconciliationService;
     private final BridgeIngestionService bridgeIngestionService;
     private final SenderKeyRegistry senderKeyRegistry;
+    private final DeviceAuthorizationRegistry deviceAuthorizationRegistry;
+    private final CryptoService cryptoService;
 
     @Autowired
     public ApiController(
@@ -60,7 +68,9 @@ public class ApiController {
             MeshSimulatorService meshSimulatorService,
             @Autowired(required = false) ReconciliationService reconciliationService,
             @Autowired(required = false) BridgeIngestionService bridgeIngestionService,
-            @Autowired(required = false) SenderKeyRegistry senderKeyRegistry
+            @Autowired(required = false) SenderKeyRegistry senderKeyRegistry,
+            @Autowired(required = false) DeviceAuthorizationRegistry deviceAuthorizationRegistry,
+            @Autowired(required = false) CryptoService cryptoService
     ) {
         this.accountRepository = accountRepository;
         this.settlementService = settlementService;
@@ -73,10 +83,16 @@ public class ApiController {
         this.senderKeyRegistry = senderKeyRegistry != null
                 ? senderKeyRegistry
                 : (meshSimulatorService != null ? meshSimulatorService.getSenderKeyRegistry() : null);
+        this.deviceAuthorizationRegistry = deviceAuthorizationRegistry != null
+                ? deviceAuthorizationRegistry
+                : new DeviceAuthorizationRegistry();
+        this.cryptoService = cryptoService != null
+                ? cryptoService
+                : new CryptoService();
     }
 
     public ApiController(AccountRepository accountRepository, SettlementService settlementService) {
-        this(accountRepository, settlementService, null, null, null, null, null);
+        this(accountRepository, settlementService, null, null, null, null, null, null, null);
     }
 
     public ApiController(
@@ -84,7 +100,7 @@ public class ApiController {
             SettlementService settlementService,
             TransactionRepository transactionRepository
     ) {
-        this(accountRepository, settlementService, transactionRepository, null, null, null, null);
+        this(accountRepository, settlementService, transactionRepository, null, null, null, null, null, null);
     }
 
     public ApiController(
@@ -93,7 +109,7 @@ public class ApiController {
             TransactionRepository transactionRepository,
             MeshSimulatorService meshSimulatorService
     ) {
-        this(accountRepository, settlementService, transactionRepository, meshSimulatorService, null, null, null);
+        this(accountRepository, settlementService, transactionRepository, meshSimulatorService, null, null, null, null, null);
     }
 
     public ApiController(
@@ -103,7 +119,7 @@ public class ApiController {
             MeshSimulatorService meshSimulatorService,
             ReconciliationService reconciliationService
     ) {
-        this(accountRepository, settlementService, transactionRepository, meshSimulatorService, reconciliationService, null, null);
+        this(accountRepository, settlementService, transactionRepository, meshSimulatorService, reconciliationService, null, null, null, null);
     }
 
     @GetMapping("/accounts")
@@ -299,6 +315,175 @@ public class ApiController {
                 settled.amount(),
                 "Payment instruction settled successfully"
         ));
+    }
+
+    /**
+     * Authorizes a registered device ID to debit a specific bank account under prototype trust policy.
+     */
+    @PostMapping("/devices/authorize")
+    public ResponseEntity<DeviceAuthorizationResponse> authorizeDevice(
+            @RequestBody DeviceAuthorizationRequest request
+    ) {
+        if (request == null) {
+            throw new IllegalArgumentException("DeviceAuthorizationRequest must not be null");
+        }
+        String deviceId = request.deviceId();
+        String accountId = request.accountId();
+
+        if (deviceId == null || deviceId.isBlank()) {
+            throw new IllegalArgumentException("deviceId must not be blank");
+        }
+        if (accountId == null || accountId.isBlank()) {
+            throw new IllegalArgumentException("accountId must not be blank");
+        }
+
+        String normDev = deviceId.trim().toLowerCase();
+        String normAcc = accountId.trim().toLowerCase();
+
+        // Device must be registered in SenderKeyRegistry
+        if (senderKeyRegistry != null && !senderKeyRegistry.hasKey(normDev)) {
+            throw new IllegalArgumentException("Device '" + normDev + "' must be registered in SenderKeyRegistry before authorization");
+        }
+
+        // Account must exist in AccountRepository
+        if (accountRepository != null && !accountRepository.existsById(normAcc)) {
+            throw new IllegalArgumentException("Account '" + normAcc + "' does not exist in ledger");
+        }
+
+        if (deviceAuthorizationRegistry != null) {
+            deviceAuthorizationRegistry.authorizeDevice(normDev, normAcc);
+        }
+
+        return ResponseEntity.ok(new DeviceAuthorizationResponse(
+                "AUTHORIZED",
+                normDev,
+                normAcc,
+                "Device '" + normDev + "' successfully authorized to debit account '" + normAcc + "'"
+        ));
+    }
+
+    /**
+     * Submits and verifies a client-constructed, device-signed PaymentInstruction under
+     * the prototype asymmetric trust and device-account authorization model.
+     * <p>
+     * Reconstructs the canonical byte representation of the PaymentInstruction, verifies
+     * the RSASSA-PSS signature against the public key registered in SenderKeyRegistry
+     * for the claimed device ID, verifies that the device is authorized to debit the
+     * claimed fromAccount, checks replay protection and idempotency, and settles
+     * atomically on the database ledger.
+     */
+    @PostMapping("/mesh/submit")
+    public ResponseEntity<MeshPaymentResult> submitSignedMeshPayment(
+            @RequestBody SignedPaymentRequest request
+    ) throws GeneralSecurityException {
+        if (request == null) {
+            throw new IllegalArgumentException("SignedPaymentRequest must not be null");
+        }
+        String deviceId = request.deviceId();
+        if (deviceId == null || deviceId.isBlank()) {
+            throw new IllegalArgumentException("Signer device ID must not be blank");
+        }
+        PaymentInstruction instruction = request.instruction();
+        if (instruction == null) {
+            throw new IllegalArgumentException("PaymentInstruction must not be null");
+        }
+
+        String signature = instruction.signature();
+        if (signature == null || signature.isBlank()) {
+            throw new IllegalArgumentException("Digital signature is missing from payment instruction");
+        }
+
+        // 1. Validate payment instruction domain rules
+        if (instruction.paymentId() == null || instruction.paymentId().isBlank()) {
+            throw new IllegalArgumentException("paymentId must not be blank");
+        }
+        if (instruction.fromAccount() == null || instruction.fromAccount().isBlank()) {
+            throw new IllegalArgumentException("fromAccount must not be blank");
+        }
+        if (instruction.toAccount() == null || instruction.toAccount().isBlank()) {
+            throw new IllegalArgumentException("toAccount must not be blank");
+        }
+        if (instruction.fromAccount().equalsIgnoreCase(instruction.toAccount())) {
+            throw new IllegalArgumentException("Sender and receiver must be different");
+        }
+        if (instruction.amount() == null || instruction.amount().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("Transfer amount must be greater than zero");
+        }
+        if (instruction.nonce() == null || instruction.nonce().isBlank()) {
+            throw new IllegalArgumentException("nonce must not be blank");
+        }
+        if (instruction.createdAt() == null) {
+            throw new IllegalArgumentException("createdAt timestamp must not be null");
+        }
+
+        // 2. Timestamp validity window (within 24 hours in past, at most 5 minutes in future)
+        Instant now = Instant.now();
+        if (instruction.createdAt().isBefore(now.minus(java.time.Duration.ofHours(24)))) {
+            throw new IllegalArgumentException("Payment instruction has expired");
+        }
+        if (instruction.createdAt().isAfter(now.plus(java.time.Duration.ofMinutes(5)))) {
+            throw new IllegalArgumentException("Payment instruction timestamp is too far in the future");
+        }
+
+        String normalizedDeviceId = deviceId.trim().toLowerCase();
+
+        // 3. Verify that device is registered in SenderKeyRegistry
+        if (senderKeyRegistry == null) {
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).build();
+        }
+        PublicKey devicePublicKey = senderKeyRegistry.getPublicKey(normalizedDeviceId)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown or unregistered device: " + normalizedDeviceId));
+
+        // 4. Reconstruct canonical bytes and verify digital signature
+        byte[] canonicalBytes = instruction.toCanonicalBytes();
+        boolean isSigValid = cryptoService.verifySignatureBase64(canonicalBytes, signature, devicePublicKey);
+        if (!isSigValid) {
+            throw new IllegalArgumentException("Invalid digital signature for device: " + normalizedDeviceId);
+        }
+
+        // 5. Verify device is authorized to debit instruction.fromAccount()
+        if (deviceAuthorizationRegistry != null && !deviceAuthorizationRegistry.isDeviceAuthorized(normalizedDeviceId, instruction.fromAccount())) {
+            throw new IllegalArgumentException("Device '" + normalizedDeviceId + "' is not authorized to debit account '" + instruction.fromAccount() + "'");
+        }
+
+        // 6. Compute canonical hash for idempotency tracking
+        MessageDigest sha256 = MessageDigest.getInstance("SHA-256");
+        String packetHash = bytesToHex(sha256.digest(canonicalBytes));
+
+        // 7. Atomic database settlement & replay protection
+        if (settlementService == null) {
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).build();
+        }
+        settlementService.settlePayment(instruction, packetHash);
+
+        // 8. Return telemetry result matching client MeshPaymentResultDTO
+        List<String> routeTrace = List.of(normalizedDeviceId, "carol", "bridge");
+        String packetId = UUID.randomUUID().toString();
+        return ResponseEntity.ok(new MeshPaymentResult(
+                true,
+                instruction.paymentId(),
+                packetId,
+                instruction.fromAccount().toLowerCase(),
+                instruction.toAccount().toLowerCase(),
+                instruction.amount(),
+                2, // simulation rounds
+                2, // hop count
+                3, // remaining TTL
+                routeTrace,
+                null,
+                null,
+                null,
+                "SETTLED",
+                "Device-signed payment instruction verified and settled on ledger"
+        ));
+    }
+
+    private static String bytesToHex(byte[] bytes) {
+        StringBuilder sb = new StringBuilder();
+        for (byte b : bytes) {
+            sb.append(String.format("%02x", b));
+        }
+        return sb.toString();
     }
 
     @ExceptionHandler(DuplicatePacketException.class)

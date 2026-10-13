@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0/EN">
+<plist version="1.0">
+<dict>
+    <key>CFBundleIdentifier</key>
+    <string>com.jarjis.upimesh.companion</string>
+    <key>CFBundleName</key>
+    <string>UPIMeshCompanion</string>
+    <key>CFBundleDisplayName</key>
+    <string>UPI Mesh Companion</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleShortVersionString</key>
+    <string>1.0</string>
+    <key>CFBundleVersion</key>
+    <string>1</string>
+    <key>LSMinimumSystemVersion</key>
+    <string>14.0</string>
+    <key>NSLocalNetworkUsageDescription</key>
+    <string>UPIMesh Companion discovers nearby iPhones to test offline payment packet transfer without internet.</string>
+    <key>NSBonjourServices</key>
+    <array>
+        <string>_upimesh-pay._tcp</string>
+        <string>_upimesh-pay._udp</string>
+    </array>
+    <key>NSAppTransportSecurity</key>
+    <dict>
+        <key>NSAllowsLocalNetworking</key>
+        <true/>
+    </dict>
+</dict>
+</plist>

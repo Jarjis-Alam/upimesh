@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UPI OFFLINE MESH — 3:4 Cinematic Portrait Teaser</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23050505'/><circle cx='50' cy='50' r='30' fill='%23FFD400'/></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;600;700;800&family=Inter:wght@300;400;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@500;700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app-wrapper">
+    <!-- 3:4 Portrait Screen Container -->
+    <main id="viewport-container">
+      <!-- 1440 x 1920 HiDPI Canvas -->
+      <canvas id="teaser-canvas" width="1440" height="1920"></canvas>
+
+      <!-- Vignette & Subtle Film Filter -->
+      <div id="cinematic-overlay"></div>
+
+      <!-- Top Status HUD -->
+      <header id="hud-header">
+        <div class="hud-left">
+          <span class="hud-live-pill"><span class="pulse-dot"></span> P2P MESH</span>
+          <span class="hud-item mono">3:4 PORTRAIT</span>
+        </div>
+        <div class="hud-right">
+          <span id="timecode" class="mono">00:00.00 / 00:24.00</span>
+          <span class="hud-item mono">[<span id="scene-tag">THE HOOK</span>]</span>
+        </div>
+      </header>
+
+      <!-- Bottom Floating Control Bar -->
+      <footer id="hud-footer">
+        <div class="controls-left">
+          <button id="btn-play" class="btn" title="Play / Pause (Space)">
+            <svg id="play-icon" viewBox="0 0 24 24" width="16" height="16">
+              <polygon points="6,4 20,12 6,20" fill="currentColor"/>
+            </svg>
+            <svg id="pause-icon" viewBox="0 0 24 24" width="16" height="16" style="display:none;">
+              <rect x="5" y="4" width="4" height="16" fill="currentColor"/>
+              <rect x="15" y="4" width="4" height="16" fill="currentColor"/>
+            </svg>
+            <span id="btn-play-text">PLAY</span>
+          </button>
+          <button id="btn-restart" class="btn btn-secondary" title="Restart (R)">RESTART</button>
+          <button id="btn-audio" class="btn btn-secondary" title="Toggle Audio (M)">
+            <span id="audio-icon">🔊</span> <span id="audio-label">SOUND: ON</span>
+          </button>
+        </div>
+
+        <div class="scrubber-container">
+          <input type="range" id="timeline-scrubber" min="0" max="24" step="0.01" value="0">
+        </div>
+
+        <div class="controls-right">
+          <select id="export-preset" class="btn btn-secondary" title="Export Preset">
+            <option value="high">1440×1920 (Master)</option>
+            <option value="social" selected>1080×1440 (Social / IG)</option>
+          </select>
+          <button id="btn-record" class="btn btn-accent" title="Record Video (WebM)">
+            <span class="rec-dot"></span> RECORD
+          </button>
+          <button id="btn-fullscreen" class="btn btn-secondary" title="Fullscreen (F)">⛶</button>
+        </div>
+      </footer>
+
+      <!-- Recording Status Overlay -->
+      <div id="recording-banner" class="hidden">
+        <span class="rec-pulse"></span> CAPTURING 3:4 VIDEO — <span id="rec-status">0.0s / 24.0s</span>
+      </div>
+    </main>
+  </div>
+
+  <script src="audio.js"></script>
+  <script src="recorder.js"></script>
+  <script src="animation.js"></script>
+</body>
+</html>

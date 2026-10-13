@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1440" />
+    <title>UPI Offline Mesh — Teaser</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      html, body {
+        margin: 0;
+        width: 1080px;
+        height: 1440px;
+        overflow: hidden;
+        background: #080A0D;
+      }
+      #root {
+        position: relative;
+        width: 1080px;
+        height: 1440px;
+        overflow: hidden;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-no-timeline
+      data-start="0"
+      data-duration="23"
+      data-width="1080"
+      data-height="1440"
+    >
+      <!-- Sub-compositions for each scene -->
+      <div
+        id="scene1"
+        data-composition-id="scene1"
+        data-composition-src="compositions/scene1.html"
+        data-start="0"
+        data-duration="3.5"
+      ></div>
+
+      <div
+        id="scene2"
+        data-composition-id="scene2"
+        data-composition-src="compositions/scene2.html"
+        data-start="3.5"
+        data-duration="4.0"
+      ></div>
+
+      <div
+        id="scene3"
+        data-composition-id="scene3"
+        data-composition-src="compositions/scene3.html"
+        data-start="7.5"
+        data-duration="4.5"
+      ></div>
+
+      <div
+        id="scene4"
+        data-composition-id="scene4"
+        data-composition-src="compositions/scene4.html"
+        data-start="12.0"
+        data-duration="4.0"
+      ></div>
+
+      <div
+        id="scene5"
+        data-composition-id="scene5"
+        data-composition-src="compositions/scene5.html"
+        data-start="16.0"
+        data-duration="3.5"
+      ></div>
+
+      <div
+        id="scene6"
+        data-composition-id="scene6"
+        data-composition-src="compositions/scene6.html"
+        data-start="19.5"
+        data-duration="3.5"
+      ></div>
+
+      <!-- Background Music Track with graceful fade-out at end -->
+      <audio
+        id="bgm"
+        src="assets/music/happy-beats-business-moves-vol-12-by-ende-dot-app.mp3"
+        data-start="0"
+        data-duration="23"
+        data-volume="0.85"
+        data-fade-out="1.5"
+      ></audio>
+
+      <!-- SFX Cues for Key Moments -->
+      <audio
+        id="sfx-signal-drop"
+        src="assets/sfx/switch_001.ogg"
+        data-start="2.1"
+        data-duration="0.25"
+        data-volume="0.6"
+      ></audio>
+
+      <audio
+        id="sfx-packet-init"
+        src="assets/sfx/drop_001.ogg"
+        data-start="4.1"
+        data-duration="0.11"
+        data-volume="0.7"
+      ></audio>
+
+      <audio
+        id="sfx-mesh-hop"
+        src="assets/sfx/select_008.ogg"
+        data-start="8.6"
+        data-duration="0.05"
+        data-volume="0.65"
+      ></audio>
+
+      <audio
+        id="sfx-settled"
+        src="assets/sfx/drop_001.ogg"
+        data-start="16.6"
+        data-duration="0.11"
+        data-volume="0.75"
+      ></audio>
+
+      <audio
+        id="sfx-reveal"
+        src="assets/sfx/select_008.ogg"
+        data-start="20.7"
+        data-duration="0.05"
+        data-volume="0.8"
+      ></audio>
+    </div>
+  </body>
+</html>

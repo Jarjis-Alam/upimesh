@@ -98,10 +98,90 @@ public struct MeshPaymentResultDTO: Codable, Equatable, Sendable {
     }
 }
 
+// MARK: - Key Registration DTO Models
+
+/// Data Transfer Object representing request payload for `POST /api/keys/register`.
+///
+/// Matches the backend record `com.demo.upimesh.model.KeyRegistrationRequest`.
+public struct KeyRegistrationRequestDTO: Codable, Sendable, Equatable {
+    public let accountId: String
+    public let publicKey: String
+
+    public init(accountId: String, publicKey: String) {
+        self.accountId = accountId
+        self.publicKey = publicKey
+    }
+}
+
+/// Data Transfer Object representing response payload from `POST /api/keys/register`.
+///
+/// Matches the backend record `com.demo.upimesh.model.KeyRegistrationResponse`.
+public struct KeyRegistrationResponseDTO: Codable, Sendable, Equatable {
+    public let status: String
+    public let accountId: String
+    public let message: String
+
+    public init(status: String, accountId: String, message: String) {
+        self.status = status
+        self.accountId = accountId
+        self.message = message
+    }
+
+    /// Returns true if registered freshly or already registered with the identical key.
+    public var isSuccess: Bool {
+        status == "REGISTERED" || status == "ALREADY_REGISTERED"
+    }
+}
+
+// MARK: - Signed Payment & Device Authorization DTO Models
+
+/// Data Transfer Object representing request payload for `POST /api/mesh/submit`.
+public struct SignedPaymentRequestDTO: Codable, Sendable, Equatable {
+    public let deviceId: String
+    public let instruction: PaymentInstruction
+
+    public init(deviceId: String, instruction: PaymentInstruction) {
+        self.deviceId = deviceId
+        self.instruction = instruction
+    }
+}
+
+/// Data Transfer Object representing request payload for `POST /api/devices/authorize`.
+public struct DeviceAuthorizationRequestDTO: Codable, Sendable, Equatable {
+    public let deviceId: String
+    public let accountId: String
+
+    public init(deviceId: String, accountId: String) {
+        self.deviceId = deviceId
+        self.accountId = accountId
+    }
+}
+
+/// Data Transfer Object representing response payload from `POST /api/devices/authorize`.
+public struct DeviceAuthorizationResponseDTO: Codable, Sendable, Equatable {
+    public let status: String
+    public let deviceId: String
+    public let accountId: String
+    public let message: String
+
+    public init(status: String, deviceId: String, accountId: String, message: String) {
+        self.status = status
+        self.deviceId = deviceId
+        self.accountId = accountId
+        self.message = message
+    }
+
+    public var isSuccess: Bool {
+        status == "AUTHORIZED"
+    }
+}
+
 // MARK: - Notifications
 
 extension Notification.Name {
     public static let meshAccountsUpdated = Notification.Name("UPIMeshAccountsUpdated")
+    public static let deviceKeyRegistered = Notification.Name("UPIMeshDeviceKeyRegistered")
+    public static let deviceAuthorized = Notification.Name("UPIMeshDeviceAuthorized")
 }
 
 // MARK: - API Errors
@@ -110,8 +190,11 @@ public enum APIError: LocalizedError, Sendable, Equatable {
     case invalidURL
     case invalidParameters(String)
     case paymentFailed(String)
+    case registrationFailed(String)
+    case authorizationFailed(String)
     case networkError(String)
     case invalidResponse(Int)
+    case encodingError(String)
     case decodingError(String)
 
     public var errorDescription: String? {
@@ -119,23 +202,40 @@ public enum APIError: LocalizedError, Sendable, Equatable {
         case .invalidURL:
             return "Invalid server endpoint URL"
         case .invalidParameters(let details):
-            return "Invalid payment parameters: \(details)"
+            return "Invalid parameters: \(details)"
         case .paymentFailed(let message):
             return "Mesh payment settlement rejected: \(message)"
+        case .registrationFailed(let message):
+            return "Device public key registration rejected: \(message)"
+        case .authorizationFailed(let message):
+            return "Device account authorization rejected: \(message)"
         case .networkError(let details):
             return "Network connection failed: \(details)"
         case .invalidResponse(let code):
             return "Server returned unexpected HTTP status: \(code)"
+        case .encodingError(let details):
+            return "Failed to encode request payload: \(details)"
         case .decodingError(let details):
             return "Failed to decode response: \(details)"
         }
     }
 }
 
+// MARK: - Mesh Payment Submitting Protocol
+
+/// Abstraction for submitting client-constructed, device-signed payment instructions to the bridge.
+/// Enables mock injection and unit testing without network dependencies.
+public protocol MeshPaymentSubmitting: Sendable {
+    func submitSignedMeshPayment(
+        instruction: PaymentInstruction,
+        deviceId: String
+    ) async throws -> MeshPaymentResultDTO
+}
+
 // MARK: - API Client
 
 /// Lightweight HTTP API client for UPI Offline Mesh backend integration.
-public final class UPIMeshAPIClient: Sendable {
+public final class UPIMeshAPIClient: MeshPaymentSubmitting, Sendable {
     public static let shared = UPIMeshAPIClient()
 
     private let session: URLSession
@@ -289,6 +389,191 @@ public final class UPIMeshAPIClient: Sendable {
             }
         } else {
             throw APIError.invalidResponse(httpResponse.statusCode)
+        }
+    }
+
+    /// Registers an exported device public key with the backend bridge via `POST /api/keys/register`.
+    ///
+    /// Transmits only the Base64 X.509 SubjectPublicKeyInfo public key; never transmits private keys.
+    public func registerPublicKey(
+        accountId: String,
+        publicKeyBase64: String
+    ) async throws -> KeyRegistrationResponseDTO {
+        let trimmedId = accountId.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedKey = publicKeyBase64.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard !trimmedId.isEmpty else {
+            throw APIError.invalidParameters("Account or device identifier must not be blank")
+        }
+        guard !trimmedKey.isEmpty else {
+            throw APIError.invalidParameters("Public key must not be blank")
+        }
+
+        guard let url = URL(string: "/api/keys/register", relativeTo: config.baseURL) else {
+            throw APIError.invalidURL
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.timeoutInterval = 10.0
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+
+        let requestDTO = KeyRegistrationRequestDTO(accountId: trimmedId, publicKey: trimmedKey)
+        do {
+            request.httpBody = try JSONEncoder().encode(requestDTO)
+        } catch {
+            throw APIError.invalidParameters("Failed to encode key registration request: \(error.localizedDescription)")
+        }
+
+        let data: Data
+        let response: URLResponse
+        do {
+            (data, response) = try await session.data(for: request)
+        } catch {
+            throw APIError.networkError(error.localizedDescription)
+        }
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.invalidResponse(-1)
+        }
+
+        let decoder = JSONDecoder()
+
+        if (200...299).contains(httpResponse.statusCode) {
+            do {
+                return try decoder.decode(KeyRegistrationResponseDTO.self, from: data)
+            } catch {
+                throw APIError.decodingError(error.localizedDescription)
+            }
+        } else if httpResponse.statusCode == 400 {
+            // Backend returns plaintext error message on HTTP 400
+            if let errorString = String(data: data, encoding: .utf8), !errorString.isEmpty {
+                throw APIError.registrationFailed(errorString)
+            } else {
+                throw APIError.invalidResponse(httpResponse.statusCode)
+            }
+        } else {
+            throw APIError.invalidResponse(httpResponse.statusCode)
+        }
+    }
+
+    /// Submits a client-constructed, device-signed PaymentInstruction via `POST /api/mesh/submit`.
+    ///
+    /// The private key never leaves the device Keychain. Only the signed instruction and deviceId are transmitted.
+    public func submitSignedMeshPayment(
+        instruction: PaymentInstruction,
+        deviceId: String
+    ) async throws -> MeshPaymentResultDTO {
+        let trimmedDeviceId = deviceId.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedDeviceId.isEmpty else {
+            throw APIError.invalidParameters("Device ID must not be empty")
+        }
+        guard instruction.signature != nil else {
+            throw APIError.invalidParameters("PaymentInstruction must have a non-nil digital signature")
+        }
+
+        let url = config.baseURL.appendingPathComponent("api/mesh/submit")
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.timeoutInterval = 15.0
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+
+        let payload = SignedPaymentRequestDTO(deviceId: trimmedDeviceId, instruction: instruction)
+        do {
+            let encoder = JSONEncoder()
+            request.httpBody = try encoder.encode(payload)
+        } catch {
+            throw APIError.encodingError(error.localizedDescription)
+        }
+
+        let data: Data
+        let response: URLResponse
+        do {
+            (data, response) = try await session.data(for: request)
+        } catch {
+            throw APIError.networkError(error.localizedDescription)
+        }
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.invalidResponse(-1)
+        }
+
+        let decoder = JSONDecoder()
+
+        if (200...299).contains(httpResponse.statusCode) {
+            do {
+                return try decoder.decode(MeshPaymentResultDTO.self, from: data)
+            } catch {
+                throw APIError.decodingError(error.localizedDescription)
+            }
+        } else if httpResponse.statusCode == 400 || httpResponse.statusCode == 403 {
+            if let errorResult = try? decoder.decode(MeshPaymentResultDTO.self, from: data) {
+                throw APIError.paymentFailed(errorResult.message)
+            } else if let errorString = String(data: data, encoding: .utf8), !errorString.isEmpty {
+                throw APIError.paymentFailed(errorString)
+            } else {
+                throw APIError.invalidResponse(httpResponse.statusCode)
+            }
+        } else {
+            throw APIError.invalidResponse(httpResponse.statusCode)
+        }
+    }
+
+    /// Authorizes a registered device ID to debit a specific account via `POST /api/devices/authorize`.
+    public func authorizeDevice(
+        deviceId: String,
+        accountId: String
+    ) async throws -> DeviceAuthorizationResponseDTO {
+        let trimmedDeviceId = deviceId.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedAccountId = accountId.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard !trimmedDeviceId.isEmpty else {
+            throw APIError.invalidParameters("Device ID must not be blank")
+        }
+        guard !trimmedAccountId.isEmpty else {
+            throw APIError.invalidParameters("Account ID must not be blank")
+        }
+
+        let url = config.baseURL.appendingPathComponent("api/devices/authorize")
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.timeoutInterval = 10.0
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+
+        let payload = DeviceAuthorizationRequestDTO(deviceId: trimmedDeviceId, accountId: trimmedAccountId)
+        do {
+            request.httpBody = try JSONEncoder().encode(payload)
+        } catch {
+            throw APIError.encodingError(error.localizedDescription)
+        }
+
+        let data: Data
+        let response: URLResponse
+        do {
+            (data, response) = try await session.data(for: request)
+        } catch {
+            throw APIError.networkError(error.localizedDescription)
+        }
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.invalidResponse(-1)
+        }
+
+        let decoder = JSONDecoder()
+        if (200...299).contains(httpResponse.statusCode) {
+            do {
+                let dto = try decoder.decode(DeviceAuthorizationResponseDTO.self, from: data)
+                NotificationCenter.default.post(name: .deviceAuthorized, object: dto)
+                return dto
+            } catch {
+                throw APIError.decodingError(error.localizedDescription)
+            }
+        } else {
+            let errorMsg = String(data: data, encoding: .utf8) ?? "HTTP \(httpResponse.statusCode)"
+            throw APIError.registrationFailed(errorMsg)
         }
     }
 }

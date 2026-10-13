@@ -21,6 +21,18 @@
 		A1000012 /* UPIMeshAPIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000013 /* UPIMeshAPIClient.swift */; };
 		A1000013 /* MeshWalletsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000015 /* MeshWalletsViewModel.swift */; };
 		A1000014 /* CurrencyFormatter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000016 /* CurrencyFormatter.swift */; };
+		A1000015 /* DeviceIdentityManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000017 /* DeviceIdentityManager.swift */; };
+		A1000016 /* PaymentInstruction.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000018 /* PaymentInstruction.swift */; };
+		A1000017 /* OfflinePaymentPacket.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000019 /* OfflinePaymentPacket.swift */; };
+		A1000018 /* OfflinePacketStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000020 /* OfflinePacketStore.swift */; };
+		A1000019 /* OfflinePaymentService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000021 /* OfflinePaymentService.swift */; };
+		A1000020 /* OfflinePaymentPacketTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000022 /* OfflinePaymentPacketTests.swift */; };
+		A1000021 /* ReceivedPacketStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000023 /* ReceivedPacketStore.swift */; };
+		A1000022 /* PeerTransferMessage.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000024 /* PeerTransferMessage.swift */; };
+		A1000023 /* MeshPeerTransportService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000025 /* MeshPeerTransportService.swift */; };
+		A1000024 /* PeerTransportTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000026 /* PeerTransportTests.swift */; };
+		A1000025 /* OfflineReconciliationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000027 /* OfflineReconciliationService.swift */; };
+		A1000026 /* ReconciliationServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000028 /* ReconciliationServiceTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -40,6 +52,18 @@
 		A2000014 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		A2000015 /* MeshWalletsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeshWalletsViewModel.swift; sourceTree = "<group>"; };
 		A2000016 /* CurrencyFormatter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CurrencyFormatter.swift; sourceTree = "<group>"; };
+		A2000017 /* DeviceIdentityManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceIdentityManager.swift; sourceTree = "<group>"; };
+		A2000018 /* PaymentInstruction.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaymentInstruction.swift; sourceTree = "<group>"; };
+		A2000019 /* OfflinePaymentPacket.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfflinePaymentPacket.swift; sourceTree = "<group>"; };
+		A2000020 /* OfflinePacketStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfflinePacketStore.swift; sourceTree = "<group>"; };
+		A2000021 /* OfflinePaymentService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfflinePaymentService.swift; sourceTree = "<group>"; };
+		A2000022 /* OfflinePaymentPacketTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfflinePaymentPacketTests.swift; sourceTree = "<group>"; };
+		A2000023 /* ReceivedPacketStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReceivedPacketStore.swift; sourceTree = "<group>"; };
+		A2000024 /* PeerTransferMessage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PeerTransferMessage.swift; sourceTree = "<group>"; };
+		A2000025 /* MeshPeerTransportService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeshPeerTransportService.swift; sourceTree = "<group>"; };
+		A2000026 /* PeerTransportTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PeerTransportTests.swift; sourceTree = "<group>"; };
+		A2000027 /* OfflineReconciliationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfflineReconciliationService.swift; sourceTree = "<group>"; };
+		A2000028 /* ReconciliationServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReconciliationServiceTests.swift; sourceTree = "<group>"; };
 		A2000099 /* UPIMesh.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = UPIMesh.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -78,6 +102,18 @@
 				A2000013 /* UPIMeshAPIClient.swift */,
 				A2000015 /* MeshWalletsViewModel.swift */,
 				A2000016 /* CurrencyFormatter.swift */,
+				A2000017 /* DeviceIdentityManager.swift */,
+				A2000018 /* PaymentInstruction.swift */,
+				A2000019 /* OfflinePaymentPacket.swift */,
+				A2000020 /* OfflinePacketStore.swift */,
+				A2000021 /* OfflinePaymentService.swift */,
+				A2000022 /* OfflinePaymentPacketTests.swift */,
+				A2000023 /* ReceivedPacketStore.swift */,
+				A2000024 /* PeerTransferMessage.swift */,
+				A2000025 /* MeshPeerTransportService.swift */,
+				A2000026 /* PeerTransportTests.swift */,
+				A2000027 /* OfflineReconciliationService.swift */,
+				A2000028 /* ReconciliationServiceTests.swift */,
 				A2000014 /* Info.plist */,
 				A2000010 /* Assets.xcassets */,
 				A4000004 /* Preview Content */,
@@ -183,6 +219,18 @@
 				A1000012 /* UPIMeshAPIClient.swift in Sources */,
 				A1000013 /* MeshWalletsViewModel.swift in Sources */,
 				A1000014 /* CurrencyFormatter.swift in Sources */,
+				A1000015 /* DeviceIdentityManager.swift in Sources */,
+				A1000016 /* PaymentInstruction.swift in Sources */,
+				A1000017 /* OfflinePaymentPacket.swift in Sources */,
+				A1000018 /* OfflinePacketStore.swift in Sources */,
+				A1000019 /* OfflinePaymentService.swift in Sources */,
+				A1000020 /* OfflinePaymentPacketTests.swift in Sources */,
+				A1000021 /* ReceivedPacketStore.swift in Sources */,
+				A1000022 /* PeerTransferMessage.swift in Sources */,
+				A1000023 /* MeshPeerTransportService.swift in Sources */,
+				A1000024 /* PeerTransportTests.swift in Sources */,
+				A1000025 /* OfflineReconciliationService.swift in Sources */,
+				A1000026 /* ReconciliationServiceTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

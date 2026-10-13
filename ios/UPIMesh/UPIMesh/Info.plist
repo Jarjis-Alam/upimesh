@@ -3,7 +3,12 @@
 <plist version="1.0">
 <dict>
     <key>NSLocalNetworkUsageDescription</key>
-    <string>UPIMesh connects to the local offline UPI mesh gateway server on your network.</string>
+    <string>UPIMesh discovers nearby iPhones to exchange offline payment packets without internet.</string>
+    <key>NSBonjourServices</key>
+    <array>
+        <string>_upimesh-pay._tcp</string>
+        <string>_upimesh-pay._udp</string>
+    </array>
     <key>NSAppTransportSecurity</key>
     <dict>
         <key>NSAllowsLocalNetworking</key>

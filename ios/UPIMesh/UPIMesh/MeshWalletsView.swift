@@ -13,6 +13,26 @@ public struct MeshWalletsView: View {
     @State private var resetSuccess: Bool = false
     @State private var expandedWalletId: String? = "alice"
 
+    // MARK: - Device Key Registration State (Milestone 3B & 3C)
+    @State private var deviceIdentity: DeviceIdentity? = nil
+    @State private var registrationAccountId: String = ""
+    @State private var registrationState: KeyRegistrationState = .idle
+    @State private var authorizationState: DeviceAuthorizationState = .idle
+
+    public enum KeyRegistrationState: Equatable {
+        case idle
+        case submitting
+        case registered(KeyRegistrationResponseDTO)
+        case failed(String)
+    }
+
+    public enum DeviceAuthorizationState: Equatable {
+        case idle
+        case authorizing
+        case authorized(DeviceAuthorizationResponseDTO)
+        case failed(String)
+    }
+
     public init() {}
 
     public var body: some View {
@@ -27,6 +47,9 @@ public struct MeshWalletsView: View {
 
                 // MARK: - Mesh Vault Hero Card
                 vaultHeroCard
+
+                // MARK: - Device Cryptographic Identity & Bridge Registration Card
+                deviceKeyRegistrationCard
 
                 // MARK: - Hardware Enclaves Subheader
                 HStack {
@@ -67,6 +90,7 @@ public struct MeshWalletsView: View {
         }
         .task {
             await viewModel.loadLiveAccounts()
+            loadLocalDeviceIdentity()
         }
         .refreshable {
             await viewModel.loadLiveAccounts()
@@ -727,6 +751,458 @@ public struct MeshWalletsView: View {
         case "alice": return "Available Enclave Balance"
         case "bob": return "Merchant Vault Balance"
         default: return "Staking Bond Balance"
+        }
+    }
+
+    // MARK: - Device Key Registration Card & Helpers (Milestone 3B)
+
+    private var deviceKeyRegistrationCard: some View {
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
+            // Header
+            HStack(spacing: 8) {
+                Image(systemName: "key.fill")
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundColor(DesignTokens.Colors.meshGold)
+
+                Text("DEVICE CRYPTOGRAPHIC IDENTITY")
+                    .font(DesignTokens.Typography.labelCaps)
+                    .foregroundColor(DesignTokens.Colors.onSurface)
+                    .tracking(1.0)
+
+                Spacer()
+
+                HStack(spacing: 5) {
+                    Circle()
+                        .fill(keyStatusColor)
+                        .frame(width: 6, height: 6)
+                    Text(keyStatusText)
+                        .font(DesignTokens.Typography.labelCaps)
+                        .foregroundColor(keyStatusColor)
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 3)
+                .background(Capsule().fill(keyStatusColor.opacity(0.12)))
+            }
+
+            if let identity = deviceIdentity {
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack {
+                        Text("Device UUID")
+                            .font(DesignTokens.Typography.caption)
+                            .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
+                        Spacer()
+                        Text(identity.deviceId)
+                            .font(DesignTokens.Typography.labelNumericSm)
+                            .foregroundColor(DesignTokens.Colors.onSurface)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                    }
+
+                    HStack {
+                        Text("Key Spec")
+                            .font(DesignTokens.Typography.caption)
+                            .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
+                        Spacer()
+                        Text("\(identity.keyType) • \(identity.algorithm)")
+                            .font(DesignTokens.Typography.labelNumericSm)
+                            .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
+                    }
+
+                    HStack {
+                        Text("Fingerprint")
+                            .font(DesignTokens.Typography.caption)
+                            .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
+                        Spacer()
+                        Text(identity.publicKeyFingerprint)
+                            .font(DesignTokens.Typography.labelNumericSm)
+                            .foregroundColor(DesignTokens.Colors.meshGold)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                    }
+                }
+                .padding(10)
+                .background(
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(DesignTokens.Colors.surfaceContainerLowest.opacity(0.6))
+                )
+
+                // Registration target field
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Register with Bridge as:")
+                        .font(DesignTokens.Typography.caption)
+                        .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
+
+                    HStack(spacing: 8) {
+                        TextField("Target Account or Device ID", text: $registrationAccountId)
+                            .textFieldStyle(.plain)
+                            .font(DesignTokens.Typography.bodySm)
+                            .foregroundColor(DesignTokens.Colors.onSurface)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 8)
+                            .background(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(DesignTokens.Colors.surfaceContainerLow)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 8)
+                                            .stroke(DesignTokens.Colors.outlineVariant.opacity(0.4), lineWidth: 1)
+                                    )
+                            )
+                            .autocapitalization(.none)
+                            .disableAutocorrection(true)
+
+                        Button {
+                            registrationAccountId = identity.deviceId
+                        } label: {
+                            Text("Use UUID")
+                                .font(DesignTokens.Typography.labelCaps)
+                                .foregroundColor(DesignTokens.Colors.meshGold)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 8)
+                                .background(
+                                    Capsule().fill(DesignTokens.Colors.meshGold.opacity(0.12))
+                                )
+                        }
+                        .buttonStyle(.plain)
+
+                        Button {
+                            registrationAccountId = "alice"
+                        } label: {
+                            Text("Use Alice")
+                                .font(DesignTokens.Typography.labelCaps)
+                                .foregroundColor(DesignTokens.Colors.secondary)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 8)
+                                .background(
+                                    Capsule().fill(DesignTokens.Colors.secondary.opacity(0.12))
+                                )
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.top, 2)
+
+                // Status message if registered or failed
+                if case .registered(let response) = registrationState {
+                    HStack(spacing: 8) {
+                        Image(systemName: "checkmark.seal.fill")
+                            .font(.system(size: 14))
+                            .foregroundColor(DesignTokens.Colors.secondary)
+
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(response.status == "REGISTERED" ? "KEY REGISTERED ON BRIDGE" : "ALREADY REGISTERED ON BRIDGE")
+                                .font(DesignTokens.Typography.labelCaps)
+                                .foregroundColor(DesignTokens.Colors.secondary)
+                            Text(response.message)
+                                .font(.system(size: 11))
+                                .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
+                        }
+                    }
+                    .padding(8)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(DesignTokens.Colors.secondary.opacity(0.12))
+                    )
+                } else if case .failed(let errMsg) = registrationState {
+                    HStack(spacing: 8) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .font(.system(size: 14))
+                            .foregroundColor(DesignTokens.Colors.error)
+
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text("REGISTRATION FAILED")
+                                .font(DesignTokens.Typography.labelCaps)
+                                .foregroundColor(DesignTokens.Colors.error)
+                            Text(errMsg)
+                                .font(.system(size: 11))
+                                .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
+                        }
+                    }
+                    .padding(8)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(DesignTokens.Colors.error.opacity(0.12))
+                    )
+                }
+
+                // Explicit Action Button
+                Button {
+                    Task {
+                        await executeExplicitRegistration()
+                    }
+                } label: {
+                    HStack(spacing: 8) {
+                        if registrationState == .submitting {
+                            ProgressView()
+                                .tint(buttonForegroundColor)
+                                .scaleEffect(0.8)
+                            Text("Registering with Bridge...")
+                                .font(DesignTokens.Typography.bodySm)
+                                .fontWeight(.semibold)
+                        } else {
+                            Image(systemName: "arrow.up.circle.fill")
+                                .font(.system(size: 14, weight: .bold))
+                            Text(buttonLabelText)
+                                .font(DesignTokens.Typography.bodySm)
+                                .fontWeight(.semibold)
+                        }
+                    }
+                    .foregroundColor(buttonForegroundColor)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 42)
+                    .background(
+                        RoundedRectangle(cornerRadius: 10)
+                            .fill(buttonBackgroundColor)
+                    )
+                }
+                .disabled(registrationState == .submitting)
+                .buttonStyle(.plain)
+                .padding(.top, 4)
+
+                // Prototype Account Authorization (Milestone 3C)
+                accountAuthorizationSection
+            } else {
+                Text("Initializing Keychain Secure Identity...")
+                    .font(DesignTokens.Typography.caption)
+                    .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
+            }
+        }
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(DesignTokens.Colors.surfaceContainerHigh.opacity(0.7))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16)
+                        .stroke(DesignTokens.Colors.outlineVariant.opacity(0.35), lineWidth: 1)
+                )
+        )
+    }
+
+    private var keyStatusColor: Color {
+        if case .registered = registrationState {
+            return DesignTokens.Colors.secondary
+        } else if case .failed = registrationState {
+            return DesignTokens.Colors.error
+        } else if case .submitting = registrationState {
+            return DesignTokens.Colors.meshGold
+        } else {
+            return DesignTokens.Colors.onSurfaceVariant
+        }
+    }
+
+    private var keyStatusText: String {
+        if case .registered(let response) = registrationState {
+            return response.status
+        } else if case .failed = registrationState {
+            return "FAILED"
+        } else if case .submitting = registrationState {
+            return "REGISTERING"
+        } else {
+            return "LOCAL ONLY"
+        }
+    }
+
+    private var buttonLabelText: String {
+        if case .registered = registrationState {
+            return "Re-Verify Registration with Bridge"
+        } else if case .failed = registrationState {
+            return "Retry Registration"
+        } else {
+            return "Register Public Key with Bridge"
+        }
+    }
+
+    private var buttonForegroundColor: Color {
+        if case .registered = registrationState {
+            return DesignTokens.Colors.secondary
+        } else {
+            return DesignTokens.Colors.onMeshGold
+        }
+    }
+
+    private var buttonBackgroundColor: Color {
+        if case .registered = registrationState {
+            return DesignTokens.Colors.secondary.opacity(0.15)
+        } else {
+            return DesignTokens.Colors.meshGold
+        }
+    }
+
+    private func loadLocalDeviceIdentity() {
+        do {
+            let id = try DeviceIdentityManager.shared.getOrCreateIdentity()
+            self.deviceIdentity = id
+            if registrationAccountId.isEmpty {
+                self.registrationAccountId = id.deviceId
+            }
+        } catch {
+            // Error logged internally
+        }
+    }
+
+    private func executeExplicitRegistration() async {
+        guard let id = deviceIdentity else { return }
+        let targetId = registrationAccountId.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !targetId.isEmpty else {
+            registrationState = .failed("Please provide a valid account or device identifier")
+            return
+        }
+
+        registrationState = .submitting
+        do {
+            let response = try await UPIMeshAPIClient.shared.registerPublicKey(
+                accountId: targetId,
+                publicKeyBase64: id.publicKeyBase64X509
+            )
+            registrationState = .registered(response)
+            NotificationCenter.default.post(name: .deviceKeyRegistered, object: response)
+        } catch {
+            registrationState = .failed(error.localizedDescription)
+        }
+    }
+
+    // MARK: - Prototype Account Authorization Section (Milestone 3C)
+
+    @ViewBuilder
+    private var accountAuthorizationSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Divider()
+                .background(DesignTokens.Colors.surfaceVariant.opacity(0.4))
+                .padding(.vertical, 4)
+
+            HStack {
+                Image(systemName: "person.badge.shield.checkmark.fill")
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundColor(authorizationStatusColor)
+
+                Text("PROTOTYPE ACCOUNT BINDING")
+                    .font(DesignTokens.Typography.labelCaps)
+                    .foregroundColor(DesignTokens.Colors.onSurface)
+                    .tracking(1.0)
+
+                Spacer()
+
+                HStack(spacing: 5) {
+                    Circle()
+                        .fill(authorizationStatusColor)
+                        .frame(width: 6, height: 6)
+                    Text(authorizationStatusText)
+                        .font(DesignTokens.Typography.labelCaps)
+                        .foregroundColor(authorizationStatusColor)
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 3)
+                .background(Capsule().fill(authorizationStatusColor.opacity(0.12)))
+            }
+
+            Text("Public-key registration proves identity, but does not grant debit authority. Explicitly bind this hardware device to 'alice' to permit settlement.")
+                .font(DesignTokens.Typography.caption)
+                .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
+
+            if case .authorized(let authResp) = authorizationState {
+                HStack(spacing: 8) {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 13))
+                        .foregroundColor(DesignTokens.Colors.secondary)
+                    Text(authResp.message)
+                        .font(.system(size: 11))
+                        .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
+                }
+                .padding(8)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(DesignTokens.Colors.secondary.opacity(0.12))
+                )
+            } else if case .failed(let errMsg) = authorizationState {
+                HStack(spacing: 8) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.system(size: 13))
+                        .foregroundColor(DesignTokens.Colors.error)
+                    Text(errMsg)
+                        .font(.system(size: 11))
+                        .foregroundColor(DesignTokens.Colors.error)
+                }
+                .padding(8)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(DesignTokens.Colors.error.opacity(0.12))
+                )
+            }
+
+            Button {
+                Task {
+                    await executeDeviceAuthorization()
+                }
+            } label: {
+                HStack(spacing: 8) {
+                    if authorizationState == .authorizing {
+                        ProgressView()
+                            .tint(DesignTokens.Colors.onMeshGold)
+                            .scaleEffect(0.8)
+                        Text("Authorizing with Bridge...")
+                            .font(DesignTokens.Typography.bodySm)
+                            .fontWeight(.semibold)
+                    } else {
+                        Image(systemName: "link.badge.plus")
+                            .font(.system(size: 13, weight: .bold))
+                        Text(authorizationButtonLabel)
+                            .font(DesignTokens.Typography.bodySm)
+                            .fontWeight(.semibold)
+                    }
+                }
+                .foregroundColor(DesignTokens.Colors.onMeshGold)
+                .frame(maxWidth: .infinity)
+                .frame(height: 38)
+                .background(
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(DesignTokens.Colors.meshGold.opacity(0.85))
+                )
+            }
+            .disabled(authorizationState == .authorizing)
+            .buttonStyle(.plain)
+        }
+    }
+
+    private var authorizationStatusColor: Color {
+        switch authorizationState {
+        case .authorized: return DesignTokens.Colors.secondary
+        case .failed: return DesignTokens.Colors.error
+        case .authorizing: return DesignTokens.Colors.meshGold
+        case .idle: return DesignTokens.Colors.onSurfaceVariant
+        }
+    }
+
+    private var authorizationStatusText: String {
+        switch authorizationState {
+        case .authorized: return "BOUND TO ALICE"
+        case .failed: return "FAILED"
+        case .authorizing: return "AUTHORIZING"
+        case .idle: return "UNBOUND"
+        }
+    }
+
+    private var authorizationButtonLabel: String {
+        switch authorizationState {
+        case .authorized: return "Re-Authorize for Alice"
+        case .failed: return "Retry Authorization for Alice"
+        case .authorizing, .idle: return "Authorize Device for Alice (demo)"
+        }
+    }
+
+    private func executeDeviceAuthorization() async {
+        guard let id = deviceIdentity else { return }
+        authorizationState = .authorizing
+        do {
+            let response = try await UPIMeshAPIClient.shared.authorizeDevice(
+                deviceId: id.deviceId,
+                accountId: "alice"
+            )
+            authorizationState = .authorized(response)
+        } catch {
+            authorizationState = .failed(error.localizedDescription)
         }
     }
 }

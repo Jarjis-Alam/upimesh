@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1440" />
+    <link rel="stylesheet" href="../shared.css" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      .crypto-stack {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+        width: 900px;
+        margin-top: 36px;
+      }
+      .crypto-card {
+        padding: 32px 36px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .crypto-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .crypto-title {
+        font-size: 24px;
+        font-weight: 700;
+        color: var(--text-primary);
+      }
+      .crypto-desc {
+        font-size: 16px;
+        line-height: 1.45;
+        color: var(--text-secondary);
+      }
+      .crypto-code-box {
+        font-family: "JetBrains Mono", ui-monospace, monospace;
+        font-size: 13px;
+        font-weight: 600;
+        padding: 12px 18px;
+        background: #080A0D;
+        border-radius: 14px;
+        border: 1px solid rgba(250, 204, 21, 0.25);
+        color: var(--accent-yellow);
+        line-height: 1.5;
+        margin-top: 4px;
+      }
+      .scene-content {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        height: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="scene4" data-width="1080" data-height="1440">
+      <div class="bg-grid"></div>
+      <div class="ambient-glow-center"></div>
+
+      <div class="top-nav">
+        <div class="brand-mark">
+          <div class="brand-dot"></div>
+          <span>UPI OFFLINE MESH</span>
+        </div>
+        <div class="proto-tag">RESEARCH PROTOTYPE • REPLAY PROTECTED</div>
+      </div>
+
+      <div class="scene-content">
+        <div class="scene-kicker s4-kicker">CRYPTOGRAPHIC PROOF</div>
+        <h2 class="scene-title s4-title">SIGNED. ENCRYPTED. DESIGNED FOR RESILIENCE.</h2>
+
+        <div class="crypto-stack">
+          <!-- Card 1: RSASSA-PSS -->
+          <div class="crypto-card card-box card-1">
+            <div class="crypto-header">
+              <div class="crypto-title">Hardware Digital Signature</div>
+              <div class="pill pill-yellow" style="font-size: 11px;">RSASSA-PSS SHA-256</div>
+            </div>
+            <div class="crypto-desc">Hardware-backed keypair proves payment authorization without exposing account credentials.</div>
+            <div class="crypto-code-box">
+              CANONICAL: Alice|Bob|10.00|INR|2026-10-12T13:45:00.123Z|pay_c940a2...<br />
+              SIGNATURE: VERIFIED • NONCE UNIQUE • SECURE ENCLAVE BOUND
+            </div>
+          </div>
+
+          <!-- Card 2: RSA-OAEP + AES-256-GCM -->
+          <div class="crypto-card card-box card-2">
+            <div class="crypto-header">
+              <div class="crypto-title">Zero-Knowledge Relay Envelope</div>
+              <div class="pill pill-yellow" style="font-size: 11px;">AES-256-GCM + RSA-OAEP</div>
+            </div>
+            <div class="crypto-desc">Intermediate hop devices only see opaque transport bytes. Payloads are decryptable solely by the bank bridge.</div>
+            <div class="crypto-code-box">
+              TRANSPORT ENVELOPE: OPAQUE CIPHERTEXT (TTL: 5, HOPS: 2)<br />
+              PRIVACY: INTERMEDIATE PEERS CANNOT READ BALANCES OR NAMES
+            </div>
+          </div>
+        </div>
+
+        <p class="scene-subtitle s4-subtitle">
+          Zero-trust mesh privacy: intermediate relays cannot inspect balances, names, or amounts.
+        </p>
+      </div>
+
+      <div class="telemetry-bar">
+        <div class="telemetry-item">
+          <div class="telemetry-dot"></div>
+          <span>CIPHER: AES_256_GCM</span>
+        </div>
+        <div>PUBKEY_EXCHANGE: RSA_OAEP_SHA256</div>
+        <div>INTEGRITY: 128-BIT AUTH TAG</div>
+      </div>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+      const tl = gsap.timeline({ paused: true });
+      window.__timelines["scene4"] = tl;
+
+      tl.fromTo(".s4-kicker", { y: 15, opacity: 0 }, { y: 0, opacity: 1, duration: 0.5, ease: "power2.out" }, 0.1);
+      tl.fromTo(".s4-title", { y: 20, opacity: 0 }, { y: 0, opacity: 1, duration: 0.6, ease: "power2.out" }, 0.2);
+      tl.fromTo(".card-1", { scale: 0.94, opacity: 0, y: 25 }, { scale: 1, opacity: 1, y: 0, duration: 0.7, ease: "power2.out" }, 0.5);
+      tl.fromTo(".card-2", { scale: 0.94, opacity: 0, y: 25 }, { scale: 1, opacity: 1, y: 0, duration: 0.7, ease: "power2.out" }, 0.8);
+      tl.fromTo(".s4-subtitle", { y: 15, opacity: 0 }, { y: 0, opacity: 1, duration: 0.6, ease: "power2.out" }, 1.2);
+
+      // Exit transition
+      tl.to(".scene-content", { opacity: 0, y: -20, duration: 0.4, ease: "power2.in" }, 3.6);
+    </script>
+  </body>
+</html>

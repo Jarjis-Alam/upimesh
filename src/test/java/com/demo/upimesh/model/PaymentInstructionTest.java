@@ -11,6 +11,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.nio.charset.StandardCharsets;
+
 class PaymentInstructionTest {
 
     @Test
@@ -156,6 +158,86 @@ class PaymentInstructionTest {
         assertEquals(unsigned.createdAt(), signed.createdAt());
         assertEquals(unsigned.nonce(), signed.nonce());
         assertEquals("test-signature", signed.signature());
+    }
+
+    @Test
+    @DisplayName("Canonical byte representation across whole and fractional seconds, amounts, and account normalization")
+    void canonicalBytesAcrossWholeAndFractionalSeconds() {
+        // Whole seconds
+        PaymentInstruction whole = new PaymentInstruction(
+                "p-whole",
+                "Alice",
+                "Bob",
+                new BigDecimal("100"),
+                Instant.parse("2026-10-12T12:00:00Z"),
+                "n-1",
+                null
+        );
+        String expectedWhole = "UPI-MESH-INSTRUCTION-V1\n" +
+                "paymentId:7:p-whole\n" +
+                "fromAccount:5:alice\n" +
+                "toAccount:3:bob\n" +
+                "amount:6:100.00\n" +
+                "createdAt:20:2026-10-12T12:00:00Z\n" +
+                "nonce:3:n-1\n";
+        assertEquals(expectedWhole, new String(whole.toCanonicalBytes(), StandardCharsets.UTF_8));
+
+        // Milliseconds (3 digits)
+        PaymentInstruction millis = new PaymentInstruction(
+                "p-millis",
+                "ALICE",
+                "CAROL",
+                new BigDecimal("250.5"),
+                Instant.parse("2026-10-12T15:30:45.500Z"),
+                "n-2",
+                null
+        );
+        String expectedMillis = "UPI-MESH-INSTRUCTION-V1\n" +
+                "paymentId:8:p-millis\n" +
+                "fromAccount:5:alice\n" +
+                "toAccount:5:carol\n" +
+                "amount:6:250.50\n" +
+                "createdAt:24:2026-10-12T15:30:45.500Z\n" +
+                "nonce:3:n-2\n";
+        assertEquals(expectedMillis, new String(millis.toCanonicalBytes(), StandardCharsets.UTF_8));
+
+        // Microseconds (6 digits)
+        PaymentInstruction micros = new PaymentInstruction(
+                "p-micros",
+                "alice",
+                "bob",
+                new BigDecimal("99.99900"),
+                Instant.parse("2026-10-12T08:15:30.123450Z"),
+                "n-3",
+                null
+        );
+        String expectedMicros = "UPI-MESH-INSTRUCTION-V1\n" +
+                "paymentId:8:p-micros\n" +
+                "fromAccount:5:alice\n" +
+                "toAccount:3:bob\n" +
+                "amount:6:99.999\n" +
+                "createdAt:27:2026-10-12T08:15:30.123450Z\n" +
+                "nonce:3:n-3\n";
+        assertEquals(expectedMicros, new String(micros.toCanonicalBytes(), StandardCharsets.UTF_8));
+
+        // Nanoseconds (9 digits)
+        PaymentInstruction nanos = new PaymentInstruction(
+                "p-nanos",
+                "alice",
+                "bob",
+                new BigDecimal("0.05"),
+                Instant.parse("2026-10-12T23:59:59.123456789Z"),
+                "n-4",
+                null
+        );
+        String expectedNanos = "UPI-MESH-INSTRUCTION-V1\n" +
+                "paymentId:7:p-nanos\n" +
+                "fromAccount:5:alice\n" +
+                "toAccount:3:bob\n" +
+                "amount:4:0.05\n" +
+                "createdAt:30:2026-10-12T23:59:59.123456789Z\n" +
+                "nonce:3:n-4\n";
+        assertEquals(expectedNanos, new String(nanos.toCanonicalBytes(), StandardCharsets.UTF_8));
     }
 }
 

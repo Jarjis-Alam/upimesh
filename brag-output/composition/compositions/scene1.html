@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1440" />
+    <link rel="stylesheet" href="../shared.css" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      .s1-alert-box {
+        background: rgba(251, 113, 133, 0.1);
+        border: 1px solid rgba(251, 113, 133, 0.4);
+        border-radius: 20px;
+        padding: 24px 20px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        gap: 12px;
+        margin-top: 40px;
+      }
+      .signal-bars {
+        display: flex;
+        align-items: flex-end;
+        gap: 8px;
+        height: 36px;
+        margin-bottom: 8px;
+      }
+      .signal-bar {
+        width: 10px;
+        border-radius: 4px;
+        background: #252830;
+      }
+      .signal-bar:nth-child(1) { height: 10px; }
+      .signal-bar:nth-child(2) { height: 18px; }
+      .signal-bar:nth-child(3) { height: 26px; }
+      .signal-bar:nth-child(4) { height: 36px; }
+      .bar-active {
+        background: var(--accent-yellow);
+        box-shadow: 0 0 14px rgba(255, 230, 0, 0.5);
+      }
+      .s1-banner-title {
+        font-size: 20px;
+        font-weight: 800;
+        color: #FFA4B1;
+        letter-spacing: 0.05em;
+      }
+      .s1-banner-desc {
+        font-size: 14px;
+        color: var(--text-muted);
+        line-height: 1.4;
+      }
+      .s1-mesh-ready-card {
+        background: #12141A;
+        border: 1px solid var(--border-yellow);
+        border-radius: 18px;
+        padding: 20px;
+        margin-top: 24px;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+      }
+      .s1-ready-icon {
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        background: rgba(255, 230, 0, 0.15);
+        border: 1.5px solid var(--accent-yellow);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+        flex-shrink: 0;
+      }
+      .scene-content {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        height: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="scene1" data-width="1080" data-height="1440">
+      <div class="bg-grid"></div>
+      <div class="ambient-glow-top"></div>
+
+      <div class="top-nav">
+        <div class="brand-mark">
+          <div class="brand-dot"></div>
+          <span>UPI OFFLINE MESH</span>
+        </div>
+        <div class="proto-tag">RESEARCH PROTOTYPE • REPLAY PROTECTED</div>
+      </div>
+
+      <div class="scene-content">
+        <!-- Realistic iPhone Mockup -->
+        <div class="iphone-frame s1-device">
+          <div class="dynamic-island">
+            <div class="di-camera"></div>
+            <div class="di-sensor"></div>
+          </div>
+          <div class="ios-status-bar">
+            <span>9:41</span>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span id="carrierText" style="font-size: 11px; color: #FFA4B1;">NO SERVICE</span>
+              <span>🔋 100%</span>
+            </div>
+          </div>
+
+          <div class="iphone-screen-content">
+            <div class="s1-alert-box">
+              <div class="signal-bars">
+                <div class="signal-bar bar-1"></div>
+                <div class="signal-bar bar-2"></div>
+                <div class="signal-bar bar-3"></div>
+                <div class="signal-bar bar-4"></div>
+              </div>
+              <div class="s1-banner-title">CARRIER BASEBAND DROPPED</div>
+              <div class="s1-banner-desc">Zero cloud connectivity available.<br />All commercial banking gateways unreachable.</div>
+              <div class="pill pill-red" style="margin-top: 6px;">CELLULAR OUTAGE DETECTED</div>
+            </div>
+
+            <div class="s1-mesh-ready-card">
+              <div class="s1-ready-icon">⚡</div>
+              <div>
+                <div style="font-size: 16px; font-weight: 700; color: #FFFFFF;">Local Radio Subsystem Active</div>
+                <div style="font-size: 13px; color: var(--accent-yellow); margin-top: 2px;">Switching to Peer-to-Peer Mesh Mode</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="ios-home-bar"></div>
+        </div>
+
+        <div class="scene-kicker s1-kicker">INFRASTRUCTURE CHALLENGE</div>
+        <h1 class="scene-title s1-title">WHAT IF CONNECTIVITY DISAPPEARED?</h1>
+        <p class="scene-subtitle s1-subtitle">
+          When telecom switches, cellular networks, and power grids drop, digital commerce halts completely.
+        </p>
+      </div>
+
+      <div class="telemetry-bar">
+        <div class="telemetry-item">
+          <div class="telemetry-dot" style="background: #FB7185;"></div>
+          <span>CELL_CARRIER: DISCONNECTED</span>
+        </div>
+        <div>BAND: LTE-B3 • RSSI: NULL</div>
+        <div>PACKET_DROP: 100%</div>
+      </div>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+      const tl = gsap.timeline({ paused: true });
+      window.__timelines["scene1"] = tl;
+
+      tl.set([".bar-1", ".bar-2", ".bar-3", ".bar-4"], { backgroundColor: "#FFE600" }, 0);
+      tl.set(".scene-content", { opacity: 1 }, 0);
+
+      // Entrance
+      tl.fromTo(".s1-device", { scale: 0.88, opacity: 0, y: 30 }, { scale: 1, opacity: 1, y: 0, duration: 0.8, ease: "power2.out" }, 0.1);
+      tl.fromTo(".s1-kicker", { y: 15, opacity: 0 }, { y: 0, opacity: 1, duration: 0.5, ease: "power2.out" }, 0.4);
+      tl.fromTo(".s1-title", { y: 20, opacity: 0 }, { y: 0, opacity: 1, duration: 0.6, ease: "power2.out" }, 0.5);
+      tl.fromTo(".s1-subtitle", { y: 15, opacity: 0 }, { y: 0, opacity: 1, duration: 0.6, ease: "power2.out" }, 0.7);
+
+      // Signal bars dropping 4 to 0
+      tl.to(".bar-4", { backgroundColor: "#252830", duration: 0.2 }, 1.1);
+      tl.to(".bar-3", { backgroundColor: "#252830", duration: 0.2 }, 1.4);
+      tl.to(".bar-2", { backgroundColor: "#252830", duration: 0.2 }, 1.7);
+      tl.to(".bar-1", { backgroundColor: "#252830", duration: 0.2 }, 2.0);
+      tl.fromTo(".s1-alert-box", { scale: 0.95 }, { scale: 1, duration: 0.3, ease: "back.out(2)" }, 2.1);
+      tl.fromTo(".s1-mesh-ready-card", { opacity: 0, y: 15 }, { opacity: 1, y: 0, duration: 0.5, ease: "power2.out" }, 2.3);
+
+      // Exit transition
+      tl.to(".scene-content", { opacity: 0, y: -20, duration: 0.4, ease: "power2.in" }, 3.1);
+    </script>
+  </body>
+</html>

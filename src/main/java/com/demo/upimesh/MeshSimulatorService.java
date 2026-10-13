@@ -546,9 +546,12 @@ public class MeshSimulatorService {
         deliveredPackets.clear();
         settledInstructions.clear();
         expiredPackets.clear();
-        droppedNoNeighborPackets.clear();
+        if (senderKeyRegistry != null) {
+            for (String id : senderKeyPairs.keySet()) {
+                senderKeyRegistry.unregisterKey(id);
+            }
+        }
         senderKeyPairs.clear();
-        senderKeyRegistry.clear();
         lastSettlementError = null;
         lastDeliveredPacket = null;
         lastDuplicatePacket = null;
