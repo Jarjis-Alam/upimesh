@@ -33,5 +33,26 @@ public final class APIConfiguration: @unchecked Sendable {
     /// Resets the base URL back to the default LAN address.
     public func resetToDefault() {
         UserDefaults.standard.removeObject(forKey: userDefaultsKey)
+        UserDefaults.standard.removeObject(forKey: authTokenKey)
+    }
+
+    private let authTokenKey = "com.upimesh.api.authToken"
+
+    /// The active authentication token for financial read endpoints (e.g. Bearer token).
+    /// Defaults to development simulator demo token ("demo-token-admin") in non-production local mode.
+    public var authToken: String? {
+        get {
+            if let saved = UserDefaults.standard.string(forKey: authTokenKey) {
+                return saved
+            }
+            return "demo-token-admin"
+        }
+        set {
+            if let val = newValue {
+                UserDefaults.standard.set(val, forKey: authTokenKey)
+            } else {
+                UserDefaults.standard.removeObject(forKey: authTokenKey)
+            }
+        }
     }
 }

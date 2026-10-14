@@ -1,6 +1,7 @@
 package com.demo.upimesh;
 
 import com.demo.upimesh.model.Account;
+import com.demo.upimesh.model.AccountPrincipal;
 import com.demo.upimesh.model.AccountRepository;
 import com.demo.upimesh.model.BridgePublicKeyResponse;
 import com.demo.upimesh.model.DeviceAccountAuthorization;
@@ -85,6 +86,7 @@ public class ApiController {
     private final CryptoService cryptoService;
     private final AccountOwnerKeyRegistry accountOwnerKeyRegistry;
     private final AccountOwnerConsentService accountOwnerConsentService;
+    private FinancialSecurityService financialSecurityService;
 
     @Autowired(required = false)
     private org.springframework.core.env.Environment environment;
@@ -95,6 +97,9 @@ public class ApiController {
 
     public void setEnvironment(org.springframework.core.env.Environment environment) {
         this.environment = environment;
+        if (this.financialSecurityService != null) {
+            this.financialSecurityService.setEnvironment(environment);
+        }
     }
 
     public boolean isProductionEnvironment() {
@@ -118,6 +123,20 @@ public class ApiController {
 
     public void setConfiguredAdminToken(String token) {
         this.configuredAdminToken = token;
+        if (this.financialSecurityService != null) {
+            this.financialSecurityService.setConfiguredAdminToken(token);
+        }
+    }
+
+    public void setFinancialSecurityService(FinancialSecurityService financialSecurityService) {
+        this.financialSecurityService = financialSecurityService;
+    }
+
+    public FinancialSecurityService getFinancialSecurityService() {
+        if (this.financialSecurityService == null) {
+            this.financialSecurityService = new FinancialSecurityService(this.environment);
+        }
+        return this.financialSecurityService;
     }
 
     public void setDevKeyProvisioningEnabled(boolean enabled) {
@@ -231,7 +250,8 @@ public class ApiController {
             @Autowired(required = false) DeviceAuthorizationRegistry deviceAuthorizationRegistry,
             @Autowired(required = false) CryptoService cryptoService,
             @Autowired(required = false) AccountOwnerKeyRegistry accountOwnerKeyRegistry,
-            @Autowired(required = false) AccountOwnerConsentService accountOwnerConsentService
+            @Autowired(required = false) AccountOwnerConsentService accountOwnerConsentService,
+            @Autowired(required = false) FinancialSecurityService financialSecurityService
     ) {
         this.accountRepository = accountRepository;
         this.settlementService = settlementService;
@@ -256,10 +276,13 @@ public class ApiController {
         this.accountOwnerConsentService = accountOwnerConsentService != null
                 ? accountOwnerConsentService
                 : new AccountOwnerConsentService(this.accountOwnerKeyRegistry, this.senderKeyRegistry, null, accountRepository, this.deviceAuthorizationRegistry, this.cryptoService);
+        this.financialSecurityService = financialSecurityService != null
+                ? financialSecurityService
+                : new FinancialSecurityService(this.environment);
     }
 
     public ApiController(AccountRepository accountRepository, SettlementService settlementService) {
-        this(accountRepository, settlementService, null, null, null, null, null, null, null, null, null);
+        this(accountRepository, settlementService, null, null, null, null, null, null, null, null, null, null);
     }
 
     public ApiController(
@@ -267,7 +290,7 @@ public class ApiController {
             SettlementService settlementService,
             TransactionRepository transactionRepository
     ) {
-        this(accountRepository, settlementService, transactionRepository, null, null, null, null, null, null, null, null);
+        this(accountRepository, settlementService, transactionRepository, null, null, null, null, null, null, null, null, null);
     }
 
     public ApiController(
@@ -276,7 +299,7 @@ public class ApiController {
             TransactionRepository transactionRepository,
             MeshSimulatorService meshSimulatorService
     ) {
-        this(accountRepository, settlementService, transactionRepository, meshSimulatorService, null, null, null, null, null, null, null);
+        this(accountRepository, settlementService, transactionRepository, meshSimulatorService, null, null, null, null, null, null, null, null);
     }
 
     public ApiController(
@@ -286,15 +309,88 @@ public class ApiController {
             MeshSimulatorService meshSimulatorService,
             ReconciliationService reconciliationService
     ) {
-        this(accountRepository, settlementService, transactionRepository, meshSimulatorService, reconciliationService, null, null, null, null, null, null);
+        this(accountRepository, settlementService, transactionRepository, meshSimulatorService, reconciliationService, null, null, null, null, null, null, null);
     }
 
     @GetMapping("/accounts")
+    public ResponseEntity<List<Account>> getAccounts(
+            @RequestHeader(value = "Authorization", required = false) String authHeader,
+            @RequestHeader(value = "X-Admin-Token", required = false) String adminTokenHeader,
+            @RequestParam(value = "accountId", required = false) String accountId) {
+        Optional<AccountPrincipal> principalOpt = getFinancialSecurityService().resolvePrincipal(authHeader, adminTokenHeader);
+        if (principalOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        AccountPrincipal principal = principalOpt.get();
+
+        if (accountId != null && !accountId.isBlank()) {
+            String requestedId = accountId.trim();
+            if (!principal.canAccessAccount(requestedId)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+            Optional<Account> accOpt = accountRepository.findById(requestedId.toLowerCase());
+            return ResponseEntity.ok(accOpt.map(List::of).orElseGet(List::of));
+        }
+
+        if (principal.isAdmin()) {
+            return ResponseEntity.ok(accountRepository.findAll());
+        }
+
+        // Authenticated non-admin user: scoped strictly to their own identity
+        Optional<Account> userAcc = accountRepository.findById(principal.name().toLowerCase());
+        return ResponseEntity.ok(userAcc.map(List::of).orElseGet(List::of));
+    }
+
+    /**
+     * Backward-compatible unannotated method for internal Java unit test callers.
+     */
     public List<Account> getAccounts() {
         return accountRepository.findAll();
     }
 
     @GetMapping("/transactions")
+    public ResponseEntity<List<Transaction>> getTransactions(
+            @RequestHeader(value = "Authorization", required = false) String authHeader,
+            @RequestHeader(value = "X-Admin-Token", required = false) String adminTokenHeader,
+            @RequestParam(value = "accountId", required = false) String accountId) {
+        Optional<AccountPrincipal> principalOpt = getFinancialSecurityService().resolvePrincipal(authHeader, adminTokenHeader);
+        if (principalOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        AccountPrincipal principal = principalOpt.get();
+
+        if (transactionRepository == null) {
+            return ResponseEntity.ok(List.of());
+        }
+
+        List<Transaction> all = transactionRepository.findAllByOrderByTimestampDesc();
+
+        if (accountId != null && !accountId.isBlank()) {
+            String requestedId = accountId.trim();
+            if (!principal.canAccessAccount(requestedId)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+            List<Transaction> filtered = all.stream()
+                    .filter(tx -> requestedId.equalsIgnoreCase(tx.getFromAccount()) || requestedId.equalsIgnoreCase(tx.getToAccount()))
+                    .toList();
+            return ResponseEntity.ok(filtered);
+        }
+
+        if (principal.isAdmin()) {
+            return ResponseEntity.ok(all);
+        }
+
+        // Authenticated non-admin user: only transactions where their account is sender or recipient
+        String userName = principal.name();
+        List<Transaction> userTransactions = all.stream()
+                .filter(tx -> userName.equalsIgnoreCase(tx.getFromAccount()) || userName.equalsIgnoreCase(tx.getToAccount()))
+                .toList();
+        return ResponseEntity.ok(userTransactions);
+    }
+
+    /**
+     * Backward-compatible unannotated method for internal Java unit test callers.
+     */
     public List<Transaction> getTransactions() {
         if (transactionRepository != null) {
             return transactionRepository.findAllByOrderByTimestampDesc();
@@ -355,6 +451,27 @@ public class ApiController {
     }
 
     @GetMapping("/reconciliation")
+    public ResponseEntity<ReconciliationReport> getReconciliation(
+            @RequestHeader(value = "Authorization", required = false) String authHeader,
+            @RequestHeader(value = "X-Admin-Token", required = false) String adminTokenHeader) {
+        Optional<AccountPrincipal> principalOpt = getFinancialSecurityService().resolvePrincipal(authHeader, adminTokenHeader);
+        if (principalOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        AccountPrincipal principal = principalOpt.get();
+        if (!principal.isAdmin()) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+
+        if (reconciliationService != null) {
+            return ResponseEntity.ok(reconciliationService.reconcile());
+        }
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).build();
+    }
+
+    /**
+     * Backward-compatible unannotated method for internal Java unit test callers.
+     */
     public ResponseEntity<ReconciliationReport> getReconciliation() {
         if (reconciliationService != null) {
             return ResponseEntity.ok(reconciliationService.reconcile());

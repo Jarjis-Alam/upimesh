@@ -316,6 +316,9 @@ public final class UPIMeshAPIClient: MeshPaymentSubmitting, MeshTransactionFetch
         request.httpMethod = "GET"
         request.timeoutInterval = 10.0
         request.setValue("application/json", forHTTPHeaderField: "Accept")
+        if let token = config.authToken, !token.isEmpty {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
 
         let data: Data
         let response: URLResponse
@@ -351,6 +354,9 @@ public final class UPIMeshAPIClient: MeshPaymentSubmitting, MeshTransactionFetch
         request.httpMethod = "GET"
         request.timeoutInterval = 10.0
         request.setValue("application/json", forHTTPHeaderField: "Accept")
+        if let token = config.authToken, !token.isEmpty {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
 
         let data: Data
         let response: URLResponse
