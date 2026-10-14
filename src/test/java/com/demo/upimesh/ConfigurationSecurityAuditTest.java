@@ -80,6 +80,9 @@ public class ConfigurationSecurityAuditTest {
     @Autowired
     private WebApplicationContext webApplicationContext;
 
+    @Autowired
+    private org.springframework.core.env.Environment originalEnvironment;
+
     private MockMvc mockMvc;
 
     private static final String TEST_ADMIN_TOKEN = "audit-stage89-admin-secret-token";
@@ -103,11 +106,16 @@ public class ConfigurationSecurityAuditTest {
         apiController.setConfiguredAdminToken(TEST_ADMIN_TOKEN);
         apiController.setDevKeyProvisioningEnabled(true);
         apiController.setConfiguredDevProvisioningToken(TEST_DEV_PROVISIONING_TOKEN);
-        apiController.setEnvironment(null); // default non-production test environment
+        apiController.setEnvironment(originalEnvironment);
 
         accountRepository.save(new Account("alice", new BigDecimal("5000.00")));
         accountRepository.save(new Account("bob", new BigDecimal("1000.00")));
         accountRepository.save(new Account("carol", new BigDecimal("2000.00")));
+    }
+
+    @org.junit.jupiter.api.AfterEach
+    void tearDown() {
+        apiController.setEnvironment(originalEnvironment);
     }
 
     @Test
@@ -133,28 +141,32 @@ public class ConfigurationSecurityAuditTest {
     @Test
     @DisplayName("2. Dev provisioning CANNOT be enabled in a production environment")
     void testDevProvisioning_cannotBeEnabledInProductionEnvironment() throws Exception {
-        MockEnvironment prodEnv = new MockEnvironment();
-        prodEnv.setActiveProfiles("prod");
-        apiController.setEnvironment(prodEnv);
+        try {
+            MockEnvironment prodEnv = new MockEnvironment();
+            prodEnv.setActiveProfiles("prod");
+            apiController.setEnvironment(prodEnv);
 
-        assertTrue(apiController.isProductionEnvironment());
+            assertTrue(apiController.isProductionEnvironment());
 
-        // Attempting to enable dev provisioning in production is forcibly blocked
-        apiController.setDevKeyProvisioningEnabled(true);
-        assertFalse(apiController.isDevKeyProvisioningEnabled());
+            // Attempting to enable dev provisioning in production is forcibly blocked
+            apiController.setDevKeyProvisioningEnabled(true);
+            assertFalse(apiController.isDevKeyProvisioningEnabled());
 
-        KeyPair keyPair = cryptoService.generateRsaKeyPair();
-        String pubB64 = Base64.getEncoder().encodeToString(keyPair.getPublic().getEncoded());
+            KeyPair keyPair = cryptoService.generateRsaKeyPair();
+            String pubB64 = Base64.getEncoder().encodeToString(keyPair.getPublic().getEncoded());
 
-        // Even with valid dev provisioning token, registration is rejected with 403 Forbidden
-        ResponseEntity<KeyRegistrationResponse> response = apiController.registerOwnerKey(
-                new KeyRegistrationRequest("bob", pubB64),
-                TEST_DEV_PROVISIONING_TOKEN
-        );
+            // Even with valid dev provisioning token, registration is rejected with 403 Forbidden
+            ResponseEntity<KeyRegistrationResponse> response = apiController.registerOwnerKey(
+                    new KeyRegistrationRequest("bob", pubB64),
+                    TEST_DEV_PROVISIONING_TOKEN
+            );
 
-        assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
-        assertEquals("FORBIDDEN", response.getBody().status());
-        assertFalse(accountOwnerKeyRegistry.hasKey("bob"));
+            assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
+            assertEquals("FORBIDDEN", response.getBody().status());
+            assertFalse(accountOwnerKeyRegistry.hasKey("bob"));
+        } finally {
+            apiController.setEnvironment(originalEnvironment);
+        }
     }
 
     @Test

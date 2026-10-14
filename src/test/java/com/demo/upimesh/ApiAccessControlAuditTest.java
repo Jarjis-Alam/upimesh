@@ -24,6 +24,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.env.MockEnvironment;
 import org.springframework.test.annotation.DirtiesContext;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.web.context.WebApplicationContext;
 
 import java.math.BigDecimal;
 import java.security.KeyPair;
@@ -33,6 +36,9 @@ import java.util.Base64;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
  * Stage 8.10 API Access-Control and Authorization Audit Test Suite.
@@ -84,6 +90,11 @@ public class ApiAccessControlAuditTest {
     @Autowired
     private org.springframework.core.env.Environment originalEnvironment;
 
+    @Autowired
+    private WebApplicationContext webApplicationContext;
+
+    private MockMvc mockMvc;
+
     private static final String TEST_ADMIN_TOKEN = "audit-stage810-admin-token";
     private static final String TEST_DEV_PROVISIONING_TOKEN = "audit-stage810-dev-token";
 
@@ -94,6 +105,7 @@ public class ApiAccessControlAuditTest {
 
     @BeforeEach
     void setUp() throws Exception {
+        mockMvc = MockMvcBuilders.webAppContextSetup(webApplicationContext).build();
         accountRepository.deleteAll();
         transactionRepository.deleteAll();
         if (processedPacketRepository != null) {
@@ -457,5 +469,150 @@ public class ApiAccessControlAuditTest {
         assertThrows(IllegalArgumentException.class, () -> {
             deviceAuthorizationRegistry.verifyDebitAuthorization("carol-phone", "carol", new BigDecimal("10.00"), carolKey.getPublic());
         });
+    }
+
+    @Test
+    @DisplayName("12. CORS is NOT authentication: Origin headers cannot bypass authentication or access control")
+    void testCorsDoesNotAuthenticate_unauthorizedRequestRejected() throws Exception {
+        // 1. GET /api/devices/authorizations/{deviceId}/{accountId} with trusted Origin but no credentials -> 401
+        mockMvc.perform(get("/api/devices/authorizations/" + aliceDeviceId + "/alice")
+                        .header("Origin", "http://localhost:8080"))
+                .andExpect(status().isUnauthorized());
+
+        // 2. POST /api/devices/authorize with trusted Origin but invalid credentials -> 401
+        mockMvc.perform(post("/api/devices/authorize")
+                        .header("Origin", "http://localhost:8080")
+                        .contentType("application/json")
+                        .content("{\"deviceId\":\"" + aliceDeviceId + "\",\"accountId\":\"alice\"}"))
+                .andExpect(status().isUnauthorized());
+
+        // 3. POST /api/devices/revoke with trusted Origin but no credentials -> 401
+        mockMvc.perform(post("/api/devices/revoke")
+                        .header("Origin", "http://localhost:8080")
+                        .contentType("application/json")
+                        .content("{\"deviceId\":\"" + aliceDeviceId + "\",\"accountId\":\"alice\"}"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("13. Production environment overrides: Configuration overrides cannot bypass production restrictions")
+    void testProductionConfigurationOverride_cannotBypassSecurity() throws Exception {
+        try {
+            MockEnvironment prodEnv = new MockEnvironment();
+            prodEnv.setActiveProfiles("production"); // check alternative profile name
+            apiController.setEnvironment(prodEnv);
+
+            assertTrue(apiController.isProductionEnvironment());
+
+            // 1. Attempting to override devKeyProvisioningEnabled in production is forcibly disabled
+            apiController.setDevKeyProvisioningEnabled(true);
+            assertFalse(apiController.isDevKeyProvisioningEnabled());
+
+            // 2. Registering owner key even with valid dev provisioning token is rejected 403
+            KeyPair bobKey = cryptoService.generateRsaKeyPair();
+            String bobPubB64 = Base64.getEncoder().encodeToString(bobKey.getPublic().getEncoded());
+            ResponseEntity<KeyRegistrationResponse> regResp = apiController.registerOwnerKey(
+                    new KeyRegistrationRequest("bob", bobPubB64),
+                    TEST_DEV_PROVISIONING_TOKEN
+            );
+            assertEquals(HttpStatus.FORBIDDEN, regResp.getStatusCode());
+            assertFalse(accountOwnerKeyRegistry.hasKey("bob"));
+
+            // 3. Direct unauthenticated transfer throws SecurityException
+            assertThrows(SecurityException.class, () -> {
+                apiController.transfer("alice", "bob", new BigDecimal("25.00"));
+            });
+
+            // 4. Simulated mesh transfer returns 403 Forbidden
+            ResponseEntity<MeshPaymentResult> simResp = apiController.simulateMeshTransfer("alice", "bob", new BigDecimal("25.00"), 5);
+            assertEquals(HttpStatus.FORBIDDEN, simResp.getStatusCode());
+        } finally {
+            apiController.setEnvironment(originalEnvironment);
+        }
+    }
+
+    @Test
+    @DisplayName("14. State preservation: Rejected and unauthorized requests leave financial ledger and consent unchanged")
+    void testStatePreservation_rejectedRequestsLeaveFinancialStateUntouched() throws Exception {
+        BigDecimal initialAlice = accountRepository.findById("alice").orElseThrow().getBalance();
+        BigDecimal initialBob = accountRepository.findById("bob").orElseThrow().getBalance();
+        BigDecimal initialCarol = accountRepository.findById("carol").orElseThrow().getBalance();
+        long initialTxCount = transactionRepository.count();
+
+        // 1. Rejected direct transfer attempt (in production environment)
+        try {
+            MockEnvironment prodEnv = new MockEnvironment();
+            prodEnv.setActiveProfiles("prod");
+            apiController.setEnvironment(prodEnv);
+            assertThrows(SecurityException.class, () -> apiController.transfer("alice", "bob", new BigDecimal("50.00")));
+        } finally {
+            apiController.setEnvironment(originalEnvironment);
+        }
+
+        // 2. Rejected unauthorized device pairing
+        ResponseEntity<DeviceAuthorizationResponse> pairResp = apiController.authorizeDevice(
+                new DeviceAuthorizationRequest(aliceDeviceId, "alice"), "invalid-token", null
+        );
+        assertEquals(HttpStatus.UNAUTHORIZED, pairResp.getStatusCode());
+
+        // 3. Rejected unauthorized device revocation
+        ResponseEntity<DeviceAuthorizationResponse> revokeResp = apiController.revokeDevice(
+                new DeviceAuthorizationRequest(aliceDeviceId, "alice"), "invalid-token", null
+        );
+        assertEquals(HttpStatus.UNAUTHORIZED, revokeResp.getStatusCode());
+
+        // 4. Rejected forged owner consent — must NOT be saved in consumedConsentRepository
+        KeyPair rogueOwnerKey = cryptoService.generateRsaKeyPair();
+        String forgedConsentId = UUID.randomUUID().toString();
+        AccountOwnerConsentRequest forgedConsent = createSignedConsent(
+                forgedConsentId, "alice", aliceDeviceId, aliceDeviceFingerprint,
+                new BigDecimal("500.00"), Instant.now().plus(7, ChronoUnit.DAYS), rogueOwnerKey
+        );
+        ResponseEntity<DeviceAuthorizationResponse> forgedResp = apiController.authorizeDeviceWithConsent(forgedConsent);
+        assertEquals(HttpStatus.FORBIDDEN, forgedResp.getStatusCode());
+        assertFalse(consumedConsentRepository.existsById(forgedConsentId), "Forged consent ID must not be consumed");
+
+        // 5. Authorize device legitimately for Alice with 100 limit
+        String validConsentId = UUID.randomUUID().toString();
+        AccountOwnerConsentRequest validConsent = createSignedConsent(
+                validConsentId, "alice", aliceDeviceId, aliceDeviceFingerprint,
+                new BigDecimal("100.00"), Instant.now().plus(7, ChronoUnit.DAYS), aliceOwnerKeyPair
+        );
+        ResponseEntity<DeviceAuthorizationResponse> validResp = apiController.authorizeDeviceWithConsent(validConsent);
+        assertEquals(HttpStatus.OK, validResp.getStatusCode());
+        assertTrue(consumedConsentRepository.existsById(validConsentId));
+
+        // 6. Over-limit payment rejected
+        PaymentInstruction overLimitPay = new PaymentInstruction(
+                "rej-overlimit-" + UUID.randomUUID(), "alice", "bob", new BigDecimal("200.00"), Instant.now(), UUID.randomUUID().toString()
+        );
+        String overLimitSig = cryptoService.signBase64(overLimitPay.toCanonicalBytes(), aliceDeviceKeyPair.getPrivate());
+        assertThrows(IllegalStateException.class, () -> {
+            apiController.submitSignedMeshPayment(new SignedPaymentRequest(aliceDeviceId, overLimitPay.withSignature(overLimitSig)));
+        });
+
+        // 7. Cross-account debit rejected (Alice device attempting to debit Bob)
+        PaymentInstruction crossPay = new PaymentInstruction(
+                "rej-crosspay-" + UUID.randomUUID(), "bob", "alice", new BigDecimal("50.00"), Instant.now(), UUID.randomUUID().toString()
+        );
+        String crossSig = cryptoService.signBase64(crossPay.toCanonicalBytes(), aliceDeviceKeyPair.getPrivate());
+        assertThrows(IllegalArgumentException.class, () -> {
+            apiController.submitSignedMeshPayment(new SignedPaymentRequest(aliceDeviceId, crossPay.withSignature(crossSig)));
+        });
+
+        // 8. Blocked account debit rejected (attempting to debit Carol)
+        PaymentInstruction carolPay = new PaymentInstruction(
+                "rej-carolpay-" + UUID.randomUUID(), "carol", "alice", new BigDecimal("10.00"), Instant.now(), UUID.randomUUID().toString()
+        );
+        String carolSig = cryptoService.signBase64(carolPay.toCanonicalBytes(), aliceDeviceKeyPair.getPrivate());
+        assertThrows(IllegalArgumentException.class, () -> {
+            apiController.submitSignedMeshPayment(new SignedPaymentRequest(aliceDeviceId, carolPay.withSignature(carolSig)));
+        });
+
+        // Assert all balances and transactions remain strictly identical to initial state
+        assertEquals(initialAlice, accountRepository.findById("alice").orElseThrow().getBalance(), "Alice balance must remain unchanged");
+        assertEquals(initialBob, accountRepository.findById("bob").orElseThrow().getBalance(), "Bob balance must remain unchanged");
+        assertEquals(initialCarol, accountRepository.findById("carol").orElseThrow().getBalance(), "Carol balance must remain unchanged");
+        assertEquals(initialTxCount, transactionRepository.count(), "Transaction count must remain 0");
     }
 }
