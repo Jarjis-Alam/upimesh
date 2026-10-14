@@ -221,6 +221,43 @@ public enum APIError: LocalizedError, Sendable, Equatable {
     }
 }
 
+// MARK: - Payment Status Response DTO
+
+/// Data Transfer Object representing authoritative payment status from `GET /api/mesh/status/{paymentId}`.
+public struct PaymentStatusResponseDTO: Codable, Sendable, Equatable {
+    public let found: Bool
+    public let paymentId: String
+    public let status: String
+    public let fromAccount: String?
+    public let toAccount: String?
+    public let amount: Double?
+    public let packetHash: String?
+    public let settledAt: String?
+    public let message: String
+
+    public init(
+        found: Bool,
+        paymentId: String,
+        status: String,
+        fromAccount: String? = nil,
+        toAccount: String? = nil,
+        amount: Double? = nil,
+        packetHash: String? = nil,
+        settledAt: String? = nil,
+        message: String
+    ) {
+        self.found = found
+        self.paymentId = paymentId
+        self.status = status
+        self.fromAccount = fromAccount
+        self.toAccount = toAccount
+        self.amount = amount
+        self.packetHash = packetHash
+        self.settledAt = settledAt
+        self.message = message
+    }
+}
+
 // MARK: - Mesh Payment Submitting Protocol
 
 /// Abstraction for submitting client-constructed, device-signed payment instructions to the bridge.
@@ -230,6 +267,21 @@ public protocol MeshPaymentSubmitting: Sendable {
         instruction: PaymentInstruction,
         deviceId: String
     ) async throws -> MeshPaymentResultDTO
+
+    func queryPaymentStatus(
+        paymentId: String
+    ) async throws -> PaymentStatusResponseDTO
+}
+
+public extension MeshPaymentSubmitting {
+    func queryPaymentStatus(paymentId: String) async throws -> PaymentStatusResponseDTO {
+        return PaymentStatusResponseDTO(
+            found: false,
+            paymentId: paymentId,
+            status: "NOT_FOUND",
+            message: "Status query not implemented in mock submitter"
+        )
+    }
 }
 
 // MARK: - Mesh Transaction Fetching Protocol
@@ -487,6 +539,7 @@ public final class UPIMeshAPIClient: MeshPaymentSubmitting, MeshTransactionFetch
         request.timeoutInterval = 15.0
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.setValue("true", forHTTPHeaderField: "X-Idempotent-Replay")
 
         let payload = SignedPaymentRequestDTO(deviceId: trimmedDeviceId, instruction: instruction)
         do {
@@ -524,6 +577,53 @@ public final class UPIMeshAPIClient: MeshPaymentSubmitting, MeshTransactionFetch
             } else {
                 throw APIError.invalidResponse(httpResponse.statusCode)
             }
+        } else {
+            throw APIError.invalidResponse(httpResponse.statusCode)
+        }
+    }
+
+    /// Authoritatively queries the status of a payment instruction via `GET /api/mesh/status/{paymentId}`.
+    public func queryPaymentStatus(paymentId: String) async throws -> PaymentStatusResponseDTO {
+        let cleanId = paymentId.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleanId.isEmpty else {
+            throw APIError.invalidParameters("Payment ID must not be empty")
+        }
+
+        let url = config.baseURL.appendingPathComponent("api/mesh/status/\(cleanId)")
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.timeoutInterval = 10.0
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+
+        let data: Data
+        let response: URLResponse
+        do {
+            (data, response) = try await session.data(for: request)
+        } catch {
+            throw APIError.networkError(error.localizedDescription)
+        }
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.invalidResponse(-1)
+        }
+
+        let decoder = JSONDecoder()
+        if (200...299).contains(httpResponse.statusCode) {
+            do {
+                return try decoder.decode(PaymentStatusResponseDTO.self, from: data)
+            } catch {
+                throw APIError.decodingError(error.localizedDescription)
+            }
+        } else if httpResponse.statusCode == 404 {
+            if let notFoundDto = try? decoder.decode(PaymentStatusResponseDTO.self, from: data) {
+                return notFoundDto
+            }
+            return PaymentStatusResponseDTO(
+                found: false,
+                paymentId: cleanId,
+                status: "NOT_FOUND",
+                message: "Payment instruction not found on ledger"
+            )
         } else {
             throw APIError.invalidResponse(httpResponse.statusCode)
         }

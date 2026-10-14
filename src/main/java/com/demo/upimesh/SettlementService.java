@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -93,6 +94,16 @@ public class SettlementService {
     }
 
     /**
+     * Safely queries the authoritative settled payment record by payment ID.
+     */
+    public Optional<ProcessedPacket> findSettledPayment(String paymentId) {
+        if (paymentId == null || paymentId.isBlank() || processedPacketRepository == null) {
+            return Optional.empty();
+        }
+        return processedPacketRepository.findByPaymentId(paymentId.trim());
+    }
+
+    /**
      * Atomically coordinates account balance updates, transaction ledger persistence, and
      * durable idempotency packet recording within a single database transaction.
      * <p>
@@ -110,19 +121,41 @@ public class SettlementService {
             throw new IllegalArgumentException("packetHash must not be blank");
         }
 
-        // 1. Fast check against persistent duplicate store (ciphertext hash)
-        if (processedPacketRepository != null && processedPacketRepository.existsByPacketHash(packetHash)) {
-            throw new DuplicatePacketException("Duplicate packet rejected (already settled): " + packetHash);
-        }
+        if (processedPacketRepository != null) {
+            // 1. Check for existing payment by paymentId (distinguishing identical duplicates from conflicting reuse)
+            Optional<ProcessedPacket> existingByPaymentId = processedPacketRepository.findByPaymentId(instruction.paymentId());
+            if (existingByPaymentId.isPresent()) {
+                ProcessedPacket existing = existingByPaymentId.get();
+                boolean matches = existing.getFromAccount().equalsIgnoreCase(instruction.fromAccount())
+                        && (existing.getToAccount() == null || existing.getToAccount().equalsIgnoreCase(instruction.toAccount()))
+                        && (existing.getAmount() == null || existing.getAmount().compareTo(instruction.amount()) == 0)
+                        && existing.getNonce().equals(instruction.nonce());
+                if (!matches) {
+                    throw new DuplicatePacketException(
+                            "Conflicting payment instruction rejected: paymentId '" + instruction.paymentId() + "' was already settled with different instruction parameters"
+                    );
+                }
+                throw new DuplicatePacketException("Duplicate payment rejected (paymentId already settled): " + instruction.paymentId());
+            }
 
-        // 2. Persistent replay protection against re-encrypted payment instructions (paymentId uniqueness)
-        if (processedPacketRepository != null && processedPacketRepository.existsByPaymentId(instruction.paymentId())) {
-            throw new DuplicatePacketException("Duplicate payment rejected (paymentId already settled): " + instruction.paymentId());
-        }
+            // 2. Persistent replay protection against nonce reuse for the same sender across different payments
+            Optional<ProcessedPacket> existingByNonce = processedPacketRepository.findByFromAccountAndNonce(
+                    instruction.fromAccount().toLowerCase(),
+                    instruction.nonce()
+            );
+            if (existingByNonce.isPresent()) {
+                ProcessedPacket existing = existingByNonce.get();
+                if (!existing.getPaymentId().equals(instruction.paymentId())) {
+                    throw new DuplicatePacketException(
+                            "Replayed payment rejected (nonce already used for sender " + instruction.fromAccount() + "): " + instruction.nonce()
+                    );
+                }
+            }
 
-        // 3. Persistent replay protection against nonce reuse for the same sender
-        if (processedPacketRepository != null && processedPacketRepository.existsByFromAccountAndNonce(instruction.fromAccount().toLowerCase(), instruction.nonce())) {
-            throw new DuplicatePacketException("Replayed payment rejected (nonce already used for sender " + instruction.fromAccount() + "): " + instruction.nonce());
+            // 3. Fast check against persistent duplicate store (ciphertext or canonical hash)
+            if (processedPacketRepository.existsByPacketHash(packetHash)) {
+                throw new DuplicatePacketException("Duplicate packet rejected (already settled): " + packetHash);
+            }
         }
 
         // Perform balance transfer and ledger record

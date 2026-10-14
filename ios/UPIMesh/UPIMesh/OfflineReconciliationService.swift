@@ -100,7 +100,44 @@ public final class OfflineReconciliationService: @unchecked Sendable {
             )
         }
 
-        // 4. Persist SETTLING before making the request
+        let instruction = record.packet.instruction
+        let senderDeviceId = record.packet.deviceId
+
+        // 4. If record is already in SETTLING, query authoritative status first to see if previous attempt committed
+        if record.reconciliationStatus == .settling {
+            if let statusResult = try? await apiClient.queryPaymentStatus(paymentId: cleanId),
+               statusResult.found,
+               statusResult.status.uppercased() == "SETTLED" {
+                let matchesSender = statusResult.fromAccount?.lowercased() == instruction.fromAccount.lowercased()
+                let expectedAmount = NSDecimalNumber(decimal: instruction.amount).doubleValue
+                let matchesAmount = statusResult.amount == nil || abs(statusResult.amount! - expectedAmount) < 0.01
+                if matchesSender && matchesAmount {
+                    do {
+                        try packetStore.updateStatus(paymentId: cleanId, status: .settled)
+                    } catch {}
+                    let resultDTO = MeshPaymentResultDTO(
+                        success: true,
+                        paymentId: cleanId,
+                        packetId: UUID().uuidString,
+                        fromAccount: instruction.fromAccount,
+                        toAccount: instruction.toAccount,
+                        amount: expectedAmount,
+                        roundsRun: 1,
+                        hopsTaken: 1,
+                        remainingTtl: 3,
+                        routeTrace: [senderDeviceId, "bridge"],
+                        encryptedKeySnippet: nil,
+                        ivHex: nil,
+                        ciphertextSnippet: nil,
+                        status: "SETTLED",
+                        message: statusResult.message
+                    )
+                    return .settled(paymentId: cleanId, result: resultDTO)
+                }
+            }
+        }
+
+        // 5. Persist SETTLING before making the request
         do {
             try packetStore.updateStatus(paymentId: cleanId, status: .settling)
         } catch {
@@ -109,10 +146,6 @@ public final class OfflineReconciliationService: @unchecked Sendable {
                 reason: "Failed to persist SETTLING status to disk: \(error.localizedDescription)"
             )
         }
-
-        // 5. Extract original signed instruction and original signer device ID
-        let instruction = record.packet.instruction
-        let senderDeviceId = record.packet.deviceId
 
         // 6. Execute submission via API client
         do {
@@ -137,7 +170,7 @@ public final class OfflineReconciliationService: @unchecked Sendable {
                 )
             }
         } catch let apiError as APIError {
-            return handleAPIError(apiError, paymentId: cleanId)
+            return await handleAPIError(apiError, paymentId: cleanId, instruction: instruction, deviceId: senderDeviceId)
         } catch {
             // General network / unexpected error: preserve retryable SETTLING state
             return .retryable(
@@ -147,21 +180,52 @@ public final class OfflineReconciliationService: @unchecked Sendable {
         }
     }
 
-    private func handleAPIError(_ error: APIError, paymentId: String) -> ReconciliationOutcome {
+    private func handleAPIError(
+        _ error: APIError,
+        paymentId: String,
+        instruction: PaymentInstruction,
+        deviceId: String
+    ) async -> ReconciliationOutcome {
         switch error {
         case .paymentFailed(let message):
             if isDefinitiveTerminalRejection(message: message) {
-                // Definitive terminal rejection (e.g. insufficient funds, expired, unauthorized)
+                // Definitive terminal rejection (e.g. insufficient funds, expired, unauthorized, conflicting)
                 do {
                     try packetStore.updateStatus(paymentId: paymentId, status: .failed, failureReason: message)
                 } catch {}
                 return .rejected(paymentId: paymentId, reason: message)
             } else if isDuplicateOrAmbiguous(message: message) {
-                // IMPORTANT: Idempotency Ambiguity
-                // A duplicate response (e.g. duplicate payment ID, duplicate nonce) does NOT reliably
-                // prove that this exact instruction settled. It could refer to a replayed nonce,
-                // conflicting payment ID, or previous dropped response. Without authoritative ledger
-                // proof, leave the status unresolved in SETTLING (retryable).
+                // Check authoritative status on backend before treating as permanently ambiguous
+                if let statusResult = try? await apiClient.queryPaymentStatus(paymentId: paymentId),
+                   statusResult.found,
+                   statusResult.status.uppercased() == "SETTLED" {
+                    let matchesSender = statusResult.fromAccount?.lowercased() == instruction.fromAccount.lowercased()
+                    let expectedAmount = NSDecimalNumber(decimal: instruction.amount).doubleValue
+                    let matchesAmount = statusResult.amount == nil || abs(statusResult.amount! - expectedAmount) < 0.01
+                    if matchesSender && matchesAmount {
+                        do {
+                            try packetStore.updateStatus(paymentId: paymentId, status: .settled)
+                        } catch {}
+                        let resultDTO = MeshPaymentResultDTO(
+                            success: true,
+                            paymentId: paymentId,
+                            packetId: UUID().uuidString,
+                            fromAccount: instruction.fromAccount,
+                            toAccount: instruction.toAccount,
+                            amount: expectedAmount,
+                            roundsRun: 1,
+                            hopsTaken: 1,
+                            remainingTtl: 3,
+                            routeTrace: [deviceId, "bridge"],
+                            encryptedKeySnippet: nil,
+                            ivHex: nil,
+                            ciphertextSnippet: nil,
+                            status: "SETTLED",
+                            message: statusResult.message
+                        )
+                        return .settled(paymentId: paymentId, result: resultDTO)
+                    }
+                }
                 return .retryable(
                     paymentId: paymentId,
                     reason: "Ambiguous duplicate response from backend: '\(message)'. Ledger settlement cannot be assumed without verification; preserved in retryable state."
@@ -220,7 +284,14 @@ public final class OfflineReconciliationService: @unchecked Sendable {
             "sender and receiver must be different",
             "amount must be greater than zero",
             "digital signature is missing",
-            "no account:"
+            "no account:",
+            "conflicting payment instruction",
+            "pending account-owner consent",
+            "account-owner consent",
+            "has been revoked",
+            "fingerprint mismatch",
+            "exceeds authorized spending limit",
+            "blocked"
         ]
         let lower = message.lowercased()
         return terminalKeywords.contains { lower.contains($0) }

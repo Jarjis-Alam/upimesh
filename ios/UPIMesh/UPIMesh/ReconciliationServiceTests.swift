@@ -7,7 +7,7 @@ import CryptoKit
 public final class ReconciliationServiceTests {
 
     public static func runAllTests() async throws {
-        print("=== Running ReconciliationServiceTests (14 tests) ===")
+        print("=== Running ReconciliationServiceTests (16 tests) ===")
         try await testValidReceivedPacketSubmittedWithOriginalSignerDeviceId()
         try await testSuccessfulResultTransitionsToSettled()
         try await testDefinitiveInsufficientFundsRejectionTransitionsToFailed()
@@ -24,7 +24,11 @@ public final class ReconciliationServiceTests {
         try await testUIAmbiguousDuplicateLeavesRetryable()
         try await testUIRetrySettlingPacketAllowed()
         try await testUIInFlightConcurrencyGuard()
-        print("=== ReconciliationServiceTests: All 14 passed cleanly! ===")
+
+        // Authoritative Status Query & Safe Idempotent Recovery Tests
+        try await testAuthoritativeStatusCheckResolvesSettlingPacket()
+        try await testDuplicateAmbiguousResponseResolvedByStatusCheck()
+        print("=== ReconciliationServiceTests: All 16 passed cleanly! ===")
     }
 
     private static func assert(_ condition: Bool, _ message: String) throws {
@@ -117,6 +121,10 @@ public final class ReconciliationServiceTests {
         var errorToThrow: Error?
         var delayNanoseconds: UInt64?
 
+        var statusResponseToReturn: PaymentStatusResponseDTO?
+        var statusErrorToThrow: Error?
+        var statusQueryCallCount = 0
+
         var lastInstruction: PaymentInstruction?
         var lastDeviceId: String?
         var callCount = 0
@@ -148,6 +156,29 @@ public final class ReconciliationServiceTests {
                 return res
             }
             throw APIError.invalidResponse(500)
+        }
+
+        private func syncRecordStatusCall(paymentId: String) -> (Error?, PaymentStatusResponseDTO?) {
+            lock.lock()
+            defer { lock.unlock() }
+            statusQueryCallCount += 1
+            return (statusErrorToThrow, statusResponseToReturn)
+        }
+
+        func queryPaymentStatus(paymentId: String) async throws -> PaymentStatusResponseDTO {
+            let (err, res) = syncRecordStatusCall(paymentId: paymentId)
+            if let err = err {
+                throw err
+            }
+            if let res = res {
+                return res
+            }
+            return PaymentStatusResponseDTO(
+                found: false,
+                paymentId: paymentId,
+                status: "NOT_FOUND",
+                message: "Mock default not found"
+            )
         }
     }
 
@@ -712,5 +743,105 @@ public final class ReconciliationServiceTests {
         try assert(reason.contains("already in progress"), "Reason must mention already in progress")
 
         print("  ✓ PASS: testUIInFlightConcurrencyGuard")
+    }
+
+    // MARK: - Authoritative Status Recovery Tests
+
+    public static func testAuthoritativeStatusCheckResolvesSettlingPacket() async throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let store = ReceivedPacketStore(fileURL: tempDir.appendingPathComponent("status_test1.json"))
+        let (packet, _) = try createSampleSignedPacket(amount: 25.00)
+        let record = try ReceivedPacketRecord(
+            packet: packet,
+            receivedFromPeer: "Alice-iPhone",
+            isSignatureMathematicallyValid: true,
+            trustStatusNote: "Interrupted settlement recovery",
+            reconciliationStatus: .settling
+        )
+        try store.save(record)
+
+        let mock = MockMeshPaymentSubmitter()
+        // Simulate backend already having settled this payment
+        mock.statusResponseToReturn = PaymentStatusResponseDTO(
+            found: true,
+            paymentId: packet.paymentId,
+            status: "SETTLED",
+            fromAccount: "alice",
+            toAccount: "bob",
+            amount: 25.00,
+            packetHash: "authoritative-hash-abc",
+            settledAt: "2026-10-14T10:00:00Z",
+            message: "Authoritative ledger settlement verified"
+        )
+
+        let service = OfflineReconciliationService(packetStore: store, apiClient: mock)
+        let outcome = await service.reconcile(paymentId: packet.paymentId)
+
+        guard case .settled(let id, let result) = outcome else {
+            try assert(false, "Outcome must be settled via authoritative status check, was \(outcome)")
+            return
+        }
+        try assert(id == packet.paymentId, "Payment ID must match")
+        try assert(result.status == "SETTLED", "Result status must be SETTLED")
+        try assert(mock.statusQueryCallCount == 1, "Must query authoritative status before resubmitting")
+        try assert(mock.callCount == 0, "Must NOT resubmit payment when authoritative status is already SETTLED")
+
+        let stored = store.get(paymentId: packet.paymentId)
+        try assert(stored?.reconciliationStatus == .settled, "Stored status must transition to SETTLED")
+
+        print("  ✓ PASS: testAuthoritativeStatusCheckResolvesSettlingPacket")
+    }
+
+    public static func testDuplicateAmbiguousResponseResolvedByStatusCheck() async throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let store = ReceivedPacketStore(fileURL: tempDir.appendingPathComponent("status_test2.json"))
+        let (packet, _) = try createSampleSignedPacket(amount: 50.00)
+        let record = try ReceivedPacketRecord(
+            packet: packet,
+            receivedFromPeer: "Alice-iPhone",
+            isSignatureMathematicallyValid: true,
+            trustStatusNote: "Inbox packet",
+            reconciliationStatus: .received
+        )
+        try store.save(record)
+
+        let mock = MockMeshPaymentSubmitter()
+        // Backend returns duplicate error on submission
+        mock.errorToThrow = APIError.paymentFailed("Duplicate payment rejected (paymentId already settled): \(packet.paymentId)")
+        // But status query confirms the transaction is genuine and committed
+        mock.statusResponseToReturn = PaymentStatusResponseDTO(
+            found: true,
+            paymentId: packet.paymentId,
+            status: "SETTLED",
+            fromAccount: "alice",
+            toAccount: "bob",
+            amount: 50.00,
+            packetHash: "hash-confirmed",
+            settledAt: "2026-10-14T10:05:00Z",
+            message: "Authoritative ledger settlement confirmed"
+        )
+
+        let service = OfflineReconciliationService(packetStore: store, apiClient: mock)
+        let outcome = await service.reconcile(paymentId: packet.paymentId)
+
+        guard case .settled(let id, let result) = outcome else {
+            try assert(false, "Outcome must be resolved to settled via status check after duplicate response, was \(outcome)")
+            return
+        }
+        try assert(id == packet.paymentId, "Payment ID must match")
+        try assert(result.status == "SETTLED", "Result must be SETTLED")
+        try assert(mock.callCount == 1, "Must have called submit once")
+        try assert(mock.statusQueryCallCount == 1, "Must query status after duplicate response")
+
+        let stored = store.get(paymentId: packet.paymentId)
+        try assert(stored?.reconciliationStatus == .settled, "Stored status must be resolved to SETTLED")
+
+        print("  ✓ PASS: testDuplicateAmbiguousResponseResolvedByStatusCheck")
     }
 }
