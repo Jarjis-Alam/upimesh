@@ -26,7 +26,10 @@ public final class MacCompanionTests {
         try testMacDiagnosticPingGenerationAndIsolation()
         try testMacDiagnosticPongResponseGeneration()
         try testMacDiagnosticStatusTransitions()
-        print("=== MacCompanionTests: All 15 passed cleanly! ===")
+
+        // Phase 2B Allowance Packet & Settlement Verification Tests
+        try testMacAllowancePacketVerificationAndLifecycle()
+        print("=== MacCompanionTests: All 16 passed cleanly! ===")
     }
 
     private static func assert(_ condition: Bool, _ message: String) throws {
@@ -607,6 +610,80 @@ public final class MacCompanionTests {
         }
 
         print("  ✓ PASS: testMacDiagnosticStatusTransitions")
+    }
+
+    // MARK: - Test 16: Mac Allowance Packet Verification & Lifecycle
+    public static func testMacAllowancePacketVerificationAndLifecycle() throws {
+        let paymentId = "pay-mac-alw-01"
+
+        let spend = OfflineSpendRecord(
+            allowanceId: "alw-mac-test-01",
+            paymentId: paymentId,
+            payerAccountId: "alice",
+            payerDeviceId: "iphone-peer-01",
+            recipientAccountId: "carol",
+            amount: Decimal(150.00),
+            currency: "INR",
+            sequenceNumber: 1,
+            cumulativeSpentAmount: Decimal(150.00),
+            createdAt: "2026-10-15T12:00:00Z",
+            voucherSignature: "mock-voucher-sig",
+            payerSignature: "mock-payer-sig",
+            protocolVersion: 1
+        )
+
+        let instruction = try PaymentInstruction(
+            paymentId: paymentId,
+            fromAccount: "alice",
+            toAccount: "carol",
+            amount: Decimal(150.00),
+            createdAt: PaymentInstant.now(),
+            nonce: "nonce-mac-01"
+        )
+        let signedInst = try instruction.withSignature("sig-mac-01")
+        let packet = try OfflinePaymentPacket(
+            instruction: signedInst,
+            deviceId: "iphone-peer-01",
+            status: .received,
+            allowanceSpend: spend
+        )
+
+        try assert(packet.isAllowanceBacked, "Packet must be identified as allowance-backed")
+        try assert(packet.allowanceSpend?.paymentId == paymentId, "Embedded spend paymentId must match")
+
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let store = MacReceivedPacketStore(fileURL: tempDir.appendingPathComponent("mac_allowance_inbox.json"))
+        let record = try MacReceivedPacketRecord(
+            packet: packet,
+            receivedFromPeer: "Alice iPhone",
+            isSignatureMathematicallyValid: true,
+            isSenderIdentityAuthenticated: false,
+            trustStatusNote: "RSASSA-PSS Verified",
+            reconciliationStatus: .received
+        )
+
+        try store.save(record)
+        try assert(store.count == 1, "Mac companion inbox must store 1 packet")
+
+        // Duplicate delivery protection on Mac
+        do {
+            try store.save(record)
+            try assert(false, "Duplicate save must fail")
+        } catch MacReceivedPacketStoreError.duplicatePacketId(let id) {
+            try assert(id == paymentId, "Duplicate error must match payment ID")
+        }
+
+        // Status transitions: RECEIVED -> SETTLING -> SETTLED
+        _ = try store.updateStatus(paymentId: paymentId, status: .settling)
+        try assert(store.get(paymentId: paymentId)?.reconciliationStatus == .settling, "Status must be SETTLING")
+
+        _ = try store.updateStatus(paymentId: paymentId, status: .settled)
+        try assert(store.get(paymentId: paymentId)?.reconciliationStatus == .settled, "Status must be SETTLED")
+
+        print("  ✓ PASS: testMacAllowancePacketVerificationAndLifecycle")
     }
 }
 

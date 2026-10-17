@@ -104,5 +104,30 @@ public struct PeerTransferMessage: Sendable, Codable, Equatable {
               packet.instruction.signature == packet.signature else {
             throw PeerTransferError.malformedPayload("Embedded PaymentInstruction does not match packet header fields.")
         }
+
+        // Validate allowance spend consistency if present
+        if let spend = packet.allowanceSpend {
+            guard spend.paymentId == packet.paymentId else {
+                throw PeerTransferError.malformedPayload("Allowance spend payment ID does not match packet header.")
+            }
+            guard spend.payerAccountId.caseInsensitiveCompare(packet.fromAccount) == .orderedSame else {
+                throw PeerTransferError.malformedPayload("Allowance spend payer account does not match packet header.")
+            }
+            guard spend.recipientAccountId.caseInsensitiveCompare(packet.toAccount) == .orderedSame else {
+                throw PeerTransferError.malformedPayload("Allowance spend recipient account does not match packet header.")
+            }
+            guard spend.amount == packet.amount else {
+                throw PeerTransferError.malformedPayload("Allowance spend amount does not match packet header.")
+            }
+            guard spend.payerDeviceId == packet.deviceId else {
+                throw PeerTransferError.malformedPayload("Allowance spend payer device ID does not match packet header.")
+            }
+            guard !spend.voucherSignature.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                throw PeerTransferError.malformedPayload("Allowance spend voucher signature must not be empty.")
+            }
+            guard !spend.payerSignature.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                throw PeerTransferError.malformedPayload("Allowance spend payer signature must not be empty.")
+            }
+        }
     }
 }

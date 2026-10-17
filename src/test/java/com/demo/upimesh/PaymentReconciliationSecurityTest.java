@@ -8,6 +8,7 @@ import com.demo.upimesh.model.MeshPaymentResult;
 import com.demo.upimesh.model.PaymentInstruction;
 import com.demo.upimesh.model.PaymentStatusResponse;
 import com.demo.upimesh.model.ProcessedPacketRepository;
+import com.demo.upimesh.model.ReconciliationReport;
 import com.demo.upimesh.model.SignedPaymentRequest;
 import com.demo.upimesh.model.TransactionRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -25,6 +26,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -72,6 +74,9 @@ class PaymentReconciliationSecurityTest {
     @Autowired
     private SenderKeyRegistry senderKeyRegistry;
 
+    @Autowired
+    private ReconciliationService reconciliationService;
+
     private KeyPair aliceDeviceKeyPair;
     private final String aliceDeviceId = "test-sec-alice-device";
 
@@ -100,7 +105,7 @@ class PaymentReconciliationSecurityTest {
         );
     }
 
-    private PaymentInstruction createSignedInstruction(String paymentId, String from, String to, BigDecimal amount, String nonce) throws GeneralSecurityException {
+    private PaymentInstruction createSignedInstruction(String paymentId, String from, String to, BigDecimal amount, String nonce, KeyPair signerKey) throws GeneralSecurityException {
         PaymentInstruction unsigned = new PaymentInstruction(
                 paymentId,
                 from,
@@ -110,8 +115,12 @@ class PaymentReconciliationSecurityTest {
                 nonce,
                 null
         );
-        String signature = cryptoService.signBase64(unsigned.toCanonicalBytes(), aliceDeviceKeyPair.getPrivate());
+        String signature = cryptoService.signBase64(unsigned.toCanonicalBytes(), signerKey.getPrivate());
         return unsigned.withSignature(signature);
+    }
+
+    private PaymentInstruction createSignedInstruction(String paymentId, String from, String to, BigDecimal amount, String nonce) throws GeneralSecurityException {
+        return createSignedInstruction(paymentId, from, to, amount, nonce, aliceDeviceKeyPair);
     }
 
     @Test
@@ -391,5 +400,270 @@ class PaymentReconciliationSecurityTest {
         ResponseEntity<PaymentStatusResponse> status2 = apiController.getPaymentStatus(paymentId2);
         assertEquals(HttpStatus.NOT_FOUND, status2.getStatusCode());
         assertEquals("NOT_FOUND", status2.getBody().status());
+    }
+
+    @Test
+    @DisplayName("11. Concurrent offline double-spending race: Two distinct ₹100 payments competing for ₹100 balance settle at most once")
+    void offlineDoubleSpending_concurrentRace_onlyOneSettlesAndZeroSumPreserved() throws Exception {
+        // Set Alice balance to exactly ₹100.00
+        Account alice = accountRepository.findById("alice").orElseThrow();
+        alice.setBalance(new BigDecimal("100.00"));
+        accountRepository.save(alice);
+
+        // Alice creates two distinct offline signed instructions, each for ₹100.00 to different recipients
+        String paymentId1 = "offline-double-race-1-" + UUID.randomUUID();
+        String paymentId2 = "offline-double-race-2-" + UUID.randomUUID();
+        PaymentInstruction packet1 = createSignedInstruction(paymentId1, "alice", "bob", new BigDecimal("100.00"), "nonce-race-1");
+        PaymentInstruction packet2 = createSignedInstruction(paymentId2, "alice", "carol", new BigDecimal("100.00"), "nonce-race-2");
+
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        CountDownLatch latch = new CountDownLatch(1);
+        AtomicInteger settledCount = new AtomicInteger(0);
+        AtomicInteger rejectedCount = new AtomicInteger(0);
+        List<Future<?>> futures = new ArrayList<>();
+
+        futures.add(executor.submit(() -> {
+            try {
+                latch.await();
+                ResponseEntity<MeshPaymentResult> res = apiController.submitSignedMeshPayment(new SignedPaymentRequest(aliceDeviceId, packet1));
+                if (res.getStatusCode() == HttpStatus.OK && "SETTLED".equalsIgnoreCase(res.getBody().status())) {
+                    settledCount.incrementAndGet();
+                }
+            } catch (Exception e) {
+                rejectedCount.incrementAndGet();
+            }
+        }));
+
+        futures.add(executor.submit(() -> {
+            try {
+                latch.await();
+                ResponseEntity<MeshPaymentResult> res = apiController.submitSignedMeshPayment(new SignedPaymentRequest(aliceDeviceId, packet2));
+                if (res.getStatusCode() == HttpStatus.OK && "SETTLED".equalsIgnoreCase(res.getBody().status())) {
+                    settledCount.incrementAndGet();
+                }
+            } catch (Exception e) {
+                rejectedCount.incrementAndGet();
+            }
+        }));
+
+        latch.countDown(); // Launch both threads simultaneously
+        for (Future<?> f : futures) {
+            f.get();
+        }
+        executor.shutdown();
+
+        // Exactly one concurrent payment must settle, and exactly one must be rejected
+        assertEquals(1, settledCount.get(), "Exactly one concurrent offline payment must settle");
+        assertEquals(1, rejectedCount.get(), "The competing payment exceeding balance must fail");
+
+        // Alice balance must be exactly ₹0.00 (NEVER negative!)
+        assertEquals(new BigDecimal("0.00"), accountRepository.findById("alice").orElseThrow().getBalance());
+
+        // Exactly one recipient received ₹100.00
+        BigDecimal bobBalance = accountRepository.findById("bob").orElseThrow().getBalance();
+        BigDecimal carolBalance = accountRepository.findById("carol").orElseThrow().getBalance();
+        boolean bobSettled = bobBalance.compareTo(new BigDecimal("1100.00")) == 0 && carolBalance.compareTo(new BigDecimal("2000.00")) == 0;
+        boolean carolSettled = bobBalance.compareTo(new BigDecimal("1000.00")) == 0 && carolBalance.compareTo(new BigDecimal("2100.00")) == 0;
+        assertTrue(bobSettled || carolSettled, "Either Bob or Carol received ₹100.00, but never both");
+
+        // System zero-sum conserved: 0 + bob + carol == 100 + 1000 + 2000 = 3100
+        assertEquals(new BigDecimal("3100.00"), bobBalance.add(carolBalance));
+
+        // Ledger contains exactly 1 settled transaction and 1 processed packet record
+        assertEquals(1, transactionRepository.count());
+        assertEquals(1, processedPacketRepository.count());
+
+        // Authoritative query: Winner is SETTLED, loser is NOT_FOUND
+        ResponseEntity<PaymentStatusResponse> status1 = apiController.getPaymentStatus(paymentId1);
+        ResponseEntity<PaymentStatusResponse> status2 = apiController.getPaymentStatus(paymentId2);
+        if (bobSettled) {
+            assertEquals("SETTLED", status1.getBody().status());
+            assertEquals("NOT_FOUND", status2.getBody().status());
+        } else {
+            assertEquals("NOT_FOUND", status1.getBody().status());
+            assertEquals("SETTLED", status2.getBody().status());
+        }
+
+        // Full mathematical reconciliation passes with zero discrepancies
+        Map<String, BigDecimal> openingBalances = Map.of(
+                "alice", new BigDecimal("100.00"),
+                "bob", new BigDecimal("1000.00"),
+                "carol", new BigDecimal("2000.00")
+        );
+        ReconciliationReport report = reconciliationService.reconcile(openingBalances);
+        assertTrue(report.isReconciled());
+        assertTrue(report.isLedgerBalanced());
+        assertTrue(report.isBalancesReconciled());
+        assertTrue(report.discrepancies().isEmpty());
+    }
+
+    @Test
+    @DisplayName("12. Concurrent distinct payments exceeding balance partially: ₹60 + ₹60 against ₹100 balance settles exactly once")
+    void concurrentDistinctPayments_partialOverdraft_settlesOnlyWithinAvailableBalance() throws Exception {
+        Account alice = accountRepository.findById("alice").orElseThrow();
+        alice.setBalance(new BigDecimal("100.00"));
+        accountRepository.save(alice);
+
+        String paymentId1 = "offline-partial-race-1-" + UUID.randomUUID();
+        String paymentId2 = "offline-partial-race-2-" + UUID.randomUUID();
+        PaymentInstruction packet1 = createSignedInstruction(paymentId1, "alice", "bob", new BigDecimal("60.00"), "nonce-partial-1");
+        PaymentInstruction packet2 = createSignedInstruction(paymentId2, "alice", "carol", new BigDecimal("60.00"), "nonce-partial-2");
+
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        CountDownLatch latch = new CountDownLatch(1);
+        AtomicInteger settledCount = new AtomicInteger(0);
+        AtomicInteger rejectedCount = new AtomicInteger(0);
+        List<Future<?>> futures = new ArrayList<>();
+
+        futures.add(executor.submit(() -> {
+            try {
+                latch.await();
+                ResponseEntity<MeshPaymentResult> res = apiController.submitSignedMeshPayment(new SignedPaymentRequest(aliceDeviceId, packet1));
+                if (res.getStatusCode() == HttpStatus.OK && "SETTLED".equalsIgnoreCase(res.getBody().status())) {
+                    settledCount.incrementAndGet();
+                }
+            } catch (Exception e) {
+                rejectedCount.incrementAndGet();
+            }
+        }));
+
+        futures.add(executor.submit(() -> {
+            try {
+                latch.await();
+                ResponseEntity<MeshPaymentResult> res = apiController.submitSignedMeshPayment(new SignedPaymentRequest(aliceDeviceId, packet2));
+                if (res.getStatusCode() == HttpStatus.OK && "SETTLED".equalsIgnoreCase(res.getBody().status())) {
+                    settledCount.incrementAndGet();
+                }
+            } catch (Exception e) {
+                rejectedCount.incrementAndGet();
+            }
+        }));
+
+        latch.countDown();
+        for (Future<?> f : futures) {
+            f.get();
+        }
+        executor.shutdown();
+
+        assertEquals(1, settledCount.get());
+        assertEquals(1, rejectedCount.get());
+
+        // Alice remaining balance is exactly ₹40.00
+        assertEquals(new BigDecimal("40.00"), accountRepository.findById("alice").orElseThrow().getBalance());
+        assertEquals(1, transactionRepository.count());
+
+        Map<String, BigDecimal> openingBalances = Map.of(
+                "alice", new BigDecimal("100.00"),
+                "bob", new BigDecimal("1000.00"),
+                "carol", new BigDecimal("2000.00")
+        );
+        ReconciliationReport report = reconciliationService.reconcile(openingBalances);
+        assertTrue(report.isReconciled());
+        assertTrue(report.isLedgerBalanced());
+        assertTrue(report.isBalancesReconciled());
+    }
+
+    @Test
+    @DisplayName("13. Concurrent opposing transfers: Alice -> Bob ₹100 and Bob -> Alice ₹100 race without deadlock")
+    void concurrentOpposingTransfers_avoidsDeadlockAndMaintainsZeroSum() throws Exception {
+        // Setup Bob's authorized device
+        KeyPair bobDeviceKeyPair = cryptoService.generateRsaKeyPair();
+        String bobDeviceId = "test-sec-bob-device";
+        String bobPubKeyBase64 = Base64.getEncoder().encodeToString(bobDeviceKeyPair.getPublic().getEncoded());
+        apiController.registerSenderKey(new KeyRegistrationRequest(bobDeviceId, bobPubKeyBase64), null, null);
+        apiController.authorizeDevice(
+                new DeviceAuthorizationRequest(bobDeviceId, "bob"),
+                "test-admin-secret-token",
+                null
+        );
+
+        // Seed: Alice ₹500.00, Bob ₹500.00
+        Account alice = accountRepository.findById("alice").orElseThrow();
+        alice.setBalance(new BigDecimal("500.00"));
+        accountRepository.save(alice);
+        Account bob = accountRepository.findById("bob").orElseThrow();
+        bob.setBalance(new BigDecimal("500.00"));
+        accountRepository.save(bob);
+
+        PaymentInstruction aliceToBob = createSignedInstruction(
+                "oppose-1-" + UUID.randomUUID(), "alice", "bob", new BigDecimal("100.00"), "nonce-opp-1", aliceDeviceKeyPair
+        );
+        PaymentInstruction bobToAlice = createSignedInstruction(
+                "oppose-2-" + UUID.randomUUID(), "bob", "alice", new BigDecimal("100.00"), "nonce-opp-2", bobDeviceKeyPair
+        );
+
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        CountDownLatch latch = new CountDownLatch(1);
+        AtomicInteger settledCount = new AtomicInteger(0);
+        List<Future<?>> futures = new ArrayList<>();
+
+        futures.add(executor.submit(() -> {
+            try {
+                latch.await();
+                // Retry on optimistic locking conflict if needed
+                for (int attempt = 0; attempt < 3; attempt++) {
+                    try {
+                        ResponseEntity<MeshPaymentResult> res = apiController.submitSignedMeshPayment(new SignedPaymentRequest(aliceDeviceId, aliceToBob));
+                        if (res.getStatusCode() == HttpStatus.OK && "SETTLED".equalsIgnoreCase(res.getBody().status())) {
+                            settledCount.incrementAndGet();
+                            return;
+                        }
+                    } catch (IllegalStateException e) {
+                        if (e.getMessage().contains("Concurrent ledger update conflict")) {
+                            Thread.sleep(25);
+                            continue;
+                        }
+                        throw e;
+                    }
+                }
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }));
+
+        futures.add(executor.submit(() -> {
+            try {
+                latch.await();
+                for (int attempt = 0; attempt < 3; attempt++) {
+                    try {
+                        ResponseEntity<MeshPaymentResult> res = apiController.submitSignedMeshPayment(new SignedPaymentRequest(bobDeviceId, bobToAlice));
+                        if (res.getStatusCode() == HttpStatus.OK && "SETTLED".equalsIgnoreCase(res.getBody().status())) {
+                            settledCount.incrementAndGet();
+                            return;
+                        }
+                    } catch (IllegalStateException e) {
+                        if (e.getMessage().contains("Concurrent ledger update conflict")) {
+                            Thread.sleep(25);
+                            continue;
+                        }
+                        throw e;
+                    }
+                }
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }));
+
+        latch.countDown();
+        for (Future<?> f : futures) {
+            f.get();
+        }
+        executor.shutdown();
+
+        // Both opposing payments successfully settle
+        assertEquals(2, settledCount.get(), "Both opposing payments must settle");
+        assertEquals(new BigDecimal("500.00"), accountRepository.findById("alice").orElseThrow().getBalance());
+        assertEquals(new BigDecimal("500.00"), accountRepository.findById("bob").orElseThrow().getBalance());
+        assertEquals(2, transactionRepository.count());
+
+        Map<String, BigDecimal> openingBalances = Map.of(
+                "alice", new BigDecimal("500.00"),
+                "bob", new BigDecimal("500.00"),
+                "carol", new BigDecimal("2000.00")
+        );
+        ReconciliationReport report = reconciliationService.reconcile(openingBalances);
+        assertTrue(report.isReconciled());
+        assertTrue(report.isLedgerBalanced());
+        assertTrue(report.isBalancesReconciled());
     }
 }

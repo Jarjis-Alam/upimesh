@@ -26,7 +26,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.dao.OptimisticLockingFailureException;
+import org.springframework.dao.ConcurrencyFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -51,6 +51,7 @@ import java.security.spec.X509EncodedKeySpec;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -511,7 +512,10 @@ public class ApiController {
     public ResponseEntity<KeyRegistrationResponse> registerSenderKey(
             @RequestBody(required = false) KeyRegistrationRequest request,
             @RequestParam(required = false) String accountId,
-            @RequestParam(required = false) String publicKey
+            @RequestParam(required = false) String publicKey,
+            @RequestHeader(value = "X-Admin-Token", required = false) String adminTokenHeader,
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+            @RequestHeader(value = "X-Dev-Provisioning-Token", required = false) String devTokenHeader
     ) {
         String targetAccountId = request != null && request.accountId() != null ? request.accountId() : accountId;
         String targetPublicKey = request != null && request.publicKey() != null ? request.publicKey() : publicKey;
@@ -548,6 +552,61 @@ public class ApiController {
         }
 
         String normalizedId = targetAccountId.trim().toLowerCase();
+
+        // 1. Check if already registered (Idempotency and Conflict Check)
+        if (senderKeyRegistry != null && senderKeyRegistry.hasKey(normalizedId)) {
+            Optional<PublicKey> existingOpt = senderKeyRegistry.getPublicKey(normalizedId);
+            if (existingOpt.isPresent()) {
+                if (Arrays.equals(existingOpt.get().getEncoded(), parsedKey.getEncoded())) {
+                    return ResponseEntity.ok(new KeyRegistrationResponse(
+                            "ALREADY_REGISTERED",
+                            normalizedId,
+                            "Public key is already registered for account: " + normalizedId
+                    ));
+                }
+                throw new IllegalStateException(
+                        "Account '" + normalizedId + "' is already registered with a different public key. "
+                        + "Arbitrary key replacement is forbidden under prototype trust policy."
+                );
+            }
+        }
+
+        // 2. Resolve Authorization for New Registration
+        String providedToken = null;
+        if (adminTokenHeader != null && !adminTokenHeader.isBlank()) {
+            providedToken = adminTokenHeader.trim();
+        } else if (authorizationHeader != null && !authorizationHeader.isBlank()) {
+            String trimmed = authorizationHeader.trim();
+            if (trimmed.regionMatches(true, 0, "Bearer ", 0, 7)) {
+                providedToken = trimmed.substring(7).trim();
+            } else {
+                providedToken = trimmed;
+            }
+        }
+        boolean isAuthorized = isTokenValid(providedToken) || isDevProvisioningAuthorized(devTokenHeader);
+
+        // 3. Strict Production Policy Guard
+        if (isProductionEnvironment() && !isAuthorized) {
+            log.warn("Rejected unauthenticated key registration for '{}' in production profile", normalizedId);
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new KeyRegistrationResponse(
+                    "FORBIDDEN",
+                    normalizedId,
+                    "Public key self-registration is disabled in production profile: certified onboarding required."
+            ));
+        }
+
+        // 4. Ledger Account Identity Guard (Prevent unauthenticated takeover of funding accounts)
+        if (accountRepository != null && accountRepository.existsById(normalizedId) && !isAuthorized) {
+            log.warn("Rejected unauthenticated key registration for existing ledger account '{}'", normalizedId);
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new KeyRegistrationResponse(
+                    "UNAUTHORIZED",
+                    normalizedId,
+                    "Unauthorized key enrollment: registering a public key for ledger account '" + normalizedId
+                    + "' requires administrator authorization or development provisioning credentials."
+            ));
+        }
+
+        // 5. Register in SenderKeyRegistry
         if (senderKeyRegistry != null) {
             boolean isNew = senderKeyRegistry.registerKeyWithPolicy(normalizedId, parsedKey);
             if (!isNew) {
@@ -564,6 +623,14 @@ public class ApiController {
                 normalizedId,
                 "Public key successfully registered for account: " + normalizedId
         ));
+    }
+
+    public ResponseEntity<KeyRegistrationResponse> registerSenderKey(
+            KeyRegistrationRequest request,
+            String accountId,
+            String publicKey
+    ) {
+        return registerSenderKey(request, accountId, publicKey, null, null, null);
     }
 
     /**
@@ -1197,7 +1264,7 @@ public class ApiController {
                         return null;
                     }
             );
-        } catch (OptimisticLockingFailureException e) {
+        } catch (ConcurrencyFailureException e) {
             throw new IllegalStateException("Concurrent ledger update conflict on account; please retry transaction", e);
         } catch (DataIntegrityViolationException e) {
             if (allowIdempotentReplay) {
@@ -1320,9 +1387,9 @@ public class ApiController {
         return ResponseEntity.badRequest().body("Database constraint violation: duplicate or conflicting record");
     }
 
-    @ExceptionHandler(OptimisticLockingFailureException.class)
-    public ResponseEntity<String> handleOptimisticLocking(OptimisticLockingFailureException e) {
-        log.warn("Optimistic locking conflict during request: {}", e.getMessage());
+    @ExceptionHandler(ConcurrencyFailureException.class)
+    public ResponseEntity<String> handleConcurrencyFailure(ConcurrencyFailureException e) {
+        log.warn("Concurrency conflict during request: {}", e.getMessage());
         return ResponseEntity.status(HttpStatus.CONFLICT).body("Concurrent ledger update conflict on account; please retry");
     }
 
@@ -1334,6 +1401,10 @@ public class ApiController {
 
     @ExceptionHandler(IllegalStateException.class)
     public ResponseEntity<String> handleIllegalState(IllegalStateException e) {
+        if (e.getMessage() != null && e.getMessage().contains("Concurrent ledger update conflict")) {
+            log.warn("Concurrency conflict during request: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
+        }
         log.warn("Illegal state during request: {}", e.getMessage());
         return ResponseEntity.badRequest().body(e.getMessage());
     }

@@ -1,6 +1,7 @@
 package com.demo.upimesh;
 
 import com.demo.upimesh.model.AccountPrincipal;
+import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,8 +28,8 @@ import java.util.concurrent.ConcurrentHashMap;
  * 1. Unauthenticated requests are rejected (HTTP 401 Unauthorized).
  * 2. Authenticated users are scoped strictly to their own identity (cross-account queries rejected with HTTP 403 Forbidden).
  * 3. Reconciliation report access strictly requires administrative role (ROLE_ADMIN).
- * 4. Development simulator demo authentication is supported ONLY in non-production environments.
- * 5. Production environment strictly disables demo credentials fail-closed.
+ * 4. Development simulator demo authentication is supported ONLY in non-production environments when explicitly enabled.
+ * 5. Production environment strictly disables demo credentials fail-closed and enforces strong admin tokens on startup.
  */
 @Service
 public class FinancialSecurityService {
@@ -57,7 +58,26 @@ public class FinancialSecurityService {
         this.environment = environment;
     }
 
-    public boolean isProductionEnvironment() {
+    @PostConstruct
+    public void validateSecurityConfigurationOnStartup() {
+        if (isProductionEnvironment()) {
+            if (isDemoAuthEnabled()) {
+                throw new IllegalStateException("Production startup failed: Demo authentication cannot be enabled in production profile.");
+            }
+            String adminToken = getEffectiveAdminToken();
+            if (adminToken == null || adminToken.isBlank()) {
+                throw new IllegalStateException("Production startup failed: An explicitly configured administrative token (UPI_MESH_ADMIN_TOKEN or upimesh.admin-token) is required in production profile.");
+            }
+            if (REJECTED_INSECURE_TOKENS.contains(adminToken.toLowerCase()) || "demo-token-admin".equalsIgnoreCase(adminToken)) {
+                throw new IllegalStateException("Production startup failed: Configured administrator token is insecure/trivial: " + adminToken);
+            }
+            if (adminToken.length() < 16) {
+                throw new IllegalStateException("Production startup failed: Administrator token must be at least 16 characters long in production profile.");
+            }
+        }
+    }
+
+    public static boolean isProduction(Environment environment) {
         if (environment != null) {
             for (String profile : environment.getActiveProfiles()) {
                 if ("prod".equalsIgnoreCase(profile) || "production".equalsIgnoreCase(profile)) {
@@ -74,6 +94,10 @@ public class FinancialSecurityService {
             }
         }
         return false;
+    }
+
+    public boolean isProductionEnvironment() {
+        return isProduction(this.environment);
     }
 
     public void setDemoAuthEnabled(boolean enabled) {

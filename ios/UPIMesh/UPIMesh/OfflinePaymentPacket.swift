@@ -107,6 +107,14 @@ public struct OfflinePaymentPacket: Sendable, Codable, Equatable, Identifiable {
     /// The local packet status (initially `.queued`).
     public let status: OfflinePacketStatus
 
+    /// Optional embedded allowance spend record when this packet is backed by an authoritative banking allowance.
+    public let allowanceSpend: OfflineSpendRecord?
+
+    /// True if this packet is backed by a pre-allocated banking allowance voucher.
+    public var isAllowanceBacked: Bool {
+        allowanceSpend != nil
+    }
+
     /// Identifiable conformance using unique `paymentId`.
     public var id: String {
         paymentId
@@ -139,7 +147,8 @@ public struct OfflinePaymentPacket: Sendable, Codable, Equatable, Identifiable {
         deviceId: String,
         instruction: PaymentInstruction,
         signature: String,
-        status: OfflinePacketStatus = .queued
+        status: OfflinePacketStatus = .queued,
+        allowanceSpend: OfflineSpendRecord? = nil
     ) throws {
         let trimmedPaymentId = paymentId.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedPaymentId.isEmpty else {
@@ -199,6 +208,25 @@ public struct OfflinePaymentPacket: Sendable, Codable, Equatable, Identifiable {
             throw OfflinePaymentPacketError.mismatchedInstructionField("signature")
         }
 
+        // Validate allowance spend if present
+        if let spend = allowanceSpend {
+            guard spend.paymentId == trimmedPaymentId else {
+                throw OfflinePaymentPacketError.mismatchedInstructionField("allowanceSpend.paymentId")
+            }
+            guard spend.payerAccountId.caseInsensitiveCompare(trimmedFrom) == .orderedSame else {
+                throw OfflinePaymentPacketError.mismatchedInstructionField("allowanceSpend.payerAccountId")
+            }
+            guard spend.recipientAccountId.caseInsensitiveCompare(trimmedTo) == .orderedSame else {
+                throw OfflinePaymentPacketError.mismatchedInstructionField("allowanceSpend.recipientAccountId")
+            }
+            guard spend.amount == amount else {
+                throw OfflinePaymentPacketError.mismatchedInstructionField("allowanceSpend.amount")
+            }
+            guard spend.payerDeviceId == trimmedDeviceId else {
+                throw OfflinePaymentPacketError.mismatchedInstructionField("allowanceSpend.payerDeviceId")
+            }
+        }
+
         self.schemaVersion = schemaVersion
         self.paymentId = trimmedPaymentId
         self.nonce = trimmedNonce
@@ -210,6 +238,7 @@ public struct OfflinePaymentPacket: Sendable, Codable, Equatable, Identifiable {
         self.instruction = instruction
         self.signature = trimmedSig
         self.status = status
+        self.allowanceSpend = allowanceSpend
     }
 
     /// Convenience initializer constructing an `OfflinePaymentPacket` directly from a signed `PaymentInstruction`.
@@ -217,7 +246,8 @@ public struct OfflinePaymentPacket: Sendable, Codable, Equatable, Identifiable {
         instruction: PaymentInstruction,
         deviceId: String,
         schemaVersion: Int = 1,
-        status: OfflinePacketStatus = .queued
+        status: OfflinePacketStatus = .queued,
+        allowanceSpend: OfflineSpendRecord? = nil
     ) throws {
         guard let sig = instruction.signature, !sig.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             throw OfflinePaymentPacketError.missingSignature
@@ -234,12 +264,13 @@ public struct OfflinePaymentPacket: Sendable, Codable, Equatable, Identifiable {
             deviceId: deviceId,
             instruction: instruction,
             signature: sig,
-            status: status
+            status: status,
+            allowanceSpend: allowanceSpend
         )
     }
 
     /// Returns a copy of this offline packet with a new lifecycle status.
-    /// Invariants and signatures remain unchanged.
+    /// Invariants, signatures, and allowance spend record remain unchanged.
     public func withStatus(_ newStatus: OfflinePacketStatus) throws -> OfflinePaymentPacket {
         try OfflinePaymentPacket(
             schemaVersion: schemaVersion,
@@ -252,7 +283,8 @@ public struct OfflinePaymentPacket: Sendable, Codable, Equatable, Identifiable {
             deviceId: deviceId,
             instruction: instruction,
             signature: signature,
-            status: newStatus
+            status: newStatus,
+            allowanceSpend: allowanceSpend
         )
     }
 }

@@ -453,19 +453,85 @@ public struct MacCompanionView: View {
                 Spacer()
 
                 // PROMINENT REQUIRED STATUS BADGE
-                HStack(spacing: 5) {
-                    Circle().fill(amberNotSettled).frame(width: 6, height: 6)
-                    Text("RECEIVED — NOT SETTLED")
-                        .font(.system(size: 10, weight: .black))
-                        .foregroundColor(amberNotSettled)
+                switch record.reconciliationStatus {
+                case .received:
+                    HStack(spacing: 5) {
+                        Circle().fill(amberNotSettled).frame(width: 6, height: 6)
+                        Text("RECEIVED — NOT SETTLED")
+                            .font(.system(size: 10, weight: .black))
+                            .foregroundColor(amberNotSettled)
+                    }
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 4)
+                    .background(Capsule().fill(amberNotSettled.opacity(0.2)))
+                    .overlay(Capsule().stroke(amberNotSettled.opacity(0.4), lineWidth: 1))
+
+                case .settling:
+                    HStack(spacing: 5) {
+                        ProgressView().scaleEffect(0.6).tint(.cyan)
+                        Text("SETTLING...")
+                            .font(.system(size: 10, weight: .black))
+                            .foregroundColor(.cyan)
+                    }
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 4)
+                    .background(Capsule().fill(Color.cyan.opacity(0.2)))
+                    .overlay(Capsule().stroke(Color.cyan.opacity(0.4), lineWidth: 1))
+
+                case .settled:
+                    HStack(spacing: 5) {
+                        Image(systemName: "checkmark.circle.fill").foregroundColor(.green).font(.system(size: 10))
+                        Text("SETTLED ON LEDGER")
+                            .font(.system(size: 10, weight: .black))
+                            .foregroundColor(.green)
+                    }
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 4)
+                    .background(Capsule().fill(Color.green.opacity(0.2)))
+                    .overlay(Capsule().stroke(Color.green.opacity(0.4), lineWidth: 1))
+
+                case .failed:
+                    HStack(spacing: 5) {
+                        Image(systemName: "xmark.circle.fill").foregroundColor(.red).font(.system(size: 10))
+                        Text("SETTLEMENT REJECTED")
+                            .font(.system(size: 10, weight: .black))
+                            .foregroundColor(.red)
+                    }
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 4)
+                    .background(Capsule().fill(Color.red.opacity(0.2)))
+                    .overlay(Capsule().stroke(Color.red.opacity(0.4), lineWidth: 1))
                 }
-                .padding(.horizontal, 9)
-                .padding(.vertical, 4)
-                .background(Capsule().fill(amberNotSettled.opacity(0.2)))
-                .overlay(Capsule().stroke(amberNotSettled.opacity(0.4), lineWidth: 1))
             }
 
             Divider().background(cardBorder)
+
+            // Allowance Badge if allowance-backed
+            if let spend = packet.allowanceSpend {
+                HStack(spacing: 8) {
+                    Image(systemName: "banknote.fill")
+                        .foregroundColor(meshGold)
+                        .font(.system(size: 12))
+                    Text("ALLOWANCE-BACKED SPEND")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundColor(meshGold)
+                    Text("·")
+                        .foregroundColor(textMuted)
+                    Text("Seq #\(spend.sequenceNumber)")
+                        .font(.system(size: 10, design: .monospaced))
+                        .foregroundColor(textSecondary)
+                    Text("·")
+                        .foregroundColor(textMuted)
+                    Text("Cumulative: ₹\(String(format: "%.2f", spend.cumulativeSpentDouble))")
+                        .font(.system(size: 10, design: .monospaced))
+                        .foregroundColor(textSecondary)
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(RoundedRectangle(cornerRadius: 6).fill(meshGold.opacity(0.12)))
+
+                Divider().background(cardBorder)
+            }
 
             // Metadata Grid
             Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 4) {
@@ -476,6 +542,16 @@ public struct MacCompanionView: View {
                     Text(packet.paymentId)
                         .font(.system(size: 10, design: .monospaced))
                         .foregroundColor(textPrimary)
+                }
+                if let spend = packet.allowanceSpend {
+                    GridRow {
+                        Text("Allowance ID:")
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundColor(textMuted)
+                        Text(spend.allowanceId)
+                            .font(.system(size: 10, design: .monospaced))
+                            .foregroundColor(textSecondary)
+                    }
                 }
                 GridRow {
                     Text("Created At:")
@@ -503,30 +579,64 @@ public struct MacCompanionView: View {
                 }
             }
 
+            if let reason = record.failureReason {
+                HStack(spacing: 6) {
+                    Image(systemName: "exclamationmark.triangle.fill").foregroundColor(.red).font(.system(size: 11))
+                    Text("Rejection Reason: \(reason)")
+                        .font(.system(size: 10))
+                        .foregroundColor(.red)
+                }
+                .padding(6)
+                .background(RoundedRectangle(cornerRadius: 6).fill(Color.red.opacity(0.12)))
+            }
+
             Divider().background(cardBorder)
 
             // Cryptographic Verification & Trust Notice
-            VStack(alignment: .leading, spacing: 3) {
-                HStack(spacing: 6) {
-                    Image(systemName: record.isSignatureMathematicallyValid ? "checkmark.seal.fill" : "xmark.seal.fill")
-                        .foregroundColor(record.isSignatureMathematicallyValid ? Color.green : Color.red)
-                        .font(.system(size: 12))
+            HStack(alignment: .center) {
+                VStack(alignment: .leading, spacing: 3) {
+                    HStack(spacing: 6) {
+                        Image(systemName: record.isSignatureMathematicallyValid ? "checkmark.seal.fill" : "xmark.seal.fill")
+                            .foregroundColor(record.isSignatureMathematicallyValid ? Color.green : Color.red)
+                            .font(.system(size: 12))
 
-                    Text(record.isSignatureMathematicallyValid ? "RSASSA-PSS SHA-256: Mathematically Valid ✓" : "Signature Verification Failed")
-                        .font(.system(size: 11, weight: .bold))
-                        .foregroundColor(record.isSignatureMathematicallyValid ? Color.green : Color.red)
+                        Text(record.isSignatureMathematicallyValid ? "RSASSA-PSS SHA-256: Mathematically Valid ✓" : "Signature Verification Failed")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundColor(record.isSignatureMathematicallyValid ? Color.green : Color.red)
 
-                    Text("·")
+                        Text("·")
+                            .foregroundColor(textMuted)
+
+                        Text("Sender Identity: UNVERIFIED OFFLINE")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundColor(amberNotSettled)
+                    }
+
+                    Text("Trust Note: Mathematical verification confirms genuine private-key signing. Bank account authorization and balance settlement require backend bridge settlement.")
+                        .font(.system(size: 10))
                         .foregroundColor(textMuted)
-
-                    Text("Sender Identity: UNVERIFIED OFFLINE")
-                        .font(.system(size: 11, weight: .bold))
-                        .foregroundColor(amberNotSettled)
                 }
 
-                Text("Trust Note: Mathematical verification confirms genuine private-key signing. Bank account authorization and balance settlement require backend bridge settlement.")
-                    .font(.system(size: 10))
-                    .foregroundColor(textMuted)
+                Spacer()
+
+                // Bridge Reconcile Button
+                if record.reconciliationStatus != .settled {
+                    Button {
+                        Task {
+                            _ = await MacBridgeClient.shared.reconcilePacket(record: record)
+                            reloadPackets()
+                        }
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "arrow.triangle.2.circlepath")
+                            Text("Settle on Bridge")
+                        }
+                        .font(.system(size: 10, weight: .bold))
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(meshGold)
+                    .foregroundColor(.black)
+                }
             }
         }
         .padding(14)

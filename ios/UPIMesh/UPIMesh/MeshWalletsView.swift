@@ -19,6 +19,14 @@ public struct MeshWalletsView: View {
     @State private var registrationState: KeyRegistrationState = .idle
     @State private var authorizationState: DeviceAuthorizationState = .idle
 
+    // MARK: - Offline Allowance State (Phase 2B)
+    @State private var activeAllowance: OfflineAllowanceVoucher? = nil
+    @State private var allowanceRequestAmount: Double = 100.0
+    @State private var allowanceRequestAccount: String = "alice"
+    @State private var isRequestingAllowance: Bool = false
+    @State private var allowanceActionMessage: String? = nil
+    @State private var isAllowanceSuccess: Bool = true
+
     public enum KeyRegistrationState: Equatable {
         case idle
         case submitting
@@ -50,6 +58,9 @@ public struct MeshWalletsView: View {
 
                 // MARK: - Device Cryptographic Identity & Bridge Registration Card
                 deviceKeyRegistrationCard
+
+                // MARK: - Offline Allowance Management Card (Phase 2B)
+                offlineAllowanceCard
 
                 // MARK: - Hardware Enclaves Subheader
                 HStack {
@@ -91,14 +102,20 @@ public struct MeshWalletsView: View {
         .task {
             await viewModel.loadLiveAccounts()
             loadLocalDeviceIdentity()
+            reloadActiveAllowance()
         }
         .refreshable {
             await viewModel.loadLiveAccounts()
+            reloadActiveAllowance()
         }
         .onReceive(NotificationCenter.default.publisher(for: .meshAccountsUpdated)) { _ in
             Task {
                 await viewModel.loadLiveAccounts()
+                reloadActiveAllowance()
             }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .offlineAllowanceUpdated)) { _ in
+            reloadActiveAllowance()
         }
     }
 
@@ -181,7 +198,7 @@ public struct MeshWalletsView: View {
 
                 Spacer()
 
-                Text("\(APIConfiguration.shared.baseURL.host ?? "192.168.1.100"):8080")
+                Text(APIConfiguration.shared.hostDescription)
                     .font(DesignTokens.Typography.labelNumericSm)
                     .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
 
@@ -1203,6 +1220,272 @@ public struct MeshWalletsView: View {
             authorizationState = .authorized(response)
         } catch {
             authorizationState = .failed(error.localizedDescription)
+        }
+    }
+
+    // MARK: - Offline Allowance Card & Workflows (Phase 2B)
+
+    private var offlineAllowanceCard: some View {
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
+            // Header
+            HStack(spacing: 8) {
+                Image(systemName: "banknote.fill")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundColor(DesignTokens.Colors.meshGold)
+
+                Text("OFFLINE ALLOWANCE VOUCHER")
+                    .font(DesignTokens.Typography.labelCaps)
+                    .foregroundColor(DesignTokens.Colors.onSurface)
+                    .tracking(1.0)
+
+                Spacer()
+
+                if let voucher = activeAllowance {
+                    HStack(spacing: 5) {
+                        Circle()
+                            .fill(voucher.isExpired() ? DesignTokens.Colors.error : DesignTokens.Colors.secondary)
+                            .frame(width: 6, height: 6)
+                        Text(voucher.isExpired() ? "EXPIRED" : "ACTIVE")
+                            .font(DesignTokens.Typography.labelCaps)
+                            .foregroundColor(voucher.isExpired() ? DesignTokens.Colors.error : DesignTokens.Colors.secondary)
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(Capsule().fill((voucher.isExpired() ? DesignTokens.Colors.error : DesignTokens.Colors.secondary).opacity(0.12)))
+                } else {
+                    Text("NO ACTIVE ALLOWANCE")
+                        .font(DesignTokens.Typography.labelCaps)
+                        .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
+                        .background(Capsule().fill(DesignTokens.Colors.surfaceContainerHigh))
+                }
+            }
+
+            if let voucher = activeAllowance {
+                // Active Voucher Details
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack {
+                        Text("Allowance ID")
+                            .font(DesignTokens.Typography.caption)
+                            .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
+                        Spacer()
+                        Text(voucher.allowanceId)
+                            .font(DesignTokens.Typography.labelNumericSm)
+                            .foregroundColor(DesignTokens.Colors.onSurface)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                    }
+
+                    HStack {
+                        Text("Allocated / Remaining")
+                            .font(DesignTokens.Typography.caption)
+                            .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
+                        Spacer()
+                        Text("₹\(voucher.allocatedAmount) / ₹\(voucher.remainingAmount)")
+                            .font(DesignTokens.Typography.labelNumericSm)
+                            .foregroundColor(DesignTokens.Colors.meshGold)
+                    }
+
+                    HStack {
+                        Text("Monotonic Sequence")
+                            .font(DesignTokens.Typography.caption)
+                            .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
+                        Spacer()
+                        Text("#\(voucher.lastSequenceNumber)")
+                            .font(DesignTokens.Typography.labelNumericSm)
+                            .foregroundColor(DesignTokens.Colors.onSurface)
+                    }
+
+                    HStack {
+                        Text("Expires At")
+                            .font(DesignTokens.Typography.caption)
+                            .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
+                        Spacer()
+                        Text(voucher.expiresAt)
+                            .font(DesignTokens.Typography.labelNumericSm)
+                            .foregroundColor(voucher.isExpired() ? DesignTokens.Colors.error : DesignTokens.Colors.onSurfaceVariant)
+                    }
+                }
+                .padding(10)
+                .background(
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(DesignTokens.Colors.surfaceContainerLowest.opacity(0.6))
+                )
+
+                // Actions for active voucher
+                HStack(spacing: 8) {
+                    Button {
+                        Task {
+                            await refundAllowanceAction(allowanceId: voucher.allowanceId)
+                        }
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "arrow.counterclockwise.circle")
+                            Text("Refund Unspent to Alice")
+                        }
+                        .font(DesignTokens.Typography.labelCaps)
+                        .foregroundColor(DesignTokens.Colors.onSurface)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 38)
+                        .background(RoundedRectangle(cornerRadius: 8).fill(DesignTokens.Colors.surfaceContainerHigh))
+                    }
+
+                    Button {
+                        try? OfflineAllowanceManager.shared.clearActiveVoucher()
+                        reloadActiveAllowance()
+                    } label: {
+                        Text("Clear")
+                            .font(DesignTokens.Typography.labelCaps)
+                            .foregroundColor(DesignTokens.Colors.error)
+                            .padding(.horizontal, 12)
+                            .frame(height: 38)
+                            .background(RoundedRectangle(cornerRadius: 8).fill(DesignTokens.Colors.error.opacity(0.12)))
+                    }
+                }
+            } else {
+                // Request New Allowance Form
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Reserve funds from Alice into Bank Escrow for offline spending.")
+                        .font(DesignTokens.Typography.caption)
+                        .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
+
+                    // Quick Amount Chips
+                    HStack(spacing: 8) {
+                        ForEach([100.0, 200.0, 500.0, 1000.0], id: \.self) { val in
+                            Button {
+                                allowanceRequestAmount = val
+                            } label: {
+                                Text("₹\(Int(val))")
+                                    .font(DesignTokens.Typography.labelNumericSm)
+                                    .foregroundColor(allowanceRequestAmount == val ? DesignTokens.Colors.onMeshGold : DesignTokens.Colors.onSurface)
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 6)
+                                    .background(Capsule().fill(allowanceRequestAmount == val ? DesignTokens.Colors.meshGold : DesignTokens.Colors.surfaceContainerHigh))
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+
+                    Button {
+                        Task {
+                            await requestAllowanceAction()
+                        }
+                    } label: {
+                        HStack(spacing: 6) {
+                            if isRequestingAllowance {
+                                ProgressView().scaleEffect(0.7).tint(DesignTokens.Colors.onMeshGold)
+                            } else {
+                                Image(systemName: "lock.shield.fill")
+                            }
+                            Text("Request Allowance (₹\(Int(allowanceRequestAmount)))")
+                                .font(DesignTokens.Typography.labelCaps)
+                                .fontWeight(.bold)
+                        }
+                        .foregroundColor(DesignTokens.Colors.onMeshGold)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 42)
+                        .background(RoundedRectangle(cornerRadius: 8).fill(DesignTokens.Colors.meshGold))
+                    }
+                    .disabled(isRequestingAllowance)
+                    .buttonStyle(.plain)
+                }
+            }
+
+            // Status message banner
+            if let msg = allowanceActionMessage {
+                HStack(spacing: 6) {
+                    Image(systemName: isAllowanceSuccess ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
+                        .foregroundColor(isAllowanceSuccess ? DesignTokens.Colors.secondary : DesignTokens.Colors.error)
+                    Text(msg)
+                        .font(DesignTokens.Typography.caption)
+                        .foregroundColor(DesignTokens.Colors.onSurface)
+                        .lineLimit(3)
+                }
+                .padding(8)
+                .background(RoundedRectangle(cornerRadius: 8).fill((isAllowanceSuccess ? DesignTokens.Colors.secondary : DesignTokens.Colors.error).opacity(0.12)))
+            }
+        }
+        .padding(DesignTokens.Spacing.md)
+        .liquidCard(strokeColor: DesignTokens.Colors.meshGold.opacity(activeAllowance != nil ? 0.35 : 0.15))
+    }
+
+    private func reloadActiveAllowance() {
+        self.activeAllowance = OfflineAllowanceManager.shared.getActiveVoucher()
+    }
+
+    private func requestAllowanceAction() async {
+        guard !isRequestingAllowance else { return }
+        isRequestingAllowance = true
+        allowanceActionMessage = nil
+
+        do {
+            // 1. Fetch bank authority public key & pin it
+            let bankKeyResp = try await UPIMeshAPIClient.shared.fetchBankAuthorityPublicKey()
+            try OfflineAllowanceManager.shared.pinBankAuthorityPublicKey(bankKeyResp.publicKeyBase64)
+
+            // 2. Request allowance
+            let identity = try DeviceIdentityManager.shared.getOrCreateIdentity()
+            _ = try? await UPIMeshAPIClient.shared.registerPublicKey(
+                accountId: identity.deviceId,
+                publicKeyBase64: identity.publicKeyBase64X509
+            )
+            _ = try? await UPIMeshAPIClient.shared.authorizeDevice(
+                deviceId: identity.deviceId,
+                accountId: allowanceRequestAccount
+            )
+            let decAmount = Decimal(string: String(format: "%.2f", allowanceRequestAmount)) ?? Decimal(allowanceRequestAmount)
+            let req = AllowanceIssuanceRequestDTO(
+                accountId: allowanceRequestAccount,
+                deviceId: identity.deviceId,
+                amount: decAmount,
+                expiryMinutes: 1440
+            )
+
+            let voucherResp: OfflineAllowanceVoucherResponseDTO
+            do {
+                voucherResp = try await UPIMeshAPIClient.shared.issueAllowance(request: req)
+            } catch {
+                if let active = try? await UPIMeshAPIClient.shared.fetchActiveAllowance(accountId: allowanceRequestAccount) {
+                    voucherResp = active
+                } else {
+                    throw error
+                }
+            }
+            let voucher = voucherResp.toVoucher()
+
+            // 3. Cryptographically verify voucher signature against pinned key
+            let (valid, errorDesc) = voucher.verifyBankSignature(trustedBankPublicKeyBase64: bankKeyResp.publicKeyBase64)
+            guard valid else {
+                throw OfflineAllowanceError.voucherSignatureInvalid(errorDesc ?? "Signature verification failed")
+            }
+
+            // 4. Save and activate
+            try OfflineAllowanceManager.shared.saveActiveVoucher(voucher)
+            reloadActiveAllowance()
+
+            isAllowanceSuccess = true
+            allowanceActionMessage = "Allowance of ₹\(voucher.allocatedAmount) issued & verified successfully!"
+        } catch {
+            isAllowanceSuccess = false
+            allowanceActionMessage = error.localizedDescription
+        }
+
+        isRequestingAllowance = false
+    }
+
+    private func refundAllowanceAction(allowanceId: String) async {
+        allowanceActionMessage = nil
+        do {
+            let result = try await UPIMeshAPIClient.shared.refundAllowance(allowanceId: allowanceId)
+            isAllowanceSuccess = true
+            allowanceActionMessage = result.message
+            try? OfflineAllowanceManager.shared.clearActiveVoucher()
+            reloadActiveAllowance()
+            await viewModel.loadLiveAccounts()
+        } catch {
+            isAllowanceSuccess = false
+            allowanceActionMessage = error.localizedDescription
         }
     }
 }

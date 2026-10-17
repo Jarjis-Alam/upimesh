@@ -76,12 +76,18 @@ class OperationalHardeningTest {
     @Autowired
     private MeshSimulatorService meshSimulatorService;
 
+    @Autowired
+    private SenderKeyRegistry senderKeyRegistry;
+
     private KeyPair bridgeKeyPair;
     private KeyPair aliceKeyPair;
     private KeyPair bobKeyPair;
 
     @BeforeEach
     void setUp() throws GeneralSecurityException {
+        if (senderKeyRegistry != null) {
+            senderKeyRegistry.clearForTesting();
+        }
         processedPacketRepository.deleteAll();
         transactionRepository.deleteAll();
         accountRepository.deleteAll();

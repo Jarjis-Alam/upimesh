@@ -49,7 +49,8 @@ public class ReconciliationService {
     public static final Map<String, BigDecimal> DEFAULT_SEED_OPENING_BALANCES = Map.of(
             "alice", new BigDecimal("5000.00"),
             "bob", new BigDecimal("1000.00"),
-            "carol", new BigDecimal("2000.00")
+            "carol", new BigDecimal("2000.00"),
+            "system-escrow", BigDecimal.ZERO
     );
 
     private final AccountRepository accountRepository;

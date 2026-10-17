@@ -20,6 +20,8 @@ swiftc -framework SwiftUI \
        -framework Security \
        -framework CryptoKit \
        "$PROJECT_ROOT/ios/UPIMesh/UPIMesh/PaymentInstruction.swift" \
+       "$PROJECT_ROOT/ios/UPIMesh/UPIMesh/OfflineAllowanceVoucher.swift" \
+       "$PROJECT_ROOT/ios/UPIMesh/UPIMesh/OfflineSpendRecord.swift" \
        "$PROJECT_ROOT/ios/UPIMesh/UPIMesh/OfflinePaymentPacket.swift" \
        "$PROJECT_ROOT/ios/UPIMesh/UPIMesh/PeerTransferMessage.swift" \
        "$PROJECT_ROOT/ios/UPIMesh/UPIMesh/PeerDiagnosticMessage.swift" \

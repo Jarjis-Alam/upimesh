@@ -229,7 +229,7 @@ public struct MeshLedgerView: View {
 
                 Spacer()
 
-                Text("\(APIConfiguration.shared.baseURL.host ?? "192.168.1.100"):8080")
+                Text(APIConfiguration.shared.hostDescription)
                     .font(DesignTokens.Typography.labelNumericSm)
                     .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
 

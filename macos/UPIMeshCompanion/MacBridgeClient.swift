@@ -88,6 +88,7 @@ public enum MacBridgeError: LocalizedError, Sendable, Equatable {
     case encodingError(String)
     case decodingError(String)
     case authorizationBlocked(String)
+    case settlementRejected(String)
 
     public var errorDescription: String? {
         switch self {
@@ -97,6 +98,8 @@ public enum MacBridgeError: LocalizedError, Sendable, Equatable {
             return "Invalid parameters: \(details)"
         case .registrationRejected(let message):
             return "Bridge registration rejected: \(message)"
+        case .settlementRejected(let message):
+            return "Bridge allowance settlement rejected: \(message)"
         case .networkError(let details):
             return "Network connection failed: \(details)"
         case .invalidResponse(let code, let details):
@@ -233,4 +236,132 @@ public final class MacBridgeClient: MacBridgeRegistering, @unchecked Sendable {
             publicKeyBase64: identity.publicKeyBase64X509
         )
     }
+
+    /// Fetches the authoritative Bank Authority public key from the backend bridge.
+    public func fetchBankAuthorityPublicKey() async throws -> BankAuthorityPublicKeyResponseDTO {
+        guard let url = URL(string: "/api/allowance/bank-public-key", relativeTo: baseURL) else {
+            throw MacBridgeError.invalidURL(baseURL.absoluteString)
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.timeoutInterval = 10.0
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+
+        let data: Data
+        let response: URLResponse
+        do {
+            (data, response) = try await session.data(for: request)
+        } catch {
+            throw MacBridgeError.networkError(error.localizedDescription)
+        }
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw MacBridgeError.invalidResponse(-1, "Non-HTTP response")
+        }
+
+        guard (200...299).contains(httpResponse.statusCode) else {
+            let errorMsg = String(data: data, encoding: .utf8) ?? "HTTP \(httpResponse.statusCode)"
+            throw MacBridgeError.invalidResponse(httpResponse.statusCode, errorMsg)
+        }
+
+        do {
+            return try JSONDecoder().decode(BankAuthorityPublicKeyResponseDTO.self, from: data)
+        } catch {
+            throw MacBridgeError.decodingError(error.localizedDescription)
+        }
+    }
+
+    /// Submits an allowance-backed spend record to the backend bridge via `POST /api/allowance/spend`.
+    public func settleAllowanceSpend(
+        record: OfflineSpendRecord
+    ) async throws -> OfflineSpendPaymentDTO {
+        guard let url = URL(string: "/api/allowance/spend", relativeTo: baseURL) else {
+            throw MacBridgeError.invalidURL(baseURL.absoluteString)
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.timeoutInterval = 10.0
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+
+        do {
+            request.httpBody = try JSONEncoder().encode(record)
+        } catch {
+            throw MacBridgeError.encodingError(error.localizedDescription)
+        }
+
+        let data: Data
+        let response: URLResponse
+        do {
+            (data, response) = try await session.data(for: request)
+        } catch {
+            throw MacBridgeError.networkError(error.localizedDescription)
+        }
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw MacBridgeError.invalidResponse(-1, "Non-HTTP response")
+        }
+
+        guard (200...299).contains(httpResponse.statusCode) else {
+            let errorMsg = String(data: data, encoding: .utf8) ?? "HTTP \(httpResponse.statusCode)"
+            throw MacBridgeError.settlementRejected(errorMsg)
+        }
+
+        do {
+            return try JSONDecoder().decode(OfflineSpendPaymentDTO.self, from: data)
+        } catch {
+            throw MacBridgeError.decodingError(error.localizedDescription)
+        }
+    }
+
+// MARK: - Mac Reconciliation Outcome
+
+public enum MacReconciliationOutcome: Sendable, Equatable {
+    case settled(paymentId: String, status: String)
+    case rejected(paymentId: String, reason: String)
+    case retryable(paymentId: String, reason: String)
 }
+
+    /// Reconciles a received packet on Mac with the backend bridge.
+    public func reconcilePacket(
+        record: MacReceivedPacketRecord,
+        store: MacReceivedPacketStore = .shared
+    ) async -> MacReconciliationOutcome {
+        let paymentId = record.packet.paymentId
+
+        // Persist SETTLING status before request
+        do {
+            try store.updateStatus(paymentId: paymentId, status: .settling)
+        } catch {
+            return .retryable(paymentId: paymentId, reason: "Failed to persist SETTLING status")
+        }
+
+        if let spend = record.packet.allowanceSpend {
+            do {
+                let paymentDto = try await settleAllowanceSpend(record: spend)
+                if paymentDto.status.uppercased() == "SETTLED" {
+                    _ = try? store.updateStatus(paymentId: paymentId, status: .settled)
+                    return .settled(paymentId: paymentId, status: paymentDto.status)
+                } else {
+                    return .retryable(paymentId: paymentId, reason: "Bridge returned non-settled status: \(paymentDto.status)")
+                }
+            } catch let err as MacBridgeError {
+                switch err {
+                case .settlementRejected(let reason):
+                    _ = try? store.updateStatus(paymentId: paymentId, status: .failed, failureReason: reason)
+                    return .rejected(paymentId: paymentId, reason: reason)
+                default:
+                    return .retryable(paymentId: paymentId, reason: err.localizedDescription)
+                }
+            } catch {
+                return .retryable(paymentId: paymentId, reason: error.localizedDescription)
+            }
+        } else {
+            // Legacy packets not supported on standalone Mac companion bridge client
+            return .rejected(paymentId: paymentId, reason: "Legacy mesh packets require mobile mesh router")
+        }
+    }
+}
+

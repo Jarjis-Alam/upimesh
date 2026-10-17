@@ -25,7 +25,7 @@ public struct OfflinePayView: View {
         case failed(String)
     }
 
-    @State private var amount: Double = 10.00
+    @State private var amount: Double = 100.00
     @State private var memo: String = "Lunch payment (Offline)"
     @State private var senderId: String = "alice"
     @State private var recipientId: String = "bob"
@@ -43,6 +43,10 @@ public struct OfflinePayView: View {
     private let reconciliationService: OfflineReconciliationService
     @State private var reconcilingPaymentIds: Set<String> = []
     @State private var lastReconciliationOutcome: [String: ReconciliationOutcome] = [:]
+
+    // Offline Allowance Integration (Phase 2B)
+    @State private var useAllowance: Bool = false
+    @State private var activeAllowance: OfflineAllowanceVoucher? = nil
 
     public init(reconciliationService: OfflineReconciliationService = .shared) {
         self.reconciliationService = reconciliationService
@@ -86,21 +90,25 @@ public struct OfflinePayView: View {
             await loadSenderBalance()
             reloadQueuedPackets()
             reloadReceivedPackets()
+            reloadActiveAllowance()
         }
         .onAppear {
             reloadQueuedPackets()
             reloadReceivedPackets()
+            reloadActiveAllowance()
         }
         .refreshable {
             await loadSenderBalance()
             reloadQueuedPackets()
             reloadReceivedPackets()
+            reloadActiveAllowance()
         }
         .onReceive(NotificationCenter.default.publisher(for: .meshAccountsUpdated)) { _ in
             Task {
                 await loadSenderBalance()
                 reloadQueuedPackets()
                 reloadReceivedPackets()
+                reloadActiveAllowance()
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .offlinePacketReceived)) { _ in
@@ -108,6 +116,10 @@ public struct OfflinePayView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .offlinePacketSent)) { _ in
             reloadQueuedPackets()
+            reloadActiveAllowance()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .offlineAllowanceUpdated)) { _ in
+            reloadActiveAllowance()
         }
     }
 
@@ -482,7 +494,33 @@ public struct OfflinePayView: View {
                 )
             }
 
-            // MARK: - Create Offline Packet Action (Stage 6.2)
+            // MARK: - Allowance Payment Option (Phase 2B)
+            if let voucher = activeAllowance, !voucher.isExpired() {
+                Toggle(isOn: $useAllowance) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "banknote.fill")
+                                .foregroundColor(DesignTokens.Colors.meshGold)
+                            Text("Use Offline Allowance")
+                                .font(DesignTokens.Typography.bodySm)
+                                .fontWeight(.semibold)
+                                .foregroundColor(DesignTokens.Colors.onSurface)
+                        }
+                        Text("Available: ₹\(voucher.remainingAmount) · Escrow-Backed")
+                            .font(DesignTokens.Typography.caption)
+                            .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
+                    }
+                }
+                .toggleStyle(SwitchToggleStyle(tint: DesignTokens.Colors.meshGold))
+                .padding(12)
+                .background(
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(DesignTokens.Colors.surfaceContainerHigh.opacity(0.6))
+                        .overlay(RoundedRectangle(cornerRadius: 10).stroke(DesignTokens.Colors.meshGold.opacity(useAllowance ? 0.4 : 0.1), lineWidth: 1))
+                )
+            }
+
+            // MARK: - Create Offline Packet Action (Stage 6.2 / 2B)
             Button {
                 Task {
                     await createOfflinePacketAction()
@@ -493,15 +531,15 @@ public struct OfflinePayView: View {
                     case .creating:
                         ProgressView()
                             .tint(DesignTokens.Colors.secondary)
-                        Text("Signing & Storing Offline...")
+                        Text(useAllowance ? "Signing Allowance Spend..." : "Signing & Storing Offline...")
                             .font(DesignTokens.Typography.bodyMd)
                             .fontWeight(.semibold)
 
                     case .created:
-                        Image(systemName: "tray.fill")
+                        Image(systemName: useAllowance ? "banknote.fill" : "tray.fill")
                             .font(.system(size: 16, weight: .bold))
                             .foregroundColor(DesignTokens.Colors.meshGold)
-                        Text("Packet Queued Locally!")
+                        Text(useAllowance ? "Allowance Spend Queued!" : "Packet Queued Locally!")
                             .font(DesignTokens.Typography.bodyMd)
                             .fontWeight(.semibold)
 
@@ -514,10 +552,10 @@ public struct OfflinePayView: View {
                             .fontWeight(.semibold)
 
                     case .idle:
-                        Image(systemName: "tray.and.arrow.down.fill")
+                        Image(systemName: useAllowance ? "banknote.fill" : "tray.and.arrow.down.fill")
                             .font(.system(size: 16, weight: .bold))
-                            .foregroundColor(DesignTokens.Colors.secondary)
-                        Text("Create Offline Packet")
+                            .foregroundColor(useAllowance ? DesignTokens.Colors.meshGold : DesignTokens.Colors.secondary)
+                        Text(useAllowance ? "Create Allowance Spend Packet" : "Create Offline Packet")
                             .font(DesignTokens.Typography.bodyMd)
                             .fontWeight(.semibold)
                     }
@@ -944,9 +982,24 @@ public struct OfflinePayView: View {
                     .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
             }
 
-            Text("From: \(packet.fromAccount.capitalized) · Local Signed Packet · Awaiting Mesh / Bridge")
-                .font(.system(size: 10))
-                .foregroundColor(DesignTokens.Colors.onSurfaceVariant.opacity(0.8))
+            HStack {
+                Text("From: \(packet.fromAccount.capitalized) · Local Signed Packet · Awaiting Mesh / Bridge")
+                    .font(.system(size: 10))
+                    .foregroundColor(DesignTokens.Colors.onSurfaceVariant.opacity(0.8))
+
+                if packet.isAllowanceBacked, let spend = packet.allowanceSpend {
+                    Spacer()
+                    HStack(spacing: 4) {
+                        Image(systemName: "banknote.fill").font(.system(size: 9)).foregroundColor(DesignTokens.Colors.meshGold)
+                        Text("ALLOWANCE #\(spend.sequenceNumber)")
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundColor(DesignTokens.Colors.meshGold)
+                    }
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(Capsule().fill(DesignTokens.Colors.meshGold.opacity(0.15)))
+                }
+            }
         }
         .padding(10)
         .background(
@@ -1230,8 +1283,9 @@ public struct OfflinePayView: View {
                                 .font(DesignTokens.Typography.labelCaps)
                                 .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
 
+                            let targetPacket = selectedPacketForTransfer ?? queuedPackets.last
                             ForEach(queuedPackets) { packet in
-                                let isSelected = (selectedPacketForTransfer?.paymentId == packet.paymentId)
+                                let isSelected = (targetPacket?.paymentId == packet.paymentId)
                                 Button {
                                     selectedPacketForTransfer = packet
                                 } label: {
@@ -1266,7 +1320,6 @@ public struct OfflinePayView: View {
                             }
 
                             // Send Button
-                            let targetPacket = selectedPacketForTransfer ?? queuedPackets.first
                             Button {
                                 if let pkt = targetPacket {
                                     Task {
@@ -1455,6 +1508,18 @@ public struct OfflinePayView: View {
                 Text(record.receivedAt.isoString)
                     .font(.system(size: 10, design: .monospaced))
                     .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
+            }
+
+            if packet.isAllowanceBacked, let spend = packet.allowanceSpend {
+                HStack(spacing: 6) {
+                    Image(systemName: "banknote.fill").foregroundColor(DesignTokens.Colors.meshGold).font(.system(size: 9))
+                    Text("ALLOWANCE-BACKED SPEND · Seq #\(spend.sequenceNumber) · Cum: ₹\(String(format: "%.2f", spend.cumulativeSpentDouble))")
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundColor(DesignTokens.Colors.meshGold)
+                }
+                .padding(.horizontal, 6)
+                .padding(.vertical, 2)
+                .background(Capsule().fill(DesignTokens.Colors.meshGold.opacity(0.15)))
             }
 
             // Trust & Cryptographic Status Breakdown
@@ -1807,6 +1872,48 @@ public struct OfflinePayView: View {
             return
         }
 
+        // Branch: Allowance-backed offline spending
+        if useAllowance {
+            guard let voucher = activeAllowance else {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    offlineCreationState = .failed("No active allowance voucher found.")
+                }
+                return
+            }
+
+            let decAmount = Decimal(string: String(format: "%.2f", amount)) ?? Decimal(amount)
+            if decAmount > voucher.remainingAmount {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    offlineCreationState = .failed("Requested amount (₹\(String(format: "%.2f", amount))) exceeds remaining allowance of ₹\(voucher.remainingAmount).")
+                }
+                return
+            }
+
+            withAnimation(.easeInOut(duration: 0.2)) {
+                offlineCreationState = .creating
+            }
+
+            do {
+                let packet = try OfflineAllowanceManager.shared.createAndQueueAllowanceSpend(
+                    toAccount: recipientId,
+                    amount: decAmount,
+                    memo: memo
+                )
+                withAnimation(.spring(response: 0.4, dampingFraction: 0.75)) {
+                    offlineCreationState = .created(packet)
+                    selectedPacketForTransfer = packet
+                }
+                reloadQueuedPackets()
+                reloadActiveAllowance()
+            } catch {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    offlineCreationState = .failed(error.localizedDescription)
+                }
+            }
+            return
+        }
+
+        // Legacy offline packet creation
         withAnimation(.easeInOut(duration: 0.2)) {
             offlineCreationState = .creating
         }
@@ -1821,6 +1928,7 @@ public struct OfflinePayView: View {
 
             withAnimation(.spring(response: 0.4, dampingFraction: 0.75)) {
                 offlineCreationState = .created(packet)
+                selectedPacketForTransfer = packet
             }
             reloadQueuedPackets()
         } catch {
@@ -1833,6 +1941,14 @@ public struct OfflinePayView: View {
     @MainActor
     private func reloadQueuedPackets() {
         self.queuedPackets = OfflinePaymentService.shared.getQueuedPackets()
+    }
+
+    @MainActor
+    private func reloadActiveAllowance() {
+        self.activeAllowance = OfflineAllowanceManager.shared.getActiveVoucher()
+        if let voucher = self.activeAllowance, !voucher.isExpired() {
+            self.useAllowance = true
+        }
     }
 
     @MainActor

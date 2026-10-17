@@ -36,6 +36,9 @@
 		A1000027 /* MeshLedgerViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000029 /* MeshLedgerViewModel.swift */; };
 		A1000028 /* MeshLedgerViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000030 /* MeshLedgerViewModelTests.swift */; };
 		A1000029 /* PeerDiagnosticMessage.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000031 /* PeerDiagnosticMessage.swift */; };
+		A1000030 /* OfflineAllowanceVoucher.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000032 /* OfflineAllowanceVoucher.swift */; };
+		A1000031 /* OfflineSpendRecord.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000033 /* OfflineSpendRecord.swift */; };
+		A1000032 /* OfflineAllowanceManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000034 /* OfflineAllowanceManager.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -70,6 +73,9 @@
 		A2000029 /* MeshLedgerViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeshLedgerViewModel.swift; sourceTree = "<group>"; };
 		A2000030 /* MeshLedgerViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeshLedgerViewModelTests.swift; sourceTree = "<group>"; };
 		A2000031 /* PeerDiagnosticMessage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PeerDiagnosticMessage.swift; sourceTree = "<group>"; };
+		A2000032 /* OfflineAllowanceVoucher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfflineAllowanceVoucher.swift; sourceTree = "<group>"; };
+		A2000033 /* OfflineSpendRecord.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfflineSpendRecord.swift; sourceTree = "<group>"; };
+		A2000034 /* OfflineAllowanceManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfflineAllowanceManager.swift; sourceTree = "<group>"; };
 		A2000099 /* UPIMesh.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = UPIMesh.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -123,6 +129,9 @@
 				A2000029 /* MeshLedgerViewModel.swift */,
 				A2000030 /* MeshLedgerViewModelTests.swift */,
 				A2000031 /* PeerDiagnosticMessage.swift */,
+				A2000032 /* OfflineAllowanceVoucher.swift */,
+				A2000033 /* OfflineSpendRecord.swift */,
+				A2000034 /* OfflineAllowanceManager.swift */,
 				A2000014 /* Info.plist */,
 				A2000010 /* Assets.xcassets */,
 				A4000004 /* Preview Content */,
@@ -243,6 +252,9 @@
 				A1000027 /* MeshLedgerViewModel.swift in Sources */,
 				A1000028 /* MeshLedgerViewModelTests.swift in Sources */,
 				A1000029 /* PeerDiagnosticMessage.swift in Sources */,
+				A1000030 /* OfflineAllowanceVoucher.swift in Sources */,
+				A1000031 /* OfflineSpendRecord.swift in Sources */,
+				A1000032 /* OfflineAllowanceManager.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -65,10 +65,14 @@ public class SettlementService {
             );
         }
 
-        Account fromAccount = accountRepository.findById(from)
-                .orElseThrow(() -> new IllegalArgumentException("No account: " + from));
-        Account toAccount = accountRepository.findById(to)
-                .orElseThrow(() -> new IllegalArgumentException("No account: " + to));
+        String firstId = from.compareToIgnoreCase(to) < 0 ? from : to;
+        String secondId = from.compareToIgnoreCase(to) < 0 ? to : from;
+        Account firstAccount = accountRepository.findById(firstId)
+                .orElseThrow(() -> new IllegalArgumentException("No account: " + firstId));
+        Account secondAccount = accountRepository.findById(secondId)
+                .orElseThrow(() -> new IllegalArgumentException("No account: " + secondId));
+        Account fromAccount = from.equalsIgnoreCase(firstId) ? firstAccount : secondAccount;
+        Account toAccount = to.equalsIgnoreCase(firstId) ? firstAccount : secondAccount;
 
         if (fromAccount.getBalance().compareTo(amount) < 0) {
             throw new IllegalStateException("Insufficient funds");
@@ -77,8 +81,9 @@ public class SettlementService {
         fromAccount.setBalance(fromAccount.getBalance().subtract(amount));
         toAccount.setBalance(toAccount.getBalance().add(amount));
 
-        accountRepository.save(fromAccount);
-        accountRepository.save(toAccount);
+        // Deterministic ordering to prevent lock cycle deadlocks on opposing transfers
+        accountRepository.save(firstAccount);
+        accountRepository.save(secondAccount);
 
         Transaction transaction = new Transaction(
                 UUID.randomUUID().toString(),

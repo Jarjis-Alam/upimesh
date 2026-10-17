@@ -6,6 +6,9 @@ echo "=== Building and Running iOS Offline Payment & Transport Tests (Stage 6.1 
 swiftc -framework Foundation -framework Security -framework CryptoKit \
   ios/UPIMesh/UPIMesh/PaymentInstruction.swift \
   ios/UPIMesh/UPIMesh/DeviceIdentityManager.swift \
+  ios/UPIMesh/UPIMesh/OfflineAllowanceVoucher.swift \
+  ios/UPIMesh/UPIMesh/OfflineSpendRecord.swift \
+  ios/UPIMesh/UPIMesh/OfflineAllowanceManager.swift \
   ios/UPIMesh/UPIMesh/OfflinePaymentPacket.swift \
   ios/UPIMesh/UPIMesh/OfflinePacketStore.swift \
   ios/UPIMesh/UPIMesh/OfflinePaymentService.swift \
@@ -18,6 +21,7 @@ swiftc -framework Foundation -framework Security -framework CryptoKit \
   ios/UPIMesh/UPIMesh/UPIMeshAPIClient.swift \
   ios/UPIMesh/UPIMesh/OfflineReconciliationService.swift \
   ios/UPIMesh/UPIMesh/ReconciliationServiceTests.swift \
+  ios/UPIMesh/UPIMesh/OfflineAllowanceTests.swift \
   ios/UPIMesh/UPIMesh/PreviewModels.swift \
   ios/UPIMesh/UPIMesh/MeshLedgerViewModel.swift \
   ios/UPIMesh/UPIMesh/MeshLedgerViewModelTests.swift \
@@ -31,6 +35,8 @@ echo ""
 echo "=== Building and Running macOS Peer Test Companion Tests (Stage 6.3C) ==="
 swiftc -framework Foundation -framework Security -framework CryptoKit \
   ios/UPIMesh/UPIMesh/PaymentInstruction.swift \
+  ios/UPIMesh/UPIMesh/OfflineAllowanceVoucher.swift \
+  ios/UPIMesh/UPIMesh/OfflineSpendRecord.swift \
   ios/UPIMesh/UPIMesh/OfflinePaymentPacket.swift \
   ios/UPIMesh/UPIMesh/PeerTransferMessage.swift \
   ios/UPIMesh/UPIMesh/PeerDiagnosticMessage.swift \

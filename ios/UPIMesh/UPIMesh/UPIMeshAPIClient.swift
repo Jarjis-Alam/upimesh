@@ -176,6 +176,94 @@ public struct DeviceAuthorizationResponseDTO: Codable, Sendable, Equatable {
     }
 }
 
+// MARK: - Allowance DTO Models
+
+public struct AllowanceIssuanceRequestDTO: Codable, Sendable, Equatable {
+    public let accountId: String
+    public let deviceId: String
+    public let amount: Decimal
+    public let expiryMinutes: Int?
+
+    public init(accountId: String, deviceId: String, amount: Decimal, expiryMinutes: Int? = 1440) {
+        self.accountId = accountId
+        self.deviceId = deviceId
+        self.amount = amount
+        self.expiryMinutes = expiryMinutes
+    }
+}
+
+public struct OfflineAllowanceVoucherResponseDTO: Codable, Sendable, Equatable {
+    public let allowanceId: String
+    public let accountId: String
+    public let deviceId: String
+    public let devicePublicKeyFingerprint: String
+    public let currency: String
+    public let allocatedAmount: Decimal
+    public let issuedAt: String
+    public let expiresAt: String
+    public let protocolVersion: Int
+    public let status: String
+    public let voucherSignature: String
+    public let bankPublicKeyBase64: String?
+
+    public init(
+        allowanceId: String,
+        accountId: String,
+        deviceId: String,
+        devicePublicKeyFingerprint: String,
+        currency: String,
+        allocatedAmount: Decimal,
+        issuedAt: String,
+        expiresAt: String,
+        protocolVersion: Int,
+        status: String,
+        voucherSignature: String,
+        bankPublicKeyBase64: String? = nil
+    ) {
+        self.allowanceId = allowanceId
+        self.accountId = accountId
+        self.deviceId = deviceId
+        self.devicePublicKeyFingerprint = devicePublicKeyFingerprint
+        self.currency = currency
+        self.allocatedAmount = allocatedAmount
+        self.issuedAt = issuedAt
+        self.expiresAt = expiresAt
+        self.protocolVersion = protocolVersion
+        self.status = status
+        self.voucherSignature = voucherSignature
+        self.bankPublicKeyBase64 = bankPublicKeyBase64
+    }
+
+    public func toVoucher() -> OfflineAllowanceVoucher {
+        OfflineAllowanceVoucher(
+            allowanceId: allowanceId,
+            accountId: accountId,
+            deviceId: deviceId,
+            devicePublicKeyFingerprint: devicePublicKeyFingerprint,
+            currency: currency,
+            allocatedAmount: allocatedAmount,
+            spentAmount: Decimal.zero,
+            lastSequenceNumber: 0,
+            issuedAt: issuedAt,
+            expiresAt: expiresAt,
+            protocolVersion: protocolVersion,
+            status: status,
+            voucherSignature: voucherSignature,
+            bankPublicKeyBase64: bankPublicKeyBase64
+        )
+    }
+}
+
+public struct OfflineAllowanceRefundResultDTO: Codable, Sendable, Equatable {
+    public let allowanceId: String
+    public let accountId: String
+    public let refundedAmount: Decimal
+    public let currency: String
+    public let status: String
+    public let refundedAt: String
+    public let message: String
+}
+
 // MARK: - Notifications
 
 extension Notification.Name {
@@ -192,6 +280,7 @@ public enum APIError: LocalizedError, Sendable, Equatable {
     case paymentFailed(String)
     case registrationFailed(String)
     case authorizationFailed(String)
+    case allowanceError(String)
     case networkError(String)
     case invalidResponse(Int)
     case encodingError(String)
@@ -209,6 +298,8 @@ public enum APIError: LocalizedError, Sendable, Equatable {
             return "Device public key registration rejected: \(message)"
         case .authorizationFailed(let message):
             return "Device account authorization rejected: \(message)"
+        case .allowanceError(let message):
+            return "Allowance operation rejected: \(message)"
         case .networkError(let details):
             return "Network connection failed: \(details)"
         case .invalidResponse(let code):
@@ -271,6 +362,10 @@ public protocol MeshPaymentSubmitting: Sendable {
     func queryPaymentStatus(
         paymentId: String
     ) async throws -> PaymentStatusResponseDTO
+
+    func submitAllowanceSpend(
+        record: OfflineSpendRecord
+    ) async throws -> OfflineSpendPaymentDTO
 }
 
 public extension MeshPaymentSubmitting {
@@ -281,6 +376,12 @@ public extension MeshPaymentSubmitting {
             status: "NOT_FOUND",
             message: "Status query not implemented in mock submitter"
         )
+    }
+
+    func submitAllowanceSpend(
+        record: OfflineSpendRecord
+    ) async throws -> OfflineSpendPaymentDTO {
+        throw APIError.paymentFailed("submitAllowanceSpend not implemented in mock submitter")
     }
 }
 
@@ -656,6 +757,10 @@ public final class UPIMeshAPIClient: MeshPaymentSubmitting, MeshTransactionFetch
         request.timeoutInterval = 10.0
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
+        if let token = config.authToken {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+            request.setValue(token, forHTTPHeaderField: "X-Admin-Token")
+        }
 
         let payload = DeviceAuthorizationRequestDTO(deviceId: trimmedDeviceId, accountId: trimmedAccountId)
         do {
@@ -688,6 +793,204 @@ public final class UPIMeshAPIClient: MeshPaymentSubmitting, MeshTransactionFetch
         } else {
             let errorMsg = String(data: data, encoding: .utf8) ?? "HTTP \(httpResponse.statusCode)"
             throw APIError.registrationFailed(errorMsg)
+        }
+    }
+
+    // MARK: - Offline Allowance Endpoints
+
+    /// Fetches the authoritative Bank Authority public key from `GET /api/allowance/bank-public-key`.
+    public func fetchBankAuthorityPublicKey() async throws -> BankAuthorityPublicKeyResponseDTO {
+        let url = config.baseURL.appendingPathComponent("api/allowance/bank-public-key")
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.timeoutInterval = 10.0
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+
+        let data: Data
+        let response: URLResponse
+        do {
+            (data, response) = try await session.data(for: request)
+        } catch {
+            throw APIError.networkError(error.localizedDescription)
+        }
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.invalidResponse(-1)
+        }
+
+        guard (200...299).contains(httpResponse.statusCode) else {
+            let errorMsg = String(data: data, encoding: .utf8) ?? "HTTP \(httpResponse.statusCode)"
+            throw APIError.allowanceError("Failed to fetch bank public key: \(errorMsg)")
+        }
+
+        do {
+            return try JSONDecoder().decode(BankAuthorityPublicKeyResponseDTO.self, from: data)
+        } catch {
+            throw APIError.decodingError(error.localizedDescription)
+        }
+    }
+
+    /// Atomically issues an offline allowance and reserves escrow via `POST /api/allowance/issue`.
+    public func issueAllowance(
+        request: AllowanceIssuanceRequestDTO
+    ) async throws -> OfflineAllowanceVoucherResponseDTO {
+        let url = config.baseURL.appendingPathComponent("api/allowance/issue")
+        var urlReq = URLRequest(url: url)
+        urlReq.httpMethod = "POST"
+        urlReq.timeoutInterval = 10.0
+        urlReq.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        urlReq.setValue("application/json", forHTTPHeaderField: "Accept")
+
+        do {
+            urlReq.httpBody = try JSONEncoder().encode(request)
+        } catch {
+            throw APIError.encodingError(error.localizedDescription)
+        }
+
+        let data: Data
+        let response: URLResponse
+        do {
+            (data, response) = try await session.data(for: urlReq)
+        } catch {
+            throw APIError.networkError(error.localizedDescription)
+        }
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.invalidResponse(-1)
+        }
+
+        guard (200...299).contains(httpResponse.statusCode) else {
+            let errorMsg = String(data: data, encoding: .utf8) ?? "HTTP \(httpResponse.statusCode)"
+            throw APIError.allowanceError("Allowance issuance failed: \(errorMsg)")
+        }
+
+        do {
+            return try JSONDecoder().decode(OfflineAllowanceVoucherResponseDTO.self, from: data)
+        } catch {
+            throw APIError.decodingError(error.localizedDescription)
+        }
+    }
+
+    /// Submits a signed offline spend record to settle against escrow via `POST /api/allowance/spend`.
+    public func submitAllowanceSpend(
+        record: OfflineSpendRecord
+    ) async throws -> OfflineSpendPaymentDTO {
+        let url = config.baseURL.appendingPathComponent("api/allowance/spend")
+        var urlReq = URLRequest(url: url)
+        urlReq.httpMethod = "POST"
+        urlReq.timeoutInterval = 10.0
+        urlReq.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        urlReq.setValue("application/json", forHTTPHeaderField: "Accept")
+
+        do {
+            urlReq.httpBody = try JSONEncoder().encode(record)
+        } catch {
+            throw APIError.encodingError(error.localizedDescription)
+        }
+
+        let data: Data
+        let response: URLResponse
+        do {
+            (data, response) = try await session.data(for: urlReq)
+        } catch {
+            throw APIError.networkError(error.localizedDescription)
+        }
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.invalidResponse(-1)
+        }
+
+        guard (200...299).contains(httpResponse.statusCode) else {
+            let errorMsg = String(data: data, encoding: .utf8) ?? "HTTP \(httpResponse.statusCode)"
+            throw APIError.paymentFailed("Allowance spend settlement failed: \(errorMsg)")
+        }
+
+        do {
+            return try JSONDecoder().decode(OfflineSpendPaymentDTO.self, from: data)
+        } catch {
+            throw APIError.decodingError(error.localizedDescription)
+        }
+    }
+
+    /// Refunds unspent allowance funds from escrow back to payer via `POST /api/allowance/refund`.
+    public func refundAllowance(
+        allowanceId: String
+    ) async throws -> OfflineAllowanceRefundResultDTO {
+        var components = URLComponents(url: config.baseURL.appendingPathComponent("api/allowance/refund"), resolvingAgainstBaseURL: false)!
+        components.queryItems = [URLQueryItem(name: "allowanceId", value: allowanceId)]
+        guard let url = components.url else {
+            throw APIError.invalidURL
+        }
+
+        var urlReq = URLRequest(url: url)
+        urlReq.httpMethod = "POST"
+        urlReq.timeoutInterval = 10.0
+        urlReq.setValue("application/json", forHTTPHeaderField: "Accept")
+
+        let data: Data
+        let response: URLResponse
+        do {
+            (data, response) = try await session.data(for: urlReq)
+        } catch {
+            throw APIError.networkError(error.localizedDescription)
+        }
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.invalidResponse(-1)
+        }
+
+        guard (200...299).contains(httpResponse.statusCode) else {
+            let errorMsg = String(data: data, encoding: .utf8) ?? "HTTP \(httpResponse.statusCode)"
+            throw APIError.allowanceError("Allowance refund failed: \(errorMsg)")
+        }
+
+        do {
+            return try JSONDecoder().decode(OfflineAllowanceRefundResultDTO.self, from: data)
+        } catch {
+            throw APIError.decodingError(error.localizedDescription)
+        }
+    }
+
+    /// Queries the currently active allowance for an account via `GET /api/allowance/active`.
+    public func fetchActiveAllowance(
+        accountId: String
+    ) async throws -> OfflineAllowanceVoucherResponseDTO? {
+        var components = URLComponents(url: config.baseURL.appendingPathComponent("api/allowance/active"), resolvingAgainstBaseURL: false)!
+        components.queryItems = [URLQueryItem(name: "accountId", value: accountId)]
+        guard let url = components.url else {
+            throw APIError.invalidURL
+        }
+
+        var urlReq = URLRequest(url: url)
+        urlReq.httpMethod = "GET"
+        urlReq.timeoutInterval = 10.0
+        urlReq.setValue("application/json", forHTTPHeaderField: "Accept")
+
+        let data: Data
+        let response: URLResponse
+        do {
+            (data, response) = try await session.data(for: urlReq)
+        } catch {
+            throw APIError.networkError(error.localizedDescription)
+        }
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.invalidResponse(-1)
+        }
+
+        if httpResponse.statusCode == 404 {
+            return nil
+        }
+
+        guard (200...299).contains(httpResponse.statusCode) else {
+            let errorMsg = String(data: data, encoding: .utf8) ?? "HTTP \(httpResponse.statusCode)"
+            throw APIError.allowanceError("Failed to fetch active allowance: \(errorMsg)")
+        }
+
+        do {
+            return try JSONDecoder().decode(OfflineAllowanceVoucherResponseDTO.self, from: data)
+        } catch {
+            throw APIError.decodingError(error.localizedDescription)
         }
     }
 }

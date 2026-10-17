@@ -148,6 +148,47 @@ public final class OfflineReconciliationService: @unchecked Sendable {
         }
 
         // 6. Execute submission via API client
+        if let spend = record.packet.allowanceSpend {
+            do {
+                let spendResult = try await apiClient.submitAllowanceSpend(record: spend)
+                if spendResult.status.uppercased() == "SETTLED" {
+                    do {
+                        try packetStore.updateStatus(paymentId: cleanId, status: .settled)
+                    } catch {}
+                    let resultDTO = MeshPaymentResultDTO(
+                        success: true,
+                        paymentId: cleanId,
+                        packetId: UUID().uuidString,
+                        fromAccount: spend.payerAccountId,
+                        toAccount: spend.recipientAccountId,
+                        amount: spend.amountDouble,
+                        roundsRun: 1,
+                        hopsTaken: 1,
+                        remainingTtl: 3,
+                        routeTrace: [senderDeviceId, "system-escrow", "bridge"],
+                        encryptedKeySnippet: nil,
+                        ivHex: nil,
+                        ciphertextSnippet: nil,
+                        status: "SETTLED",
+                        message: "Allowance spend settled successfully against escrow"
+                    )
+                    return .settled(paymentId: cleanId, result: resultDTO)
+                } else {
+                    return .retryable(
+                        paymentId: cleanId,
+                        reason: "Allowance spend returned non-settled status: \(spendResult.status)"
+                    )
+                }
+            } catch let apiError as APIError {
+                return await handleAPIError(apiError, paymentId: cleanId, instruction: instruction, deviceId: senderDeviceId)
+            } catch {
+                return .retryable(
+                    paymentId: cleanId,
+                    reason: "Allowance spend submission failed with error: \(error.localizedDescription)"
+                )
+            }
+        }
+
         do {
             let result = try await apiClient.submitSignedMeshPayment(
                 instruction: instruction,
@@ -187,7 +228,7 @@ public final class OfflineReconciliationService: @unchecked Sendable {
         deviceId: String
     ) async -> ReconciliationOutcome {
         switch error {
-        case .paymentFailed(let message):
+        case .paymentFailed(let message), .allowanceError(let message):
             if isDefinitiveTerminalRejection(message: message) {
                 // Definitive terminal rejection (e.g. insufficient funds, expired, unauthorized, conflicting)
                 do {
@@ -291,7 +332,15 @@ public final class OfflineReconciliationService: @unchecked Sendable {
             "has been revoked",
             "fingerprint mismatch",
             "exceeds authorized spending limit",
-            "blocked"
+            "blocked",
+            "exceeds remaining allowance",
+            "allowance is not active",
+            "allowance is expired",
+            "voucher signature",
+            "payer signature",
+            "sequence fork",
+            "out of order sequence",
+            "tampered"
         ]
         let lower = message.lowercased()
         return terminalKeywords.contains { lower.contains($0) }

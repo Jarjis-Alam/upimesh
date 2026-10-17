@@ -20,6 +20,13 @@ struct OfflinePaymentTestRunner {
             exit(1)
         }
 
+        do {
+            try await OfflineAllowanceTests.runAllTests()
+        } catch {
+            print("OfflineAllowanceTests failed: \(error)")
+            exit(1)
+        }
+
         await MeshLedgerViewModelTests.runAllTests()
 
         exit(0)

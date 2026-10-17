@@ -20,7 +20,8 @@ public final class APIConfiguration: @unchecked Sendable {
     public var baseURL: URL {
         get {
             if let saved = UserDefaults.standard.string(forKey: userDefaultsKey),
-               let url = URL(string: saved), !saved.isEmpty {
+               let url = URL(string: saved), !saved.isEmpty,
+               url.scheme == "http" || url.scheme == "https" {
                 return url
             }
             return Self.defaultBaseURL
@@ -29,6 +30,14 @@ public final class APIConfiguration: @unchecked Sendable {
             UserDefaults.standard.set(newValue.absoluteString, forKey: userDefaultsKey)
         }
     }
+
+    /// Host description formatted for UI display (e.g. "192.168.1.100:8080")
+    public var hostDescription: String {
+        let host = baseURL.host ?? Self.defaultBaseURL.host ?? "localhost"
+        let port = baseURL.port ?? Self.defaultBaseURL.port ?? 8080
+        return "\(host):\(port)"
+    }
+
 
     /// Resets the base URL back to the default LAN address.
     public func resetToDefault() {
@@ -39,16 +48,13 @@ public final class APIConfiguration: @unchecked Sendable {
     private let authTokenKey = "com.upimesh.api.authToken"
 
     /// The active authentication token for financial read endpoints (e.g. Bearer token).
-    /// Defaults to development simulator demo token ("demo-token-admin") in non-production local mode.
+    /// Requires explicitly configured credentials; no hardcoded default token.
     public var authToken: String? {
         get {
-            if let saved = UserDefaults.standard.string(forKey: authTokenKey) {
-                return saved
-            }
-            return "demo-token-admin"
+            return UserDefaults.standard.string(forKey: authTokenKey)
         }
         set {
-            if let val = newValue {
+            if let val = newValue?.trimmingCharacters(in: .whitespacesAndNewlines), !val.isEmpty {
                 UserDefaults.standard.set(val, forKey: authTokenKey)
             } else {
                 UserDefaults.standard.removeObject(forKey: authTokenKey)
