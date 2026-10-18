@@ -8,10 +8,24 @@ import Foundation
 ///   NOTE: `QUEUED` DOES NOT mean or imply that the payment has settled, nor does it guarantee
 ///   settlement or prevent offline double-spending. The authoritative backend ledger remains the
 ///   sole arbiter of balance validation, replay detection, and final settlement.
-public enum OfflinePacketStatus: String, Sendable, Codable, Equatable {
+public enum OfflinePacketStatus: String, Sendable, Codable, Equatable, CaseIterable {
+    case created = "CREATED"
     case queued = "QUEUED"
+    case sent = "SENT"
     case received = "RECEIVED"
     case settled = "SETTLED"
+    case failed = "FAILED"
+
+    public var displayName: String {
+        switch self {
+        case .created: return "CREATED"
+        case .queued: return "QUEUED"
+        case .sent: return "SENT"
+        case .received: return "RECEIVED"
+        case .settled: return "SETTLED"
+        case .failed: return "FAILED"
+        }
+    }
 }
 
 /// Persistent reconciliation status for an offline payment packet in a recipient's inbox.
@@ -19,18 +33,20 @@ public enum OfflinePacketStatus: String, Sendable, Codable, Equatable {
 /// Under the prototype architecture:
 /// - `received`: The packet was transferred over peer transport and stored in the local inbox.
 ///   It is awaiting submission to the backend bridge when network connectivity is available.
+/// - `pendingReconciliation`: Distinct explicit status representing local durable persistence awaiting reconciliation.
 /// - `settling`: Submission to the backend bridge is actively in progress.
 /// - `settled`: Backend settlement on the authoritative ledger is confirmed.
 /// - `failed`: Terminal rejection was confirmed by the backend (e.g. insufficient funds, expired, unauthorized).
 public enum ReceivedReconciliationStatus: String, Sendable, Codable, Equatable, CaseIterable {
     case received = "RECEIVED"
+    case pendingReconciliation = "PENDING_RECONCILIATION"
     case settling = "SETTLING"
     case settled = "SETTLED"
     case failed = "FAILED"
 
     public var displayName: String {
         switch self {
-        case .received: return "RECEIVED"
+        case .received, .pendingReconciliation: return "RECEIVED — NOT SETTLED"
         case .settling: return "SETTLING"
         case .settled: return "SETTLED"
         case .failed: return "FAILED"

@@ -178,6 +178,7 @@ public struct InboundTransportProbe: Decodable {
     public enum Route: Equatable {
         case diagnosticPing
         case diagnosticPong
+        case paymentAck
         case invalidDiagnostic(String)
         case paymentTransfer
         case unknown
@@ -194,6 +195,8 @@ public struct InboundTransportProbe: Decodable {
                 return .diagnosticPing
             case "PONG":
                 return .diagnosticPong
+            case "PAYMENT_ACK":
+                return .paymentAck
             default:
                 return .invalidDiagnostic(type)
             }

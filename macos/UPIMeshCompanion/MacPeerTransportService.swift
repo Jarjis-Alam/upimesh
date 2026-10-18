@@ -49,7 +49,7 @@ public final class MacPeerTransportService: NSObject, ObservableObject, @uncheck
         let name = cleanName.isEmpty ? "MacBook" : String(cleanName.prefix(20))
         self.myPeerId = MCPeerID(displayName: "\(name) (Mac)")
 
-        self.session = MCSession(peer: self.myPeerId, securityIdentity: nil, encryptionPreference: .required)
+        self.session = MCSession(peer: self.myPeerId, securityIdentity: nil, encryptionPreference: .none)
         self.advertiser = MCNearbyServiceAdvertiser(peer: self.myPeerId, discoveryInfo: nil, serviceType: Self.serviceType)
         self.browser = MCNearbyServiceBrowser(peer: self.myPeerId, serviceType: Self.serviceType)
 
@@ -254,6 +254,8 @@ public final class MacPeerTransportService: NSObject, ObservableObject, @uncheck
             handleInboundDiagnosticPing(data, from: peer)
         case .diagnosticPong:
             handleInboundDiagnosticPong(data, from: peer)
+        case .paymentAck:
+            handleInboundPaymentAck(data, from: peer)
         case .invalidDiagnostic(let type):
             DispatchQueue.main.async {
                 self.errorMessage = "Rejected invalid diagnostic message type '\(type)' from \(peer.displayName)"
@@ -356,7 +358,19 @@ public final class MacPeerTransportService: NSObject, ObservableObject, @uncheck
         }
 
         let pid = message.packet.paymentId
+        let myDeviceId = (try? MacDeviceIdentityManager.shared.getOrCreateIdentity().deviceId) ?? "mac-companion"
+
+        // Deduplication check: if already imported on Mac, safely acknowledge duplicate without duplicate storage
         if MacReceivedPacketStore.shared.contains(paymentId: pid) {
+            let ack = PeerTransferAckMessage(
+                paymentId: pid,
+                recipientDeviceId: myDeviceId,
+                isPersisted: true,
+                isDuplicate: true
+            )
+            if let ackData = try? ack.encode() {
+                try? session.send(ackData, toPeers: [peer], with: .reliable)
+            }
             DispatchQueue.main.async {
                 self.errorMessage = "Duplicate packet '\(pid.prefix(8))...' already imported on Mac."
             }
@@ -403,7 +417,8 @@ public final class MacPeerTransportService: NSObject, ObservableObject, @uncheck
                 receivedFromPeer: peer.displayName,
                 isSignatureMathematicallyValid: isMathValid,
                 isSenderIdentityAuthenticated: false,
-                trustStatusNote: trustNote
+                trustStatusNote: trustNote,
+                reconciliationStatus: .received
             )
         } catch {
             DispatchQueue.main.async {
@@ -412,6 +427,7 @@ public final class MacPeerTransportService: NSObject, ObservableObject, @uncheck
             return
         }
 
+        // B. Persist before acknowledging receipt: Must be on durable disk before ACK is transmitted
         do {
             try MacReceivedPacketStore.shared.save(record)
         } catch {
@@ -421,10 +437,44 @@ public final class MacPeerTransportService: NSObject, ObservableObject, @uncheck
             return
         }
 
+        // ONLY AFTER SUCCESSFUL DISK PERSISTENCE, send explicit ACK back to peer
+        let ack = PeerTransferAckMessage(
+            paymentId: pid,
+            recipientDeviceId: myDeviceId,
+            isPersisted: true,
+            isDuplicate: false
+        )
+        if let ackData = try? ack.encode() {
+            try? session.send(ackData, toPeers: [peer], with: .reliable)
+        }
+
         DispatchQueue.main.async {
             self.lastReceivedRecord = record
             self.statusMessage = "Received ₹\(String(format: "%.2f", record.packet.amountDouble)) from \(peer.displayName) (RECEIVED — NOT SETTLED)"
             NotificationCenter.default.post(name: .macPacketReceived, object: record)
+        }
+    }
+
+    // MARK: - Inbound Payment ACK Handler
+
+    private func handleInboundPaymentAck(_ data: Data, from peer: MCPeerID) {
+        do {
+            let ack = try PeerTransferAckMessage.decodeAndValidate(from: data)
+            guard ack.isPersisted else {
+                DispatchQueue.main.async {
+                    self.errorMessage = "Peer \(peer.displayName) reported persistence failure for payment '\(ack.paymentId.prefix(8))...'"
+                }
+                return
+            }
+
+            DispatchQueue.main.async {
+                self.sendStatus = "Payment persisted by \(peer.displayName)\(ack.isDuplicate ? " (already persisted)" : "") ✓ [STATUS: SENT]"
+                self.statusMessage = "Peer confirmed durable storage for payment \(ack.paymentId.prefix(8))…"
+            }
+        } catch {
+            DispatchQueue.main.async {
+                self.errorMessage = "Failed to process payment ACK from \(peer.displayName): \(error.localizedDescription)"
+            }
         }
     }
 }

@@ -29,6 +29,13 @@ struct OfflinePaymentTestRunner {
 
         await MeshLedgerViewModelTests.runAllTests()
 
+        do {
+            try await TrueOfflineStoreAndForwardTests.runAllTests()
+        } catch {
+            print("TrueOfflineStoreAndForwardTests failed: \(error)")
+            exit(1)
+        }
+
         exit(0)
     }
 }

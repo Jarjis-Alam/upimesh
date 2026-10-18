@@ -187,6 +187,15 @@ public final class OfflineAllowanceManager: @unchecked Sendable {
             throw OfflineAllowanceError.noActiveAllowance
         }
 
+        // 0. Enforce Bank Authority Signature Validation
+        let bankKeyToVerify = pinnedBankKey ?? voucher.bankPublicKeyBase64
+        if let bankKey = bankKeyToVerify, !bankKey.isEmpty {
+            let (valid, desc) = voucher.verifyBankSignature(trustedBankPublicKeyBase64: bankKey)
+            guard valid else {
+                throw OfflineAllowanceError.voucherSignatureInvalid(desc ?? "Bank voucher signature invalid")
+            }
+        }
+
         // 1. Enforce Expiry
         if voucher.isExpired() {
             throw OfflineAllowanceError.allowanceExpired(voucher.expiresAt)

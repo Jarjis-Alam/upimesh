@@ -6,7 +6,7 @@
 
 [![Java](https://img.shields.io/badge/Java-17%2B-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white)](https://openjdk.org/)
 [![Spring Boot](https://img.shields.io/badge/Spring_Boot-4.2.0_M2-6DB33F?style=for-the-badge&logo=spring-boot&logoColor=white)](https://spring.io/projects/spring-boot)
-[![Tests](https://img.shields.io/badge/Tests-386%20Passed-brightgreen?style=for-the-badge&logo=junit5&logoColor=white)](https://github.com/Jarjis-Alam/upimesh)
+[![Tests](https://img.shields.io/badge/Tests-396%20Passed-brightgreen?style=for-the-badge&logo=junit5&logoColor=white)](https://github.com/Jarjis-Alam/upimesh)
 [![Security](https://img.shields.io/badge/Security-RSA--PSS%202048%20%7C%20P--256%20ECDSA%20%7C%20AES--256--GCM-blueviolet?style=for-the-badge&logo=lock&logoColor=white)](https://github.com/Jarjis-Alam/upimesh)
 [![Database](https://img.shields.io/badge/Database-H2_File--Backed-blue?style=for-the-badge&logo=database&logoColor=white)](https://github.com/Jarjis-Alam/upimesh)
 [![Apple](https://img.shields.io/badge/Apple-iOS%2016%2B%20%7C%20macOS%2014%2B%20%7C%20SwiftUI-007AFF?style=for-the-badge&logo=swift&logoColor=white)](https://github.com/Jarjis-Alam/upimesh)
@@ -25,7 +25,7 @@
 [Quickstart](#-quickstart-guide) •
 [API Reference](#-api-reference) •
 [Reconciliation Engine](#-mathematical-reconciliation-engine) •
-[Test Suite](#-test-suite--verification-386-passing-tests) •
+[Test Suite](#-test-suite--verification-396-passing-tests) •
 [Security Model & Boundaries](#-security-model--threat-boundaries) •
 [Documentation Index](#-documentation-index)
 
@@ -389,11 +389,11 @@ $$\Delta(i) = A(i) - E(i)$$
 
 ---
 
-## 🧪 Test Suite & Verification (386 Passing Tests)
+## 🧪 Test Suite & Verification (396 Passing Tests)
 
-The repository is rigorously covered by **386 automated tests** with zero failures:
+The repository is rigorously covered by **396 automated tests** with zero failures:
 - **303 Java Backend Tests** (JUnit 5 + MockMvc + isolated in-memory H2 database `jdbc:h2:mem:upimesh_test`)
-- **83 Swift iOS/macOS Tests** (command-line test runners with zero Xcode GUI dependency)
+- **93 Swift iOS/macOS Tests** (command-line test runners with zero Xcode GUI dependency)
 
 ### Test Suite Breakdown
 
@@ -422,13 +422,14 @@ The repository is rigorously covered by **386 automated tests** with zero failur
 | | `MeshPacketTest` & `PaymentInstructionTest` | 15 | Immutability, canonical representation, validation invariants |
 | | `IdempotencyServiceTest` | 5 | Atomic in-memory claims, state lifecycle transitions |
 | | *Other Core Spring Tests* | 68 | Entity mapping, repository queries, controller contracts |
-| **Swift (iOS / macOS)** | `OfflineAllowanceTests` | 16 | Voucher parsing, RSASSA-PSS verification, spend creation, cumulative tracking |
-| | `OfflinePaymentPacketTests` | 9 | Packet creation, canonicalization, P-256 signing, deduplication |
+| **Swift (iOS / macOS)** | `TrueOfflineStoreAndForwardTests` | 10 | Local creation without backend, persist-before-ack, crash recovery, delayed settlement |
 | | `PeerTransportTests` | 22 | Multipeer handshake, packet serialization, inbox lifecycle, diagnostic ping/pong |
-| | `ReconciliationServiceTests` | 14 | Settlement transitions, terminal rejections, timeout recovery, retry safety |
-| | `MacCompanionTests` | 15 | macOS packet decoding, deduplication, tampering rejection, lifecycle states |
+| | `ReconciliationServiceTests` | 16 | Settlement transitions, terminal rejections, timeout recovery, retry safety |
+| | `MacCompanionTests` | 16 | macOS packet decoding, deduplication, tampering rejection, lifecycle states |
+| | `OfflineAllowanceTests` | 13 | Voucher parsing, RSASSA-PSS verification, spend creation, cumulative tracking |
+| | `OfflinePaymentPacketTests` | 9 | Packet creation, canonicalization, P-256 signing, deduplication |
 | | `MeshLedgerViewModelTests` | 7 | Live backend transaction sync, offline local counts, preview isolation |
-| **Total** | **25 Test Suites** | **386** | **386 Passed / 0 Failures / 0 Errors** |
+| **Total** | **26 Test Suites** | **396** | **396 Passed / 0 Failures / 0 Errors** |
 
 ---
 

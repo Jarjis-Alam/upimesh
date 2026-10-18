@@ -113,14 +113,14 @@ public final class MeshLedgerViewModel {
         switch status {
         case .liveConnected:
             return inTransitPackets
-                .filter { $0.reconciliationStatus == .received || $0.reconciliationStatus == .settling }
+                .filter { $0.reconciliationStatus == .received || $0.reconciliationStatus == .pendingReconciliation || $0.reconciliationStatus == .settling }
                 .count
         case .connectionFailed, .idle, .loading:
             if inTransitPackets.isEmpty && liveTransactions.isEmpty {
                 return PreviewData.sampleTransactions.filter { $0.category == .inTransit }.count
             }
             return inTransitPackets
-                .filter { $0.reconciliationStatus == .received || $0.reconciliationStatus == .settling }
+                .filter { $0.reconciliationStatus == .received || $0.reconciliationStatus == .pendingReconciliation || $0.reconciliationStatus == .settling }
                 .count
         }
     }
@@ -130,7 +130,7 @@ public final class MeshLedgerViewModel {
         switch status {
         case .liveConnected:
             return inTransitPackets
-                .filter { $0.reconciliationStatus == .received || $0.reconciliationStatus == .settling }
+                .filter { $0.reconciliationStatus == .received || $0.reconciliationStatus == .pendingReconciliation || $0.reconciliationStatus == .settling }
                 .reduce(0.0) { $0 + NSDecimalNumber(decimal: $1.packet.instruction.amount).doubleValue }
         case .connectionFailed, .idle, .loading:
             if inTransitPackets.isEmpty && liveTransactions.isEmpty {
@@ -139,7 +139,7 @@ public final class MeshLedgerViewModel {
                     .reduce(0.0) { $0 + $1.amount }
             }
             return inTransitPackets
-                .filter { $0.reconciliationStatus == .received || $0.reconciliationStatus == .settling }
+                .filter { $0.reconciliationStatus == .received || $0.reconciliationStatus == .pendingReconciliation || $0.reconciliationStatus == .settling }
                 .reduce(0.0) { $0 + NSDecimalNumber(decimal: $1.packet.instruction.amount).doubleValue }
         }
     }

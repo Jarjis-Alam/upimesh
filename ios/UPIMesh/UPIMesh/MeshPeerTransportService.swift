@@ -79,7 +79,7 @@ public final class MeshPeerTransportService: NSObject, ObservableObject, @unchec
         let cleanName = deviceName.isEmpty ? "iPhone" : String(deviceName.prefix(20))
         self.myPeerId = MCPeerID(displayName: cleanName)
 
-        self.session = MCSession(peer: self.myPeerId, securityIdentity: nil, encryptionPreference: .required)
+        self.session = MCSession(peer: self.myPeerId, securityIdentity: nil, encryptionPreference: .none)
         self.advertiser = MCNearbyServiceAdvertiser(peer: self.myPeerId, discoveryInfo: nil, serviceType: Self.serviceType)
         self.browser = MCNearbyServiceBrowser(peer: self.myPeerId, serviceType: Self.serviceType)
 
@@ -269,6 +269,9 @@ public final class MeshPeerTransportService: NSObject, ObservableObject, @unchec
                 // 4. Transmit reliably via Multipeer Connectivity
                 try session.send(data, toPeers: [peer], with: .reliable)
 
+                // Update sender packet status to .sent in OfflinePacketStore
+                _ = try? OfflinePacketStore.shared.updateStatus(paymentId: packet.paymentId, status: .sent)
+
                 sendStatus = .success(packet.paymentId)
                 statusMessage = "Packet successfully delivered to \(peer.displayName)"
                 NotificationCenter.default.post(name: .offlinePacketSent, object: packet)
@@ -299,6 +302,8 @@ public final class MeshPeerTransportService: NSObject, ObservableObject, @unchec
             handleInboundDiagnosticPing(data, from: peer)
         case .diagnosticPong:
             handleInboundDiagnosticPong(data, from: peer)
+        case .paymentAck:
+            handleInboundPaymentAck(data, from: peer)
         case .invalidDiagnostic(let type):
             DispatchQueue.main.async {
                 self.errorMessage = "Rejected invalid diagnostic message type '\(type)' from \(peer.displayName)"
@@ -404,9 +409,20 @@ public final class MeshPeerTransportService: NSObject, ObservableObject, @unchec
         }
 
         let pid = message.packet.paymentId
+        let myDeviceId = (try? DeviceIdentityManager.shared.getOrCreateIdentity().deviceId) ?? "iphone"
 
         // Deduplication protection across both Outgoing Store and Received Inbox
         if OfflinePacketStore.shared.contains(paymentId: pid) || ReceivedPacketStore.shared.contains(paymentId: pid) {
+            // Acknowledge receipt as duplicate so sender knows it was already received and persisted
+            let ack = PeerTransferAckMessage(
+                paymentId: pid,
+                recipientDeviceId: myDeviceId,
+                isPersisted: true,
+                isDuplicate: true
+            )
+            if let ackData = try? ack.encode() {
+                try? session.send(ackData, toPeers: [peer], with: .reliable)
+            }
             DispatchQueue.main.async {
                 self.errorMessage = "Rejected duplicate packet '\(pid.prefix(8))...' from \(peer.displayName) (already stored)."
             }
@@ -457,7 +473,8 @@ public final class MeshPeerTransportService: NSObject, ObservableObject, @unchec
                 receivedFromPeer: peer.displayName,
                 isSignatureMathematicallyValid: isMathValid,
                 isSenderIdentityAuthenticated: false, // Explicitly unauthenticated offline
-                trustStatusNote: trustNote
+                trustStatusNote: trustNote,
+                reconciliationStatus: .received
             )
         } catch {
             DispatchQueue.main.async {
@@ -466,7 +483,7 @@ public final class MeshPeerTransportService: NSObject, ObservableObject, @unchec
             return
         }
 
-        // 8. Persist to isolated ReceivedPacketStore
+        // 8. Persist to isolated ReceivedPacketStore BEFORE acknowledging receipt
         do {
             try ReceivedPacketStore.shared.save(record)
         } catch {
@@ -476,11 +493,55 @@ public final class MeshPeerTransportService: NSObject, ObservableObject, @unchec
             return
         }
 
+        // ONLY AFTER SUCCESSFUL DISK PERSISTENCE, send explicit ACK back to peer
+        let ack = PeerTransferAckMessage(
+            paymentId: pid,
+            recipientDeviceId: myDeviceId,
+            isPersisted: true,
+            isDuplicate: false
+        )
+        if let ackData = try? ack.encode() {
+            try? session.send(ackData, toPeers: [peer], with: .reliable)
+        }
+
         // 9. Update UI on Main thread and post notification
         DispatchQueue.main.async {
             self.lastReceivedRecord = record
             self.statusMessage = "Received ₹\(CurrencyFormatter.format(amount: record.packet.amountDouble)) from \(peer.displayName) (STORED IN INBOX — NOT SETTLED)"
             NotificationCenter.default.post(name: .offlinePacketReceived, object: record)
+        }
+    }
+
+    // MARK: - Inbound Payment ACK Handler
+
+    private func handleInboundPaymentAck(_ data: Data, from peer: MCPeerID) {
+        do {
+            let ack = try PeerTransferAckMessage.decodeAndValidate(from: data)
+            guard ack.isPersisted else {
+                DispatchQueue.main.async {
+                    self.errorMessage = "Peer \(peer.displayName) reported persistence failure for payment '\(ack.paymentId.prefix(8))...'"
+                }
+                return
+            }
+
+            if OfflinePacketStore.shared.contains(paymentId: ack.paymentId) {
+                _ = try? OfflinePacketStore.shared.updateStatus(paymentId: ack.paymentId, status: .sent)
+            }
+
+            DispatchQueue.main.async {
+                self.sendStatus = .success(ack.paymentId)
+                let dupSuffix = ack.isDuplicate ? " (already persisted)" : ""
+                self.statusMessage = "Payment persisted by \(peer.displayName)\(dupSuffix) ✓ [STATUS: SENT]"
+                NotificationCenter.default.post(
+                    name: .offlinePacketSent,
+                    object: nil,
+                    userInfo: ["paymentId": ack.paymentId, "isDuplicate": ack.isDuplicate]
+                )
+            }
+        } catch {
+            DispatchQueue.main.async {
+                self.errorMessage = "Failed to process payment ACK from \(peer.displayName): \(error.localizedDescription)"
+            }
         }
     }
 }
@@ -513,6 +574,9 @@ extension MeshPeerTransportService: MCNearbyServiceBrowserDelegate {
         DispatchQueue.main.async {
             if !self.discoveredPeers.contains(peerID) {
                 self.discoveredPeers.append(peerID)
+            }
+            if self.connectionState == .disconnected {
+                self.invitePeer(peerID)
             }
         }
     }

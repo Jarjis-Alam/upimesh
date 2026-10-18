@@ -55,6 +55,9 @@ public struct MacCompanionView: View {
         .onAppear {
             reloadIdentity()
             reloadPackets()
+            if !transport.isDiscovering {
+                transport.startDiscovery()
+            }
         }
         .onReceive(NotificationCenter.default.publisher(for: .macPacketReceived)) { _ in
             reloadPackets()
@@ -454,10 +457,10 @@ public struct MacCompanionView: View {
 
                 // PROMINENT REQUIRED STATUS BADGE
                 switch record.reconciliationStatus {
-                case .received:
+                case .received, .pendingReconciliation:
                     HStack(spacing: 5) {
                         Circle().fill(amberNotSettled).frame(width: 6, height: 6)
-                        Text("RECEIVED — NOT SETTLED")
+                        Text(record.reconciliationStatus == .pendingReconciliation ? "PENDING RECONCILIATION — NOT SETTLED" : "RECEIVED — NOT SETTLED")
                             .font(.system(size: 10, weight: .black))
                             .foregroundColor(amberNotSettled)
                     }

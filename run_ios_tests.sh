@@ -25,6 +25,8 @@ swiftc -framework Foundation -framework Security -framework CryptoKit \
   ios/UPIMesh/UPIMesh/PreviewModels.swift \
   ios/UPIMesh/UPIMesh/MeshLedgerViewModel.swift \
   ios/UPIMesh/UPIMesh/MeshLedgerViewModelTests.swift \
+  macos/UPIMeshCompanion/MacReceivedPacketStore.swift \
+  ios/UPIMesh/UPIMesh/TrueOfflineStoreAndForwardTests.swift \
   ios/UPIMesh/run_offline_tests.swift \
   -o /tmp/run_offline_tests
 

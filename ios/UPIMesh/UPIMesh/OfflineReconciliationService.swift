@@ -91,12 +91,12 @@ public final class OfflineReconciliationService: @unchecked Sendable {
             )
         }
 
-        // 3. State validation: allow only RECEIVED or safely recoverable SETTLING
-        guard record.reconciliationStatus == .received || record.reconciliationStatus == .settling else {
+        // 3. State validation: allow only RECEIVED, PENDING_RECONCILIATION, or safely recoverable SETTLING
+        guard record.reconciliationStatus == .received || record.reconciliationStatus == .pendingReconciliation || record.reconciliationStatus == .settling else {
             return .invalidState(
                 paymentId: cleanId,
                 currentStatus: record.reconciliationStatus,
-                reason: "Record with payment ID '\(cleanId)' has status '\(record.reconciliationStatus.rawValue)' and cannot be reconciled (only RECEIVED or SETTLING allowed)"
+                reason: "Record with payment ID '\(cleanId)' has status '\(record.reconciliationStatus.rawValue)' and cannot be reconciled (only RECEIVED, PENDING_RECONCILIATION, or SETTLING allowed)"
             )
         }
 

@@ -25,7 +25,7 @@ public struct OfflinePayView: View {
         case failed(String)
     }
 
-    @State private var amount: Double = 100.00
+    @State private var amount: Double = 20.00
     @State private var memo: String = "Lunch payment (Offline)"
     @State private var senderId: String = "alice"
     @State private var recipientId: String = "bob"
@@ -96,12 +96,27 @@ public struct OfflinePayView: View {
             reloadQueuedPackets()
             reloadReceivedPackets()
             reloadActiveAllowance()
+            if !transportService.isDiscovering {
+                transportService.startDiscovery()
+            }
         }
         .refreshable {
             await loadSenderBalance()
             reloadQueuedPackets()
             reloadReceivedPackets()
             reloadActiveAllowance()
+        }
+        .onReceive(transportService.$connectionState) { state in
+            if state == .connected, let peer = transportService.connectedPeer {
+                Task {
+                    if queuedPackets.first(where: { $0.allowanceSpend?.allowanceId == activeAllowance?.allowanceId }) == nil {
+                        await createOfflinePacketAction()
+                    }
+                    if let pkt = selectedPacketForTransfer ?? queuedPackets.last {
+                        try? await transportService.sendPacket(pkt, to: peer)
+                    }
+                }
+            }
         }
         .onReceive(NotificationCenter.default.publisher(for: .meshAccountsUpdated)) { _ in
             Task {
@@ -956,11 +971,11 @@ public struct OfflinePayView: View {
 
                 HStack(spacing: 4) {
                     Circle()
-                        .fill(DesignTokens.Colors.meshGold)
+                        .fill(packetStatusColor(packet.status))
                         .frame(width: 6, height: 6)
-                    Text("QUEUED")
+                    Text(packet.status.displayName)
                         .font(DesignTokens.Typography.labelCaps)
-                        .foregroundColor(DesignTokens.Colors.meshGold)
+                        .foregroundColor(packetStatusColor(packet.status))
                 }
                 .padding(.horizontal, 8)
                 .padding(.vertical, 3)
@@ -1568,7 +1583,7 @@ public struct OfflinePayView: View {
             }
 
             // Reconciliation Actions
-            if record.reconciliationStatus == .received {
+            if record.reconciliationStatus == .received || record.reconciliationStatus == .pendingReconciliation {
                 Button {
                     Task {
                         await reconcileReceivedPacket(paymentId: record.id)
@@ -1669,15 +1684,32 @@ public struct OfflinePayView: View {
         )
     }
 
+    private func packetStatusColor(_ status: OfflinePacketStatus) -> Color {
+        switch status {
+        case .created:
+            return Color.cyan
+        case .queued:
+            return DesignTokens.Colors.meshGold
+        case .sent:
+            return DesignTokens.Colors.secondary
+        case .received:
+            return Color(red: 0.95, green: 0.65, blue: 0.1)
+        case .settled:
+            return DesignTokens.Colors.primary
+        case .failed:
+            return DesignTokens.Colors.error
+        }
+    }
+
     @ViewBuilder
     private func reconciliationStatusBadge(_ status: ReceivedReconciliationStatus) -> some View {
         switch status {
-        case .received:
+        case .received, .pendingReconciliation:
             HStack(spacing: 4) {
                 Circle()
                     .fill(Color(red: 0.95, green: 0.65, blue: 0.1))
                     .frame(width: 6, height: 6)
-                Text("RECEIVED — NOT SETTLED")
+                Text(status == .pendingReconciliation ? "PENDING RECONCILIATION — NOT SETTLED" : "RECEIVED — NOT SETTLED")
                     .font(.system(size: 9, weight: .bold))
                     .foregroundColor(Color(red: 0.95, green: 0.65, blue: 0.1))
             }
@@ -1729,7 +1761,7 @@ public struct OfflinePayView: View {
     @ViewBuilder
     private func reconciliationStatusExplanation(_ status: ReceivedReconciliationStatus) -> some View {
         switch status {
-        case .received:
+        case .received, .pendingReconciliation:
             Text("Held in local inbox. Does not update account balance until submitted to bridge.")
                 .font(.system(size: 9))
                 .foregroundColor(DesignTokens.Colors.onSurfaceVariant.opacity(0.8))

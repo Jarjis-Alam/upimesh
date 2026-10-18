@@ -131,3 +131,70 @@ public struct PeerTransferMessage: Sendable, Codable, Equatable {
         }
     }
 }
+
+/// An explicit application-layer acknowledgment message sent from the receiving peer
+/// back to the sending peer ONLY AFTER the received offline payment packet has been
+/// cryptographically validated and durably committed to local disk storage.
+public struct PeerTransferAckMessage: Sendable, Codable, Equatable {
+    public static let messageType = "PAYMENT_ACK"
+
+    public let messageType: String
+    public let paymentId: String
+    public let recipientDeviceId: String
+    public let isPersisted: Bool
+    public let isDuplicate: Bool
+    public let timestamp: String
+
+    public init(
+        paymentId: String,
+        recipientDeviceId: String,
+        isPersisted: Bool,
+        isDuplicate: Bool = false,
+        timestamp: String = PaymentInstant.now().isoString
+    ) {
+        self.messageType = Self.messageType
+        self.paymentId = paymentId.trimmingCharacters(in: .whitespacesAndNewlines)
+        self.recipientDeviceId = recipientDeviceId.trimmingCharacters(in: .whitespacesAndNewlines)
+        self.isPersisted = isPersisted
+        self.isDuplicate = isDuplicate
+        self.timestamp = timestamp
+    }
+
+    public func validate() throws {
+        guard messageType == Self.messageType else {
+            throw PeerTransferError.malformedPayload("Invalid acknowledgment message type: '\(messageType)'")
+        }
+        guard !paymentId.isEmpty else {
+            throw PeerTransferError.malformedPayload("Payment ID in ACK must not be blank")
+        }
+        guard !recipientDeviceId.isEmpty else {
+            throw PeerTransferError.malformedPayload("Recipient device ID in ACK must not be blank")
+        }
+    }
+
+    public func encode() throws -> Data {
+        try validate()
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.sortedKeys]
+        let data = try encoder.encode(self)
+        guard data.count <= PeerTransferMessage.maxPayloadBytes else {
+            throw PeerTransferError.payloadTooLarge(data.count)
+        }
+        return data
+    }
+
+    public static func decodeAndValidate(from data: Data) throws -> PeerTransferAckMessage {
+        guard data.count <= PeerTransferMessage.maxPayloadBytes else {
+            throw PeerTransferError.payloadTooLarge(data.count)
+        }
+        let decoder = JSONDecoder()
+        let ack: PeerTransferAckMessage
+        do {
+            ack = try decoder.decode(PeerTransferAckMessage.self, from: data)
+        } catch {
+            throw PeerTransferError.malformedPayload("Failed to decode payment ACK: \(error.localizedDescription)")
+        }
+        try ack.validate()
+        return ack
+    }
+}

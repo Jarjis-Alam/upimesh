@@ -122,6 +122,29 @@ public final class OfflinePacketStore: @unchecked Sendable {
         return orderedIds.compactMap { inMemoryCache[$0] }.filter { $0.status == status }
     }
 
+    /// Updates the lifecycle status of a stored offline packet (e.g. from `.created`/`.queued` to `.sent`).
+    /// Atomically persists the updated record to disk.
+    @discardableResult
+    public func updateStatus(paymentId: String, status: OfflinePacketStatus) throws -> OfflinePaymentPacket {
+        lock.lock()
+        defer { lock.unlock() }
+
+        guard let existing = inMemoryCache[paymentId] else {
+            throw OfflinePacketStoreError.packetNotFound(paymentId)
+        }
+
+        let updated = try existing.withStatus(status)
+        inMemoryCache[paymentId] = updated
+
+        do {
+            try persistToDiskInternal()
+            return updated
+        } catch {
+            inMemoryCache[paymentId] = existing
+            throw OfflinePacketStoreError.persistenceFailed(error.localizedDescription)
+        }
+    }
+
     /// Clears all stored packets from memory and deletes the backing file.
     /// Primarily used for test teardown and cleanup.
     public func clear() throws {

@@ -8,7 +8,7 @@ import SwiftUI
 /// - MeshLedgerView (Ledger)
 /// - MeshWalletsView (Wallets)
 public struct ContentView: View {
-    @State private var selectedTab: MeshTab = .radar
+    @State private var selectedTab: MeshTab = .pay
 
     public init() {}
 
