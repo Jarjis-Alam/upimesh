@@ -79,7 +79,7 @@ public final class MeshPeerTransportService: NSObject, ObservableObject, @unchec
         let cleanName = deviceName.isEmpty ? "iPhone" : String(deviceName.prefix(20))
         self.myPeerId = MCPeerID(displayName: cleanName)
 
-        self.session = MCSession(peer: self.myPeerId, securityIdentity: nil, encryptionPreference: .none)
+        self.session = MCSession(peer: self.myPeerId, securityIdentity: nil, encryptionPreference: .optional)
         self.advertiser = MCNearbyServiceAdvertiser(peer: self.myPeerId, discoveryInfo: nil, serviceType: Self.serviceType)
         self.browser = MCNearbyServiceBrowser(peer: self.myPeerId, serviceType: Self.serviceType)
 
@@ -88,6 +88,14 @@ public final class MeshPeerTransportService: NSObject, ObservableObject, @unchec
         self.session.delegate = self
         self.advertiser.delegate = self
         self.browser.delegate = self
+    }
+
+    /// Re-creates a fresh MCSession to clear stale socket/DTLS state.
+    private func recreateSession() {
+        session.delegate = nil
+        session.disconnect()
+        session = MCSession(peer: myPeerId, securityIdentity: nil, encryptionPreference: .optional)
+        session.delegate = self
     }
 
     // MARK: - Discovery Controls
@@ -138,7 +146,7 @@ public final class MeshPeerTransportService: NSObject, ObservableObject, @unchec
         pendingPingId = nil
         pendingPingStartTime = nil
 
-        session.disconnect()
+        recreateSession()
         connectedPeer = nil
         connectionState = .disconnected
         sendStatus = .idle
@@ -575,7 +583,9 @@ extension MeshPeerTransportService: MCNearbyServiceBrowserDelegate {
             if !self.discoveredPeers.contains(peerID) {
                 self.discoveredPeers.append(peerID)
             }
-            if self.connectionState == .disconnected {
+            // Deterministic tie-breaker to prevent simultaneous dual-invite socket collisions:
+            // Only auto-invite if we are disconnected and our peer displayName is lexicographically greater.
+            if self.connectionState == .disconnected && self.myPeerId.displayName > peerID.displayName {
                 self.invitePeer(peerID)
             }
         }
@@ -621,17 +631,22 @@ extension MeshPeerTransportService: MCSessionDelegate {
                 self.connectionState = .connecting
                 self.statusMessage = "Connecting to \(peerID.displayName)..."
             case .notConnected:
-                if self.connectedPeer == peerID {
-                    let wasPending = (self.pendingPingId != nil)
-                    self.pendingPingId = nil
-                    self.pendingPingStartTime = nil
+                let wasPending = (self.pendingPingId != nil)
+                self.pendingPingId = nil
+                self.pendingPingStartTime = nil
 
+                let wasConnected = (self.connectedPeer == peerID)
+                if wasConnected {
                     self.connectedPeer = nil
-                    self.connectionState = .disconnected
-                    if wasPending {
-                        self.pingStatus = .failed("Peer disconnected during diagnostic round-trip")
-                    }
+                }
+                self.connectionState = .disconnected
+                if wasPending {
+                    self.pingStatus = .failed("Peer disconnected during diagnostic round-trip")
+                }
+                if wasConnected {
                     self.statusMessage = "Disconnected from \(peerID.displayName)"
+                } else {
+                    self.statusMessage = "Connection to \(peerID.displayName) failed or was cancelled"
                 }
             @unknown default:
                 break

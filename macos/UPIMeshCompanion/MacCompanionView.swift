@@ -303,6 +303,15 @@ public struct MacCompanionView: View {
                                 .foregroundColor(textMuted)
                             Text(transport.connectionState)
                                 .foregroundColor(textSecondary)
+                            if transport.connectionState.hasPrefix("Connecting") {
+                                Spacer()
+                                Button("Cancel") {
+                                    transport.disconnect()
+                                }
+                                .buttonStyle(.bordered)
+                                .tint(.red)
+                                .font(.system(size: 10, weight: .semibold))
+                            }
                         }
                         .font(.system(size: 12))
                     }

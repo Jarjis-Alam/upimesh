@@ -49,7 +49,7 @@ public final class MacPeerTransportService: NSObject, ObservableObject, @uncheck
         let name = cleanName.isEmpty ? "MacBook" : String(cleanName.prefix(20))
         self.myPeerId = MCPeerID(displayName: "\(name) (Mac)")
 
-        self.session = MCSession(peer: self.myPeerId, securityIdentity: nil, encryptionPreference: .none)
+        self.session = MCSession(peer: self.myPeerId, securityIdentity: nil, encryptionPreference: .optional)
         self.advertiser = MCNearbyServiceAdvertiser(peer: self.myPeerId, discoveryInfo: nil, serviceType: Self.serviceType)
         self.browser = MCNearbyServiceBrowser(peer: self.myPeerId, serviceType: Self.serviceType)
 
@@ -58,6 +58,14 @@ public final class MacPeerTransportService: NSObject, ObservableObject, @uncheck
         self.session.delegate = self
         self.advertiser.delegate = self
         self.browser.delegate = self
+    }
+
+    /// Re-creates a fresh MCSession to clear stale socket/DTLS state.
+    private func recreateSession() {
+        session.delegate = nil
+        session.disconnect()
+        session = MCSession(peer: myPeerId, securityIdentity: nil, encryptionPreference: .optional)
+        session.delegate = self
     }
 
     // MARK: - Discovery Controls
@@ -102,7 +110,7 @@ public final class MacPeerTransportService: NSObject, ObservableObject, @uncheck
         pendingPingId = nil
         pendingPingStartTime = nil
 
-        session.disconnect()
+        recreateSession()
         connectedPeer = nil
         connectionState = "Disconnected"
         pingStatus = .idle
@@ -547,19 +555,24 @@ extension MacPeerTransportService: MCSessionDelegate {
             case .connecting:
                 self.connectionState = "Connecting to \(peerID.displayName)..."
             case .notConnected:
-                if self.connectedPeer == peerID {
-                    self.pendingPingTimeoutTask?.cancel()
-                    self.pendingPingTimeoutTask = nil
-                    let wasPending = (self.pendingPingId != nil)
-                    self.pendingPingId = nil
-                    self.pendingPingStartTime = nil
+                self.pendingPingTimeoutTask?.cancel()
+                self.pendingPingTimeoutTask = nil
+                let wasPending = (self.pendingPingId != nil)
+                self.pendingPingId = nil
+                self.pendingPingStartTime = nil
 
+                let wasConnected = (self.connectedPeer == peerID)
+                if wasConnected {
                     self.connectedPeer = nil
-                    self.connectionState = "Disconnected"
-                    if wasPending {
-                        self.pingStatus = .failed("Peer disconnected during diagnostic round-trip")
-                    }
+                }
+                self.connectionState = "Disconnected"
+                if wasPending {
+                    self.pingStatus = .failed("Peer disconnected during diagnostic round-trip")
+                }
+                if wasConnected {
                     self.statusMessage = "Disconnected from \(peerID.displayName)"
+                } else {
+                    self.statusMessage = "Connection to \(peerID.displayName) failed or was cancelled"
                 }
             @unknown default:
                 break

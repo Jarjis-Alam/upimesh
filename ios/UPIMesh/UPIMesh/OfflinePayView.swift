@@ -1086,6 +1086,18 @@ public struct OfflinePayView: View {
                         .font(DesignTokens.Typography.bodySm)
                         .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
                     Spacer()
+                    if transportService.connectionState == .connecting {
+                        Button {
+                            transportService.disconnect()
+                        } label: {
+                            Text("Cancel")
+                                .font(DesignTokens.Typography.caption)
+                                .foregroundColor(DesignTokens.Colors.error)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 3)
+                                .background(Capsule().fill(DesignTokens.Colors.error.opacity(0.15)))
+                        }
+                    }
                 }
             }
             .padding(10)

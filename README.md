@@ -6,7 +6,7 @@
 
 [![Java](https://img.shields.io/badge/Java-17%2B-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white)](https://openjdk.org/)
 [![Spring Boot](https://img.shields.io/badge/Spring_Boot-4.2.0_M2-6DB33F?style=for-the-badge&logo=spring-boot&logoColor=white)](https://spring.io/projects/spring-boot)
-[![Tests](https://img.shields.io/badge/Tests-396%20Passed-brightgreen?style=for-the-badge&logo=junit5&logoColor=white)](https://github.com/Jarjis-Alam/upimesh)
+[![Tests](https://img.shields.io/badge/Tests-399%20Passed-brightgreen?style=for-the-badge&logo=junit5&logoColor=white)](https://github.com/Jarjis-Alam/upimesh)
 [![Security](https://img.shields.io/badge/Security-RSA--PSS%202048%20%7C%20P--256%20ECDSA%20%7C%20AES--256--GCM-blueviolet?style=for-the-badge&logo=lock&logoColor=white)](https://github.com/Jarjis-Alam/upimesh)
 [![Database](https://img.shields.io/badge/Database-H2_File--Backed-blue?style=for-the-badge&logo=database&logoColor=white)](https://github.com/Jarjis-Alam/upimesh)
 [![Apple](https://img.shields.io/badge/Apple-iOS%2016%2B%20%7C%20macOS%2014%2B%20%7C%20SwiftUI-007AFF?style=for-the-badge&logo=swift&logoColor=white)](https://github.com/Jarjis-Alam/upimesh)
@@ -201,21 +201,54 @@ sequenceDiagram
 
 ---
 
-## 📱 Native Apps: iOS & macOS
+## 📱 Native Applications: macOS, iPadOS & iOS
 
-### 1. Native iOS Client (Liquid Mesh UPI)
-Located in [`ios/UPIMesh/`](ios/UPIMesh/), written in Swift / SwiftUI:
-- **Mesh Wallets**: Real-time account balance display, bank device key registration, and one-tap allowance issuance.
-- **Offline Pay**: Discovers nearby merchants, creates signed spend records, manages outgoing packet queue, and displays active allowance limits.
-- **Mesh Radar**: Visualizes nearby peer nodes, signal strength (RSSI), and connection states.
+MeshPay features a multi-platform Apple ecosystem implementation using native Swift, SwiftUI, AppKit, and Apple's Multipeer Connectivity framework for zero-internet peer-to-peer payments.
+
+---
+
+### 1. 🖥️ Native macOS Companion Application (Merchant Node)
+
+Located in [`macos/UPIMeshCompanion/`](macos/UPIMeshCompanion/):
+- **Merchant Bob Persona**: Runs on macOS as an authoritative merchant receiver advertising over AWDL and BLE (`_upimesh-pay._tcp`).
+- **Persist-Before-ACK Workflow**: Automatically validates incoming packet size (≤ 64 KB), checks protocol invariants, verifies RSASSA-PSS SHA-256 digital signatures against the sender's public key, and persists records to durable disk storage (`~/Library/Application Support/UPIMeshCompanion/received_packets.json`) *before* issuing the network acknowledgement.
+- **Isolated Receiver Inbox**: Keeps received packets isolated in a dedicated inbox with status **`RECEIVED — NOT SETTLED`** (strictly preventing un-settled balance inflation).
+- **Spring Boot Bridge Sync**: Features an integrated bridge client ([`MacBridgeClient.swift`](macos/UPIMeshCompanion/MacBridgeClient.swift)) to register device keys and batch-reconcile stored offline packets with the bank settlement engine upon reconnection.
+- **Zero-Dependency Build**: Includes standalone compile script [`build_macos_companion.sh`](build_macos_companion.sh) producing a code-signed application bundle.
+
+<div align="center">
+  <img src="docs/assets/mac_companion_ui.png" alt="macOS Companion Application UI" width="900" style="border-radius: 10px; box-shadow: 0 8px 30px rgba(0,0,0,0.4);" />
+  <p><i>Figure 1: Native macOS Companion displaying Merchant Bob's live Multipeer Connectivity transport, active peer pairing, non-financial diagnostic latency probe, and durable store-and-forward packet inbox.</i></p>
+</div>
+
+---
+
+### 2. 📱 iOS & iPadOS Applications (Payer Node: iPhone 14 & iPad on Mac)
+
+Located in [`ios/UPIMesh/`](ios/UPIMesh/), written in SwiftUI:
+- **Dual Destination Architecture**: Supports native execution on physical hardware (**iPhone 14**) and on Apple Silicon macOS via **`My Mac (Designed for iPad)`**.
+- **Mesh Wallets**: Real-time account balance display, bank device key registration, and one-tap bank escrow allowance issuance.
+- **Offline Pay**: Discovers nearby companion nodes, constructs and signs cryptographic spend records locally without backend calls, monitors remaining allowance budgets, and manages outgoing packet queues.
+- **Mesh Radar**: Visualizes nearby peer nodes, signal strength (RSSI), and direct peer connection states.
 - **Mesh Ledger**: Live transaction audit log synchronized with the backend.
 
-### 2. Native macOS Companion App
-Located in [`macos/UPIMeshCompanion/`](macos/UPIMeshCompanion/):
-- **Merchant Role**: Runs as Merchant Bob on macOS, advertising via Multipeer Connectivity.
-- **Isolated Receiver Inbox**: Stores incoming payments, verifies mathematical signatures locally, and displays canonical payloads.
-- **Bridge Sync**: Connects to the Spring Boot backend (`MacBridgeClient.swift`) to submit offline spend records upon reconnection.
-- **Zero-Dependency Build**: Includes standalone compile script [`build_macos_companion.sh`](build_macos_companion.sh) producing a code-signed application bundle.
+<div align="center">
+  <table border="0">
+    <tr>
+      <td width="35%" align="center" valign="top">
+        <b>📱 Physical iPhone 14 Client</b><br/>
+        <sub>Hardware testbed running iOS 18+ with active ₹10,000 offline allowance & AWDL scanning</sub><br/><br/>
+        <img src="docs/assets/iphone_app_ui.png" alt="iPhone 14 Physical UI" width="280" style="border-radius: 12px; box-shadow: 0 6px 24px rgba(0,0,0,0.35);" />
+      </td>
+      <td width="65%" align="center" valign="top">
+        <b>💻 iPad Client Running on macOS (Designed for iPad)</b><br/>
+        <sub>Responsive tablet interface running directly on Apple Silicon with multi-wallet mesh management</sub><br/><br/>
+        <img src="docs/assets/ipad_app_ui.png" alt="iPad on Mac UI" width="580" style="border-radius: 12px; box-shadow: 0 6px 24px rgba(0,0,0,0.35);" />
+      </td>
+    </tr>
+  </table>
+  <p><i>Figure 2: Native mobile clients running on physical iPhone 14 hardware (left) and Apple Silicon Mac via "Designed for iPad" destination (right).</i></p>
+</div>
 
 ---
 
@@ -255,8 +288,8 @@ export UPI_MESH_ADMIN_TOKEN="your-secure-admin-token-min-16-chars"
 
 ---
 
-### 2. Run the Native Swift Test Suite (83 Tests)
-Run all 83 iOS and macOS tests directly from Terminal without opening Xcode:
+### 2. Run the Native Swift Test Suite (96 Tests)
+Run all 96 iOS and macOS tests directly from Terminal without opening Xcode:
 ```bash
 ./run_ios_tests.sh
 ```
@@ -389,11 +422,11 @@ $$\Delta(i) = A(i) - E(i)$$
 
 ---
 
-## 🧪 Test Suite & Verification (396 Passing Tests)
+## 🧪 Test Suite & Verification (399 Passing Tests)
 
-The repository is rigorously covered by **396 automated tests** with zero failures:
+The repository is rigorously covered by **399 automated tests** with zero failures:
 - **303 Java Backend Tests** (JUnit 5 + MockMvc + isolated in-memory H2 database `jdbc:h2:mem:upimesh_test`)
-- **93 Swift iOS/macOS Tests** (command-line test runners with zero Xcode GUI dependency)
+- **96 Swift iOS/macOS Tests** (command-line test runners with zero Xcode GUI dependency)
 
 ### Test Suite Breakdown
 
@@ -423,13 +456,13 @@ The repository is rigorously covered by **396 automated tests** with zero failur
 | | `IdempotencyServiceTest` | 5 | Atomic in-memory claims, state lifecycle transitions |
 | | *Other Core Spring Tests* | 68 | Entity mapping, repository queries, controller contracts |
 | **Swift (iOS / macOS)** | `TrueOfflineStoreAndForwardTests` | 10 | Local creation without backend, persist-before-ack, crash recovery, delayed settlement |
-| | `PeerTransportTests` | 22 | Multipeer handshake, packet serialization, inbox lifecycle, diagnostic ping/pong |
+| | `PeerTransportTests` | 25 | Multipeer handshake, state recovery, tie-breaker, packet serialization, ping/pong |
 | | `ReconciliationServiceTests` | 16 | Settlement transitions, terminal rejections, timeout recovery, retry safety |
 | | `MacCompanionTests` | 16 | macOS packet decoding, deduplication, tampering rejection, lifecycle states |
 | | `OfflineAllowanceTests` | 13 | Voucher parsing, RSASSA-PSS verification, spend creation, cumulative tracking |
 | | `OfflinePaymentPacketTests` | 9 | Packet creation, canonicalization, P-256 signing, deduplication |
 | | `MeshLedgerViewModelTests` | 7 | Live backend transaction sync, offline local counts, preview isolation |
-| **Total** | **26 Test Suites** | **396** | **396 Passed / 0 Failures / 0 Errors** |
+| **Total** | **26 Test Suites** | **399** | **399 Passed / 0 Failures / 0 Errors** |
 
 ---
 
