@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=1920, height=1080" />
+  <link rel="stylesheet" href="../shared.css" />
+  <style>
+    html, body { width: 1920px; height: 1080px; background: #000000; overflow: hidden; }
+    #root { width: 1920px; height: 1080px; position: relative; }
+
+    /* Yellow ambient glow */
+    .logo-ambient-glow {
+      position: absolute;
+      left: 50%; top: 50%;
+      transform: translate(-50%, -50%);
+      width: 900px; height: 900px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(255, 230, 0, 0.15) 0%, transparent 65%);
+      filter: blur(80px);
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    /* Concentric expanding yellow rings */
+    .logo-ring {
+      position: absolute;
+      left: 50%; top: 50%;
+      border-radius: 50%;
+      border: 1.5px solid rgba(255, 230, 0, 0.35);
+      opacity: 0;
+      pointer-events: none;
+    }
+    .lr-1 { width: 440px; height: 440px; }
+    .lr-2 { width: 660px; height: 660px; border-color: rgba(255, 230, 0, 0.2); }
+    .lr-3 { width: 840px; height: 840px; border-color: rgba(255, 230, 0, 0.1); }
+
+    /* Center Content */
+    .logo-center-wrap {
+      position: absolute;
+      left: 50%; top: 50%;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      z-index: 20;
+      opacity: 0;
+    }
+
+    .logo-emblem {
+      width: 130px;
+      height: 130px;
+      border-radius: 32px;
+      margin-bottom: 20px;
+      box-shadow: 0 0 60px rgba(255, 230, 0, 0.6), 0 20px 40px rgba(0, 0, 0, 0.8);
+      border: 2px solid rgba(255, 230, 0, 0.4);
+    }
+
+    .logo-top-badge {
+      margin-bottom: 24px;
+    }
+
+    .logo-wordmark {
+      font-family: 'Manrope', sans-serif;
+      font-size: 110px;
+      font-weight: 900;
+      letter-spacing: -0.04em;
+      color: #FFFFFF;
+      line-height: 1;
+      display: block;
+      text-shadow: 0 0 60px rgba(255, 230, 0, 0.3);
+    }
+    .logo-wordmark span {
+      color: var(--yellow);
+    }
+
+    .logo-tagline {
+      font-family: 'Manrope', sans-serif;
+      font-size: 26px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      color: var(--yellow);
+      margin-top: 24px;
+      display: block;
+      text-transform: uppercase;
+      opacity: 0;
+    }
+
+    .repo-pill {
+      margin-top: 32px;
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 230, 0, 0.35);
+      padding: 12px 28px;
+      border-radius: 100px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 14px;
+      color: #FFFFFF;
+      opacity: 0;
+    }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+</head>
+<body>
+<div id="root" data-composition-id="scene5" data-start="17" data-duration="3">
+  <div class="cyber-grid"></div>
+  <div class="cyber-vignette"></div>
+  <div class="scanlines"></div>
+
+  <!-- HUD markers -->
+  <div class="hud-corner hud-tl">MESHPAY // PROJECT ARCHITECTURE</div>
+  <div class="hud-corner hud-tr">
+    <div class="hud-dot"></div>
+    <span>READY FOR DEPLOYMENT</span>
+  </div>
+
+  <div class="logo-ambient-glow" id="logoGlow"></div>
+  <div class="logo-ring lr-1" id="ring1"></div>
+  <div class="logo-ring lr-2" id="ring2"></div>
+  <div class="logo-ring lr-3" id="ring3"></div>
+
+  <div class="logo-center-wrap" id="logoWrap">
+    <img src="../assets/icon.png" alt="MeshPay Icon" class="logo-emblem" id="logoEmblem" />
+    <div class="logo-wordmark">Mesh<span>Pay</span></div>
+    <div class="logo-tagline" id="logoTagline">Decentralized. Offline. Verified.</div>
+    <div class="repo-pill" id="repoPill">
+      <span style="color: var(--yellow);">⚡</span>
+      <span>github.com/Jarjis-Alam/upimesh</span>
+    </div>
+  </div>
+</div>
+
+<script>
+  window.__timelines = window.__timelines || {};
+  const tl = gsap.timeline({ paused: true });
+  window.__timelines["scene5"] = tl;
+
+  // Glow and rings bloom
+  tl.to("#logoGlow", { opacity: 1, duration: 0.6, ease: "power2.out" }, 0.2);
+  tl.fromTo("#ring1", { opacity: 0, scale: 0.4, xPercent: -50, yPercent: -50 }, { opacity: 1, scale: 1, xPercent: -50, yPercent: -50, duration: 0.8, ease: "power2.out" }, 0.2);
+  tl.fromTo("#ring2", { opacity: 0, scale: 0.4, xPercent: -50, yPercent: -50 }, { opacity: 1, scale: 1, xPercent: -50, yPercent: -50, duration: 0.9, ease: "power2.out" }, 0.3);
+  tl.fromTo("#ring3", { opacity: 0, scale: 0.4, xPercent: -50, yPercent: -50 }, { opacity: 1, scale: 1, xPercent: -50, yPercent: -50, duration: 1.0, ease: "power2.out" }, 0.4);
+
+  // Logo wordmark slams in beat-locked at 17.47s (local 0.47s)
+  tl.fromTo("#logoWrap", 
+    { opacity: 0, scale: 0.92, xPercent: -50, yPercent: -50 },
+    { opacity: 1, scale: 1, xPercent: -50, yPercent: -50, duration: 0.45, ease: "power2.out" }, 
+    0.47
+  );
+
+  // Tagline and repo pill reveal
+  tl.to("#logoTagline", { opacity: 1, duration: 0.4, ease: "power2.out" }, 0.85);
+  tl.to("#repoPill", { opacity: 1, duration: 0.4, ease: "power2.out" }, 1.1);
+
+  // Gentle fade-out towards 3.0s
+  tl.to("#logoGlow", { opacity: 0.5, duration: 1.2, ease: "power2.in" }, 1.8);
+  tl.to(["#ring1", "#ring2", "#ring3"], { opacity: 0, scale: 1.2, xPercent: -50, yPercent: -50, duration: 1.2, ease: "power2.out" }, 1.8);
+</script>
+</body>
+</html>

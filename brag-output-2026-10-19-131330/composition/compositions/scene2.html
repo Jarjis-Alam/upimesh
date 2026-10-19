@@ -1,0 +1,466 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=1920, height=1080" />
+  <link rel="stylesheet" href="../shared.css" />
+  <style>
+    html, body { width: 1920px; height: 1080px; background: #000000; overflow: hidden; }
+    #root { width: 1920px; height: 1080px; position: relative; }
+
+    /* Scene Layout */
+    .mesh-stage {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 110px;
+    }
+
+    /* Radar Centerpiece */
+    .radar-center-wrap {
+      position: absolute;
+      left: 50%; top: 52%;
+      transform: translate(-50%, -50%);
+      width: 760px; height: 760px;
+      pointer-events: none;
+      opacity: 0;
+    }
+    .radar-ring {
+      position: absolute;
+      border-radius: 50%;
+      border: 1px solid rgba(255, 230, 0, 0.2);
+      left: 50%; top: 50%;
+      transform: translate(-50%, -50%);
+    }
+    .rr-1 { width: 180px; height: 180px; }
+    .rr-2 { width: 360px; height: 360px; }
+    .rr-3 { width: 540px; height: 540px; }
+    .rr-4 { width: 720px; height: 720px; border-color: rgba(255, 230, 0, 0.08); }
+
+    /* Sonar sweep beam */
+    .radar-sweep {
+      position: absolute;
+      left: 0; top: 0;
+      width: 760px; height: 760px;
+      transform-origin: center center;
+      background: conic-gradient(from 0deg, rgba(255, 230, 0, 0.28) 0deg, transparent 65deg);
+      border-radius: 50%;
+      pointer-events: none;
+    }
+
+    /* Top protocol header */
+    .protocol-header {
+      position: absolute;
+      top: 45px; left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      z-index: 50;
+      opacity: 0;
+    }
+    .protocol-title {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 0.15em;
+      color: var(--yellow);
+      text-transform: uppercase;
+    }
+
+    /* === LEFT DEVICE: iPhone 14 Pro === */
+    .device-iphone {
+      width: 340px;
+      height: 680px;
+      border-radius: 48px;
+      background: #09090B;
+      border: 3.5px solid #27272A;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.9), 0 0 40px rgba(255, 230, 0, 0.08);
+      position: relative;
+      padding: 14px;
+      transform: perspective(1000px) rotateY(16deg) translateX(-60px);
+      opacity: 0;
+      z-index: 20;
+    }
+    .iphone-island {
+      width: 110px;
+      height: 28px;
+      background: #000000;
+      border-radius: 16px;
+      margin: 2px auto 10px auto;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .iphone-screen {
+      height: calc(100% - 44px);
+      border-radius: 36px;
+      background: #0D0D10;
+      border: 1px solid rgba(255, 230, 0, 0.18);
+      padding: 20px 18px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    .sender-status {
+      display: flex;
+      justify-content: space-between;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: #9CA3AF;
+    }
+    .tx-packet-box {
+      background: rgba(255, 230, 0, 0.06);
+      border: 1px solid rgba(255, 230, 0, 0.35);
+      border-radius: 18px;
+      padding: 20px 16px;
+      text-align: center;
+      margin: auto 0;
+    }
+    .tx-amount {
+      font-family: 'Manrope', sans-serif;
+      font-size: 44px;
+      font-weight: 800;
+      color: var(--yellow);
+      letter-spacing: -0.02em;
+    }
+    .tx-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: #D1D5DB;
+      margin-top: 4px;
+    }
+    .tx-pulse-indicator {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: #000000;
+      background: var(--yellow);
+      padding: 10px;
+      border-radius: 12px;
+      font-weight: 700;
+      box-shadow: 0 0 20px rgba(255, 230, 0, 0.5);
+    }
+
+    /* === RIGHT DEVICE: MacBook Pro Window === */
+    .device-macbook {
+      width: 580px;
+      height: 440px;
+      border-radius: 20px;
+      background: #0B0B0E;
+      border: 1.5px solid rgba(255, 230, 0, 0.3);
+      box-shadow: 
+        0 30px 80px rgba(0, 0, 0, 0.95),
+        0 0 50px rgba(255, 230, 0, 0.1);
+      transform: perspective(1000px) rotateY(-14deg) translateX(60px);
+      opacity: 0;
+      z-index: 20;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .mac-titlebar {
+      height: 42px;
+      background: #141418;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      align-items: center;
+      padding: 0 16px;
+      position: relative;
+    }
+    .traffic-lights {
+      display: flex;
+      gap: 8px;
+    }
+    .traffic-dot {
+      width: 12px; height: 12px;
+      border-radius: 50%;
+    }
+    .t-red { background: #FF5F56; }
+    .t-yellow { background: #FFBD2E; }
+    .t-green { background: #27C93F; }
+    .mac-title {
+      position: absolute;
+      left: 50%; transform: translateX(-50%);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      font-weight: 600;
+      color: #9CA3AF;
+      letter-spacing: 0.05em;
+    }
+    .mac-body {
+      padding: 24px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .terminal-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 13px;
+      color: #D1D5DB;
+    }
+    .terminal-highlight {
+      color: var(--yellow);
+      font-weight: 700;
+    }
+    .mac-packet-card {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 230, 0, 0.2);
+      border-radius: 14px;
+      padding: 16px 20px;
+    }
+    .progress-bar-wrap {
+      width: 100%;
+      height: 8px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      overflow: hidden;
+      margin: 12px 0 8px 0;
+    }
+    .progress-bar-fill {
+      height: 100%;
+      width: 0%;
+      background: var(--yellow);
+      box-shadow: 0 0 12px var(--yellow);
+    }
+
+    /* Data Stream Wave / Beam */
+    .mesh-data-beam {
+      position: absolute;
+      left: 360px;
+      right: 600px;
+      top: 50%;
+      height: 4px;
+      background: linear-gradient(90deg, var(--yellow), rgba(255, 230, 0, 0.2), var(--yellow));
+      box-shadow: 0 0 20px var(--yellow);
+      transform: translateY(-50%) scaleX(0);
+      transform-origin: left center;
+      z-index: 15;
+    }
+    .packet-dot {
+      position: absolute;
+      width: 22px; height: 22px;
+      border-radius: 50%;
+      background: #FFFFFF;
+      box-shadow: 0 0 30px #FFFFFF, 0 0 60px var(--yellow);
+      top: 50%;
+      margin-top: -11px;
+      left: 360px;
+      opacity: 0;
+      z-index: 25;
+    }
+
+    /* Status badge at bottom center */
+    .bottom-status-wrap {
+      position: absolute;
+      bottom: 50px; left: 50%;
+      transform: translateX(-50%);
+      z-index: 50;
+      opacity: 0;
+    }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+</head>
+<body>
+<div id="root" data-composition-id="scene2" data-start="3" data-duration="5">
+  <div class="cyber-grid"></div>
+  <div class="cyber-vignette"></div>
+  <div class="scanlines"></div>
+
+  <!-- HUD markers -->
+  <div class="hud-corner hud-tl">PEER-TO-PEER MESH ENGINE</div>
+  <div class="hud-corner hud-tr">
+    <div class="hud-dot"></div>
+    <span>AWDL 802.11 · CHANNEL 44</span>
+  </div>
+
+  <!-- Top Protocol Header -->
+  <div class="protocol-header" id="protocolHeader">
+    <div class="badge-yellow">ACTIVE SCAN</div>
+    <div class="protocol-title">_upimesh._tcp • 0 INTERNET • P2P AIRDROP RADIO</div>
+  </div>
+
+  <!-- Radar Centerpiece -->
+  <div class="radar-center-wrap" id="radarCenter">
+    <div class="radar-ring rr-1"></div>
+    <div class="radar-ring rr-2"></div>
+    <div class="radar-ring rr-3"></div>
+    <div class="radar-ring rr-4"></div>
+    <div class="radar-sweep" id="radarSweep"></div>
+  </div>
+
+  <!-- Data stream line & traveling packet -->
+  <div class="mesh-data-beam" id="meshBeam"></div>
+  <div class="packet-dot" id="packetDot"></div>
+
+  <!-- Main Devices Stage -->
+  <div class="mesh-stage">
+    <!-- Alice's iPhone 14 Pro -->
+    <div class="device-iphone" id="iphoneNode">
+      <div class="iphone-island"></div>
+      <div class="iphone-screen">
+        <div class="sender-status">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <img src="../assets/icon.png" alt="Icon" style="width: 20px; height: 20px; border-radius: 5px;" />
+            <span>ALICE (IPHONE 14)</span>
+          </div>
+          <span style="color: var(--yellow);">TX RADIO ON</span>
+        </div>
+
+        <div class="tx-packet-box">
+          <div style="font-size: 11px; color: #9CA3AF; letter-spacing: 0.1em; text-transform: uppercase;">OUTGOING VOUCHER</div>
+          <div class="tx-amount">₹100.00</div>
+          <div class="tx-label">RSA-PSS SIGNED • SHA-256</div>
+        </div>
+
+        <div class="tx-pulse-indicator">
+          <span>📡</span>
+          <span>TRANSMITTING AIR-GAP</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bob's MacBook Pro -->
+    <div class="device-macbook" id="macNode">
+      <div class="mac-titlebar">
+        <div class="traffic-lights">
+          <div class="traffic-dot t-red"></div>
+          <div class="traffic-dot t-yellow"></div>
+          <div class="traffic-dot t-green"></div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px; position: absolute; left: 50%; transform: translateX(-50%);">
+          <img src="../assets/icon.png" alt="Icon" style="width: 18px; height: 18px; border-radius: 4px;" />
+          <div class="mac-title" style="position: static; transform: none;">MacBridgeClient · UPIMesh Companion</div>
+        </div>
+      </div>
+      <div class="mac-body">
+        <div class="terminal-row">
+          <span style="color: var(--yellow);">[DISCOVERY]</span>
+          <span>Peer Found: <span class="terminal-highlight">Alice · iPhone 14 (1-Hop)</span></span>
+        </div>
+
+        <div class="mac-packet-card">
+          <div style="display: flex; justify-content: space-between; font-size: 12px; color: #9CA3AF;">
+            <span data-layout-allow-occlusion>PAYMENT_PACKET.BIN</span>
+            <span id="transferPct" style="color: var(--yellow); font-weight: 700;">0%</span>
+          </div>
+          <div class="progress-bar-wrap">
+            <div class="progress-bar-fill" id="progressFill"></div>
+          </div>
+          <div style="font-size: 11px; color: #9CA3AF;">HASH: 7a82b9e4...dd3bd00c (Dual ECDSA Validated)</div>
+        </div>
+
+        <div class="terminal-row" style="font-size: 12px;">
+          <span>STATUS:</span>
+          <span id="macStatusText" style="color: var(--yellow); font-weight: 700;">CONNECTING PEER...</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom Status Pill -->
+  <div class="bottom-status-wrap" id="bottomStatus">
+    <div class="badge-yellow" style="font-size: 15px; padding: 10px 28px;">
+      <span>✓ PACKET RECEIVED · SETTLEMENT PENDING</span>
+    </div>
+  </div>
+</div>
+
+<script>
+  window.__timelines = window.__timelines || {};
+  const tl = gsap.timeline({ paused: true });
+  window.__timelines["scene2"] = tl;
+
+  // Header & Radar enter
+  tl.to("#protocolHeader", { opacity: 1, y: 0, duration: 0.4 }, 0.1);
+  tl.to("#radarCenter", { opacity: 1, duration: 0.5 }, 0.2);
+
+  // Both devices slide in smoothly from left and right
+  tl.to("#iphoneNode", {
+    opacity: 1,
+    x: 0,
+    duration: 0.6,
+    ease: "power3.out"
+  }, 0.2);
+
+  tl.to("#macNode", {
+    opacity: 1,
+    x: 0,
+    duration: 0.6,
+    ease: "power3.out"
+  }, 0.35);
+
+  // Radar sweep animation
+  tl.to("#radarSweep", {
+    rotation: 360,
+    duration: 4.5,
+    ease: "none"
+  }, 0.2);
+
+  // Data beam illuminates from iPhone to MacBook
+  tl.to("#meshBeam", {
+    scaleX: 1,
+    duration: 0.4,
+    ease: "power2.out"
+  }, 0.8);
+
+  // Traveling packet dot across the beam
+  tl.to("#packetDot", {
+    opacity: 1,
+    duration: 0.1
+  }, 0.9);
+
+  tl.fromTo("#packetDot", 
+    { x: 0 }, 
+    { x: 920, duration: 1.6, ease: "power1.inOut" }, 
+    0.9
+  );
+
+  tl.to("#packetDot", {
+    opacity: 0,
+    scale: 2,
+    duration: 0.2
+  }, 2.5);
+
+  // MacBook progress fill 0% -> 100%
+  tl.to("#progressFill", {
+    width: "100%",
+    duration: 1.8,
+    ease: "power2.inOut"
+  }, 1.2);
+
+  // Transfer percentage counter
+  const pctObj = { val: 0 };
+  tl.to(pctObj, {
+    val: 100,
+    duration: 1.8,
+    ease: "power2.inOut",
+    onUpdate: () => {
+      const el = document.getElementById("transferPct");
+      if (el) el.textContent = Math.round(pctObj.val) + "%";
+    }
+  }, 1.2);
+
+  // Mac status update
+  tl.call(() => {
+    const el = document.getElementById("macStatusText");
+    if (el) el.textContent = "INCOMING AIR-GAP PAYLOAD VERIFIED ✓";
+  }, null, 2.8);
+
+  // Bottom Status Badge arrives
+  tl.to("#bottomStatus", {
+    opacity: 1,
+    y: -10,
+    duration: 0.4,
+    ease: "back.out(1.4)"
+  }, 3.0);
+</script>
+</body>
+</html>

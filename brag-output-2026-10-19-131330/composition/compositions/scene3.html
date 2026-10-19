@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=1920, height=1080" />
+  <link rel="stylesheet" href="../shared.css" />
+  <style>
+    html, body { width: 1920px; height: 1080px; background: #000000; overflow: hidden; }
+    #root { width: 1920px; height: 1080px; position: relative; }
+
+    /* Yellow ambient glow */
+    .ambient-glow {
+      position: absolute;
+      left: 50%; top: 50%;
+      transform: translate(-50%, -50%);
+      width: 1000px; height: 600px;
+      background: radial-gradient(ellipse, rgba(255, 230, 0, 0.12) 0%, transparent 70%);
+      filter: blur(80px);
+      pointer-events: none;
+    }
+
+    /* Shockwave circle for SETTLED slam */
+    .settled-shockwave {
+      position: absolute;
+      left: 50%; top: 50%;
+      width: 900px; height: 900px;
+      border-radius: 50%;
+      border: 3px solid var(--yellow);
+      box-shadow: 0 0 50px var(--yellow);
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    /* Central MacBook Companion Window */
+    .mac-settlement-window {
+      position: absolute;
+      left: 50%; top: 50%;
+      width: 1060px;
+      border-radius: 24px;
+      background: #0E0E12;
+      border: 1.5px solid rgba(255, 230, 0, 0.35);
+      box-shadow: 
+        0 30px 90px rgba(0, 0, 0, 0.95),
+        0 0 60px rgba(255, 230, 0, 0.08);
+      overflow: hidden;
+      opacity: 0;
+      z-index: 20;
+    }
+
+    /* Titlebar */
+    .window-titlebar {
+      height: 48px;
+      background: #16161B;
+      border-bottom: 1px solid rgba(255, 230, 0, 0.18);
+      display: flex;
+      align-items: center;
+      padding: 0 20px;
+      position: relative;
+    }
+    .traffic-lights {
+      display: flex;
+      gap: 9px;
+    }
+    .traffic-dot {
+      width: 13px; height: 13px;
+      border-radius: 50%;
+    }
+    .t-red { background: #FF5F56; }
+    .t-yellow { background: #FFBD2E; }
+    .t-green { background: #27C93F; }
+    .window-title {
+      position: absolute;
+      left: 50%; transform: translateX(-50%);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      font-weight: 600;
+      color: #9CA3AF;
+      letter-spacing: 0.08em;
+    }
+
+    /* Window Content */
+    .window-content {
+      padding: 36px 44px;
+      display: flex;
+      flex-direction: column;
+      gap: 28px;
+    }
+
+    /* Top Transaction Ribbon */
+    .tx-ribbon {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 16px;
+      padding: 16px 24px;
+    }
+    .tx-id {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      color: #9CA3AF;
+    }
+    .tx-val {
+      font-family: 'Manrope', sans-serif;
+      font-size: 24px;
+      font-weight: 800;
+      color: #FFFFFF;
+    }
+
+    /* Escrow Clearance Display */
+    .escrow-stage {
+      background: rgba(255, 230, 0, 0.05);
+      border: 1.5px solid rgba(255, 230, 0, 0.28);
+      border-radius: 20px;
+      padding: 32px;
+      text-align: center;
+      position: relative;
+    }
+    .escrow-header {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--yellow);
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+    .escrow-counter {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 78px;
+      font-weight: 800;
+      color: var(--yellow);
+      letter-spacing: -0.03em;
+      text-shadow: 0 0 40px rgba(255, 230, 0, 0.5);
+      line-height: 1;
+      margin-bottom: 8px;
+    }
+    .escrow-sub {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      color: #D1D5DB;
+    }
+
+    /* Double-Entry Ledger Row */
+    .ledger-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    .ledger-card {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 16px;
+      padding: 18px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .ledger-card-label {
+      font-size: 12px;
+      color: #9CA3AF;
+      text-transform: uppercase;
+    }
+    .ledger-card-val {
+      font-size: 18px;
+      font-weight: 700;
+      color: #FFFFFF;
+    }
+
+    /* Giant Centered SETTLED Overlay */
+    .settled-slam-wrap {
+      position: absolute;
+      left: 50%; top: 50%;
+      opacity: 0;
+      z-index: 50;
+      pointer-events: none;
+      text-align: center;
+    }
+    .settled-slam-text {
+      font-family: 'Manrope', sans-serif;
+      font-size: 120px;
+      font-weight: 900;
+      letter-spacing: -0.04em;
+      color: #000000;
+      background: var(--yellow);
+      padding: 12px 60px;
+      border-radius: 28px;
+      box-shadow: 0 0 80px rgba(255, 230, 0, 0.8), 0 30px 100px rgba(0, 0, 0, 0.95);
+      border: 3px solid #FFFFFF;
+      display: inline-block;
+    }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+</head>
+<body>
+<div id="root" data-composition-id="scene3" data-start="8" data-duration="5">
+  <div class="cyber-grid"></div>
+  <div class="cyber-vignette"></div>
+  <div class="scanlines"></div>
+
+  <!-- HUD markers -->
+  <div class="hud-corner hud-tl">CLEARING ENGINE // ESCROW DISPATCH</div>
+  <div class="hud-corner hud-tr">
+    <div class="hud-dot"></div>
+    <span>DOUBLE-ENTRY VERIFIED</span>
+  </div>
+
+  <div class="ambient-glow"></div>
+  <div class="settled-shockwave" id="shockwave"></div>
+
+  <!-- Central Mac Settlement Window -->
+  <div class="mac-settlement-window" id="settlementWindow">
+    <div class="window-titlebar">
+      <div class="traffic-lights">
+        <div class="traffic-dot t-red"></div>
+        <div class="traffic-dot t-yellow"></div>
+        <div class="traffic-dot t-green"></div>
+      </div>
+      <div style="display: flex; align-items: center; gap: 8px; position: absolute; left: 50%; transform: translateX(-50%);">
+        <img src="../assets/icon.png" alt="Icon" style="width: 18px; height: 18px; border-radius: 4px;" />
+        <div class="window-title" style="position: static; transform: none;">SettlementEngine.java · Ledger Bridge</div>
+      </div>
+    </div>
+
+    <div class="window-content">
+      <!-- Top Transaction Row -->
+      <div class="tx-ribbon">
+        <div>
+          <div class="tx-id">PAYMENT: dd3bd00c-646a-4d8d-9fb2-828505c3e9b4</div>
+          <div style="font-size: 12px; color: #D1D5DB; margin-top: 4px;">P2P Voucher via Air-Gap Mesh</div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 20px;">
+          <div class="tx-val">₹100.00 INR</div>
+          <div class="badge-yellow-outline" id="txStatusBadge">PENDING SETTLEMENT</div>
+        </div>
+      </div>
+
+      <!-- Escrow Counter Stage -->
+      <div class="escrow-stage">
+        <div class="escrow-header">System Escrow Account Balance</div>
+        <div class="escrow-counter" id="escrowAmt">₹100.00</div>
+        <div class="escrow-sub" id="escrowSub">HOLDING AIR-GAP FUNDS</div>
+      </div>
+
+      <!-- Double-entry Ledger Grid -->
+      <div class="ledger-grid">
+        <div class="ledger-card">
+          <span class="ledger-card-label">Alice Debits (Account #101)</span>
+          <span class="ledger-card-val" style="color: var(--yellow);">₹430.00</span>
+        </div>
+        <div class="ledger-card">
+          <span class="ledger-card-label">Bob Credits (Account #202)</span>
+          <span class="ledger-card-val" style="color: var(--yellow);">₹430.00</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Giant Centered SETTLED Slam Overlay -->
+  <div class="settled-slam-wrap" id="settledSlam" data-layout-allow-overlap>
+    <div class="settled-slam-text" data-layout-allow-overlap>SETTLED</div>
+  </div>
+</div>
+
+<script>
+  window.__timelines = window.__timelines || {};
+  const tl = gsap.timeline({ paused: true });
+  window.__timelines["scene3"] = tl;
+
+  // Window zooms into view
+  tl.fromTo("#settlementWindow", 
+    { opacity: 0, scale: 0.92, xPercent: -50, yPercent: -50 },
+    { opacity: 1, scale: 1, xPercent: -50, yPercent: -50, duration: 0.6, ease: "power3.out" },
+    0.2
+  );
+
+  // Escrow counter ticks from ₹100.00 down to ₹0.00
+  const escrowObj = { val: 100 };
+  tl.to(escrowObj, {
+    val: 0,
+    duration: 1.6,
+    ease: "power2.inOut",
+    onUpdate: () => {
+      const el = document.getElementById("escrowAmt");
+      if (el) el.textContent = "₹" + escrowObj.val.toFixed(2);
+    }
+  }, 1.2);
+
+  // Escrow clears text
+  tl.call(() => {
+    const el = document.getElementById("escrowSub");
+    if (el) {
+      el.textContent = "CLEARED TO ZERO • FUNDS RELEASED";
+      el.style.color = "#FFE600";
+      el.style.fontWeight = "700";
+    }
+    const badge = document.getElementById("txStatusBadge");
+    if (badge) {
+      badge.textContent = "✓ SETTLED";
+      badge.className = "badge-yellow";
+    }
+  }, null, 2.9);
+
+  // Giant SETTLED stamp slams at 3.5s (global 11.5s -> stays through end)
+  tl.fromTo("#settledSlam",
+    { opacity: 0, scale: 1.8, xPercent: -50, yPercent: -50 },
+    { opacity: 1, scale: 1, xPercent: -50, yPercent: -50, duration: 0.4, ease: "back.out(1.7)" },
+    3.5
+  );
+
+  // Shockwave ring explosion
+  tl.fromTo("#shockwave",
+    { opacity: 0.9, scale: 0.2, xPercent: -50, yPercent: -50 },
+    { opacity: 0, scale: 1.2, xPercent: -50, yPercent: -50, duration: 0.8, ease: "power2.out" },
+    3.5
+  );
+</script>
+</body>
+</html>

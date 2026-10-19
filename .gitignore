@@ -48,3 +48,7 @@ DerivedData/
 project.xcworkspace/xcuserdata/
 *.xcuserdatad
 xcuserdata/
+
+### HyperFrames ###
+.hyperframes/
+**/.hyperframes/

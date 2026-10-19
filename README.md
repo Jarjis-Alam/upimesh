@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="assets/icon.png" alt="MeshPay Icon" width="140" height="140" style="border-radius: 32px; box-shadow: 0 12px 36px rgba(0,0,0,0.6);" />
+
 # 🌐 MeshPay / UPI Offline Mesh
 
 ### *Decentralized, Peer-to-Peer Offline Payment Routing with Dual Cryptographic Signatures, Direct Apple Wireless Multipeer Transport, Bank-Issued Allowance Vouchers, Persistent Replay Idempotency & Mathematical Double-Entry Ledger Reconciliation*
