@@ -1,2 +1,0 @@
-Built offline UPI payments that actually work — dual RSA-PSS + ECDSA signatures, zero internet, P2P AWDL/BLE. ₹100 settled on physical iPhone 14 → MacBook Pro. Double-entry ledger: BALANCED. 399 tests, 0 failures.
-github.com/Jarjis-Alam/upimesh

@@ -49,6 +49,33 @@ project.xcworkspace/xcuserdata/
 *.xcuserdatad
 xcuserdata/
 
+### Certificates & Local Secrets ###
+*.p8
+*.p12
+*.cer
+*.crt
+
+### OS & Editor Artifacts ###
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+*.swp
+*.swo
+*~
+*.bak
+
 ### HyperFrames ###
 .hyperframes/
 **/.hyperframes/
+
+### Generated Video & Motion Graphics Outputs ###
+brag-output/
+brag-output-*/
+
+### Duplicate Root Icon (Canonical is in assets/icon.png) ###
+/icon.png
+
+### Antigravity & Agent Development Tooling ###
+.agents/
+skills-lock.json
