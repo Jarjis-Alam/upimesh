@@ -111,7 +111,8 @@ git status --short
    - If response is `200`, the backend is already active. Skip to step 4.
 2. If the backend is not running, configure the administrative token and launch in a dedicated Terminal window:
    ```bash
-   cd /Users/munshijarjisalam/Documents/Projects/upimesh
+   # Navigate to the repository root directory
+   cd "$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 
    # Set administrative token (minimum 16 characters for production; sanitized template below)
    export UPI_MESH_ADMIN_TOKEN="<CONFIGURED_ADMIN_PAIRING_TOKEN>"

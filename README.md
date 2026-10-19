@@ -9,11 +9,17 @@
 [![Java](https://img.shields.io/badge/Java-17%2B-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white)](https://openjdk.org/)
 [![Spring Boot](https://img.shields.io/badge/Spring_Boot-4.2.0_M2-6DB33F?style=for-the-badge&logo=spring-boot&logoColor=white)](https://spring.io/projects/spring-boot)
 [![Tests](https://img.shields.io/badge/Tests-399%20Passed-brightgreen?style=for-the-badge&logo=junit5&logoColor=white)](https://github.com/Jarjis-Alam/upimesh)
-[![Security](https://img.shields.io/badge/Security-RSA--PSS%202048%20%7C%20P--256%20ECDSA%20%7C%20AES--256--GCM-blueviolet?style=for-the-badge&logo=lock&logoColor=white)](https://github.com/Jarjis-Alam/upimesh)
+[![Security](https://img.shields.io/badge/Security-RSA--PSS%202048%20%7C%20AES--256--GCM-blueviolet?style=for-the-badge&logo=lock&logoColor=white)](https://github.com/Jarjis-Alam/upimesh)
 [![Database](https://img.shields.io/badge/Database-H2_File--Backed-blue?style=for-the-badge&logo=database&logoColor=white)](https://github.com/Jarjis-Alam/upimesh)
 [![Apple](https://img.shields.io/badge/Apple-iOS%2016%2B%20%7C%20macOS%2014%2B%20%7C%20SwiftUI-007AFF?style=for-the-badge&logo=swift&logoColor=white)](https://github.com/Jarjis-Alam/upimesh)
 [![Transport](https://img.shields.io/badge/Transport-Multipeer%20Connectivity-FF9500?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/Jarjis-Alam/upimesh)
 [![License](https://img.shields.io/badge/License-Apache_2.0-red?style=for-the-badge)](https://opensource.org/licenses/Apache-2.0)
+
+<br/>
+
+> [!IMPORTANT]
+> **RESEARCH & EDUCATIONAL PROTOTYPE CLASSIFICATION**
+> MeshPay / UPI Offline Mesh is an experimental academic and educational prototype exploring store-and-forward offline payment routing, cryptographic allowance vouchers, and Apple Multipeer wireless transport. It is **not affiliated with, endorsed by, or connected to the National Payments Corporation of India (NPCI), the Reserve Bank of India (RBI), or live production UPI banking rails**. All account identifiers (`alice`, `bob`, `carol`), cryptographic keys, and ledger transactions in this repository are synthetic, isolated testbed fixtures.
 
 <br/>
 
@@ -23,11 +29,11 @@
 [System Architecture](#-system-architecture) •
 [Cryptographic Pipeline](#-dual-signature-cryptographic-pipeline) •
 [Direct P2P Transport](#-direct-offline-peer-to-peer-transport) •
-[iOS & macOS Apps](#-native-apps-ios--macos) •
+[iOS & macOS Apps](#-native-applications-macos-ipados--ios) •
 [Quickstart](#-quickstart-guide) •
 [API Reference](#-api-reference) •
 [Reconciliation Engine](#-mathematical-reconciliation-engine) •
-[Test Suite](#-test-suite--verification-396-passing-tests) •
+[Test Suite](#-test-suite--verification-399-passing-tests) •
 [Security Model & Boundaries](#-security-model--threat-boundaries) •
 [Documentation Index](#-documentation-index)
 
@@ -51,19 +57,24 @@ When telecom links sever, digital payments cease entirely. Critical real-world s
 ### The Architecture: Allowance-Backed P2P Mesh with Authoritative Escrow
 **MeshPay / UPI Offline Mesh** resolves this bottleneck through a peer-to-peer, store-and-forward architecture built on **bank-issued cryptographic allowances** and **direct device-to-device wireless transport**:
 
-1. **Pre-Authorized Bank Allowance**: While online, the payer reserves funds from their balance into bank escrow (`system-escrow`). The banking core issues a digitally signed `OfflineAllowance` voucher authenticated with **RSA-PSS (SHA-256)**.
+1. **Pre-Authorized Bank Allowance**: While online, the payer reserves funds from their balance into bank escrow (`system-escrow`). The banking core issues a digitally signed `OfflineAllowance` voucher authenticated with **2048-bit RSA-PSS (SHA-256)**.
 2. **Dual-Signature Scheme**: Offline payments require two distinct signatures:
    - **Bank Authority Voucher Signature**: Proves the existence of genuine reserved escrow funds.
-   - **Payer Device Signature**: Proves authentic instruction consent signed on-device via **P-256 ECDSA** or **RSA-PSS**.
+   - **Payer Device Signature**: Proves authentic instruction consent signed on-device via **2048-bit RSASSA-PSS** (with NIST P-256 Secure Enclave architecture designed for hardware attestation).
+     *Note: Offline mathematical verification proves key possession, but authentic binding of a public key to an account identity requires authoritative verification against the banking registry during bridge settlement.*
 3. **Zero-Internet Wireless Exchange**: The payer transmits the signed payment packet to the merchant over Apple's **Multipeer Connectivity framework** (Wi-Fi Direct / Apple Wireless Direct Link / Bluetooth Low Energy) with zero cellular, Wi-Fi router, or internet access.
 4. **Deterministic Canonicalization (RFC 8785 subset)**: Custom canonical JSON serialization in Swift and Java guarantees byte-for-byte deterministic signature verification across iOS and Spring Boot.
-5. **Isolated Receiver Inbox**: The merchant companion records the payment in an isolated storage inbox (`RECEIVED`) without mixing it into outgoing transfer queues.
+5. **Isolated Receiver Inbox & Provisional Status**: The merchant companion records the payment in an isolated storage inbox (`RECEIVED — NOT SETTLED`) without inflating balances. An offline payment remains strictly **provisional** until bridge settlement.
 6. **Delayed Bridge Settlement & Persistent Idempotency**: When a node reaches connectivity, it submits the spend record to the bank bridge. The settlement engine executes an atomic double-entry transfer from escrow to the merchant, enforces strict sequence monotonic timestamps, audits for sequence forks, and enforces persistent replay idempotency.
 7. **Mathematical Double-Entry Reconciliation**: A decoupled audit engine mathematically verifies total double-entry conservation ($\sum \text{Debits} \equiv \sum \text{Credits}$) and reconciles all account closing balances against opening baselines.
 
 ---
 
 ## 🏆 Physical Device Milestone: Verified ₹100 Payment
+
+> [!NOTE]
+> **Sanitized Testbed Demonstration Data**
+> All financial amounts, account handles (`alice`, `bob`, `carol`), device identifiers, and payment UUIDs shown below were generated inside an isolated, non-production testbed environment backed by a local H2 database (`./data/upimesh.mv.db`). No real-world currency, personal identifiable information (PII), or production banking rails were used.
 
 The architecture has been proven end-to-end on **physical testbed hardware** (Physical iPhone 14 + MacBook Pro merchant node + Spring Boot backend on a persistent H2 database):
 
@@ -83,10 +94,10 @@ Detailed hardware verification data is preserved in [`docs/reports/hardware_veri
 
 ## 🚀 Core Capabilities
 
-- **🔐 Dual Cryptographic Authentications**: Bank authority voucher signing with **2048-bit RSA-PSS**; payer client signing with **P-256 ECDSA** or **RSA-PSS** bound to registered device identities.
+- **🔐 Dual Cryptographic Authentications**: Bank authority voucher signing with **2048-bit RSA-PSS**; payer client signing with **2048-bit RSASSA-PSS** stored in the iOS software Keychain (`kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly`), with NIST P-256 Secure Enclave architecture designed for hardware attestation.
 - **🛡️ Authenticated Key Storage at Rest**: The Bank Authority master private key is protected at rest with **AES-256-GCM** using externally provisioned secrets (`UPI_MESH_KEY_ENCRYPTION_KEY`).
 - **🔒 Scoped Administrative Access Control**: Fail-closed token authentication (`UPI_MESH_ADMIN_TOKEN` / `X-Admin-Token` header) on reconciliation, sensitive audits, and device authorization.
-- **📡 Direct Wireless P2P Transport (Multipeer Connectivity)**: Physical iPhones and Mac companion nodes discover peers and transfer payment packets offline over peer-to-peer Wi-Fi and Bluetooth (`_upimesh._tcp`).
+- **📡 Direct Wireless P2P Transport (Multipeer Connectivity)**: Physical iPhones and Mac companion nodes discover peers and transfer payment packets offline over peer-to-peer Wi-Fi and Bluetooth (`_upimesh-pay._tcp`).
 - **⚡ Step 2 Replay Protection & Idempotency**: Persistent database uniqueness checks intercept replayed payment IDs before balance modifications or allowance alterations, returning idempotent HTTP 200 responses.
 - **⚖️ Double-Entry Ledger & Continuous Audit Engine**: Optimistic concurrency locking (`@Version`); read-only mathematical reconciliation audit checking $\sum \text{Debits} \equiv \sum \text{Credits}$ and $E(i) = B_0(i) + \Delta(i)$.
 - **🚨 Sequence Fork & Fraud Detection**: Conflicting spend payments claiming the same sequence number trigger automatic `SEQUENCE_FORK_CONFLICT` security events and immediately revoke the parent allowance.
@@ -103,18 +114,18 @@ flowchart TD
         BACKEND_ISSUE --> VOUCHER["🎫 OfflineAllowanceVoucher<br/>(Signed by Bank RSA-PSS)"]
         VOUCHER --> ALW_STORE[("💾 Local Allowance Store")]
         
-        ALW_STORE --> SPEND_BUILD["✍️ Sign OfflineSpendRecord<br/>(Payer P-256 / RSA Key)"]
+        ALW_STORE --> SPEND_BUILD["✍️ Sign OfflineSpendRecord<br/>(Payer 2048-bit RSA-PSS)"]
         SPEND_BUILD --> PKT_OUT["📦 OfflinePaymentPacket<br/>(Voucher + Spend Record)"]
     end
 
     subgraph Wireless["📡 Direct P2P Wireless Transport (Zero Internet)"]
         PKT_OUT --> ADV["📡 Multipeer Advertiser<br/>(Apple AWDL / BLE)"]
-        ADV <-->|Peer-to-Peer Wi-Fi / BLE<br/>Service: _upimesh._tcp| BROWSE["🔍 Multipeer Browser<br/>(Apple AWDL / BLE)"]
+        ADV <-->|Peer-to-Peer Wi-Fi / BLE<br/>Service: _upimesh-pay._tcp| BROWSE["🔍 Multipeer Browser<br/>(Apple AWDL / BLE)"]
     end
 
     subgraph Receiver["💻 Merchant Device (Bob's MacBook Companion)"]
         BROWSE --> RECV_INBOX["📥 ReceivedPacketStore<br/>(Isolated Merchant Inbox)"]
-        RECV_INBOX --> R_STATE["🏷️ Status: RECEIVED"]
+        RECV_INBOX --> R_STATE["🏷️ Status: RECEIVED (Provisional)"]
         R_STATE -.->|When Bridge Reachable| SUBMIT_BRIDGE["🌉 MacBridgeClient<br/>(POST /api/allowance/spend)"]
     end
 
@@ -126,7 +137,7 @@ flowchart TD
         STEP4 --> STEP6["6. Verify Payer Device Signature"]
         STEP6 --> STEP9{"9. Sequence Conflict?"}
         STEP9 -- "Conflict" --> REVOKE["🚨 Revoke Allowance (Fraud Audit)"]
-        STEP9 -- "Valid" --> STEP10["10. Atomic Double-Entry Transfer<br/>(system-escrow ➔ bob)"]
+        STEP9 -- "Valid" --> STEP10["10. Atomic Double-Entry Settlement<br/>(system-escrow ➔ bob)"]
         STEP10 --> STEP12["12. Record OfflineSpendPayment<br/>Status: SETTLED"]
     end
 
@@ -158,13 +169,13 @@ sequenceDiagram
 
     Note over Alice,Bob: Phase 2: Disconnected Offline Payment (AWDL / Multipeer)
     Alice->>Alice: Construct Spend Record (paymentId, seq: 1, amount: ₹100, cumulative: ₹100)
-    Alice->>Alice: Sign Canonical Spend Bytes with Payer Private Key (P-256 / RSA)
+    Alice->>Alice: Sign Canonical Spend Bytes with Payer Private Key (2048-bit RSASSA-PSS)
     Alice->>Bob: PeerTransferMessage: Handshake (protocolVersion: 1)
     Bob-->>Alice: PeerTransferMessage: HandshakeAck
     Alice->>Bob: PeerTransferMessage: PacketTransfer (Voucher + SpendRecord)
     Bob->>Bob: Verify Voucher Signature using Pinned Bank Public Key
-    Bob->>Bob: Verify Payer Digital Signature
-    Bob->>Bob: Store in Isolated Inbox with status: RECEIVED
+    Bob->>Bob: Verify Payer Digital Signature (Mathematical only; identity unauthenticated until bridge settlement)
+    Bob->>Bob: Store in Isolated Inbox with status: RECEIVED (Provisional — Not Settled)
     Bob-->>Alice: PeerTransferMessage: TransferAck (accepted: true)
 
     Note over Bob,Bank: Phase 3: Deferred Settlement (When Bridge Connected)
@@ -184,7 +195,7 @@ sequenceDiagram
 ## 📡 Direct Offline Peer-to-Peer Transport
 
 - **Zero Cellular / Zero Wi-Fi Router**: Direct communication over Apple Wireless Direct Link (AWDL) and Bluetooth Low Energy via Apple's **Multipeer Connectivity framework**.
-- **Bonjour Service**: Registered under `_upimesh._tcp`.
+- **Bonjour Service**: Registered under `_upimesh-pay._tcp`.
 - **Peer Roles**:
   - `MCNearbyServiceAdvertiser`: Broadcasts device availability and identity metadata.
   - `MCNearbyServiceBrowser`: Discovers nearby peer nodes in real-time.
@@ -256,32 +267,34 @@ Located in [`ios/UPIMesh/`](ios/UPIMesh/), written in SwiftUI:
 
 ## 🛠️ Quickstart Guide
 
-### Prerequisites
-- **Java**: OpenJDK 17 or higher
-- **Maven**: Maven Wrapper (`./mvnw`) included
-- **macOS**: macOS 14.0+ (Sonoma or Sequoia)
-- **Xcode**: Xcode 15+ or 16+ Command Line Tools
+### Prerequisites (macOS Developers)
+- **Operating System**: macOS 14.0+ (Sonoma or Sequoia)
+- **Java**: OpenJDK 17 or higher (install via Homebrew: `brew install openjdk@17` and set `export JAVA_HOME="/opt/homebrew/opt/openjdk@17"`)
+- **Build Tool**: Bundled Maven Wrapper (`./mvnw`) included in repository
+- **Apple Developer Tools**: Xcode 15+ or 16+ with Command Line Tools (`xcode-select --install`)
 
 ---
 
 ### 1. Build and Run Backend
+The backend can be built, tested non-destructively, and executed locally:
 ```bash
 # Clone the repository
 git clone https://github.com/Jarjis-Alam/upimesh.git
 cd upimesh
 
-# Compile backend
+# Compile backend classes
 ./mvnw clean compile
 
-# Run all 303 Java backend tests
+# Run all 303 Java backend tests (executes in an isolated in-memory H2 database)
 ./mvnw test
 
-# Configure environment variables
+# Configure required environment variable for admin endpoints (reconciliation, audits)
 export UPI_MESH_ADMIN_TOKEN="your-secure-admin-token-min-16-chars"
-# Optional AES-256-GCM encryption key for bank authority master key
+
+# (Optional) Provision 256-bit AES-GCM encryption key for bank authority master key
 # export UPI_MESH_KEY_ENCRYPTION_KEY="<BASE64_32_BYTE_KEY>"
 
-# Start the Spring Boot server
+# Start the local Spring Boot banking core (backed by persistent file H2 at ./data/upimesh)
 ./mvnw spring-boot:run
 ```
 
@@ -434,37 +447,44 @@ The repository is rigorously covered by **399 automated tests** with zero failur
 
 | Framework | Suite | Tests | Scope & Invariants Tested |
 |---|---|:---:|---|
-| **Java (Spring Boot)** | `OfflineAllowanceSettlementServiceTest` | 26 | Step 2 idempotency, dual signatures, sequence forks, escrow debit/credit |
-| | `OfflineAllowanceServiceTest` | 13 | Allowance issuance, escrow reservation, refund, canonical voucher bytes |
-| | `PaymentReconciliationSecurityTest` | 33 | Edge cases in reconciliation, partial opening balances, discrepancy audits |
-| | `OperationalHardeningTest` | 13 | File database restart persistence, DataSeeder non-overwrite, sanitized errors |
-| | `SecurityRemediationPhase1Test` | 8 | Timing-safe admin token validation, AES-256-GCM bank key encryption |
-| | `SecurityRemediationPhase3Test` | 6 | Administrative access boundaries, environment variable resolution |
-| | `BackendIntegrationLayerTest` | 15 | Bridge public key export, external packet ingestion, atomic settlement |
-| | `DeviceSignedPaymentSubmissionTest` | 8 | Public key verification, device authorization, balance & replay defense |
-| | `SecureDeviceAuthorizationTest` | 9 | Owner consent, pairing tokens, unauthorized & duplicate guards |
-| | `PersistentDeviceRegistryTest` | 6 | Device registration persistence, key updates, account binding |
-| | `CrossLanguageCanonicalizationTest` | 1 | RFC 8785 byte-for-byte serialization match between Java & Swift |
+| **Java (Spring Boot)** | `AccountOwnerAuthorizationLifecycleTest` | 29 | Multi-device owner authorization, lifecycle transitions, pairing token revocation |
+| | `SecurityRemediationPhase1Test` | 16 | Timing-safe admin token comparison, AES-256-GCM bank key encryption at rest |
+| | `BackendIntegrationLayerTest` | 15 | Bridge public key export, external packet ingestion, atomic escrow settlement |
+| | `FinancialReadAccessControlTest` | 15 | Administrative access barriers on account balances and transaction journals |
+| | `OfflineAllowanceSettlementServiceTest` | 15 | Step 2 idempotency, dual signatures, sequence forks, escrow settlement |
+| | `ApiAccessControlAuditTest` | 14 | Authentication header auditing, fail-closed access barriers |
+| | `AccountOwnerConsentSecurityTest` | 14 | Cryptographic owner consent signatures and unauthorized device rejection |
+| | `OwnerKeyEnrollmentAuditTest` | 13 | Owner key registration, duplicate prevention, fail-closed provisioning |
+| | `OperationalHardeningTest` | 13 | File database persistence across restarts, non-overwriting seeder, sanitized errors |
+| | `PaymentReconciliationSecurityTest` | 13 | Double-entry structural conservation, opening baseline reconciliation |
+| | `ConfigurationSecurityAuditTest` | 11 | Security property defaults, secret requirements, profile isolation |
+| | `OfflineAllowanceServiceTest` | 11 | Allowance issuance, escrow reservation, refund, canonical voucher bytes |
+| | `BridgeIngestionServiceTest` | 10 | Payload validation, hybrid decryption, timestamp bounds, expiration |
 | | `LedgerReconciliationTest` | 9 | Double-entry invariants, circular transfers, tampering detection |
+| | `CryptoServiceTest` | 9 | RSA-OAEP wrapping, AES-256-GCM ciphering, RSASSA-PSS signing |
 | | `SenderAuthenticationTest` | 9 | RSASSA-PSS SHA-256 signature verification, canonical byte serialization |
-| | `PersistentReplayProtectionTest` | 7 | DB compound `(fromAccount, nonce)` uniqueness, re-encryption defense |
+| | `SecureDeviceAuthorizationTest` | 9 | Owner consent validation, pairing token lifecycle, device guards |
+| | `PersistentDeviceRegistryTest` | 9 | Device key persistence, updates, account binding |
+| | `PaymentInstructionTest` | 9 | Instruction immutability, canonical representation, validation |
+| | `DeviceSignedPaymentSubmissionTest` | 9 | Public key verification, balance checks, replay defenses |
+| | `SecurityRemediationPhase3Test` | 8 | Admin token header extraction, environment variable precedence |
+| | `PersistentReplayProtectionTest` | 7 | Database compound `(fromAccount, nonce)` uniqueness, re-encryption defense |
 | | `PersistentIdempotencyTest` | 7 | Service re-instantiation idempotency, SHA-256 deduplication, concurrency |
+| | `MeshPacketTest` | 6 | Network packet format, hop count limits, canonical encoding |
 | | `TransactionLedgerIntegrationTest` | 6 | Atomic ledger recording, balance adjustments, chronological indexing |
-| | `BridgeIngestionServiceTest` | 10 | Hybrid decryption, payload validation, clock skew & expiration |
+| | `IdempotencyServiceTest` | 5 | Atomic in-memory claims, state lifecycle transitions |
 | | `MeshSimulatorServiceTest` | 5 | Multi-hop gossip rounds, loop prevention, TTL expiration |
 | | `EndToEndMeshPaymentTest` | 5 | End-to-end controller & simulation integration |
-| | `CryptoServiceTest` | 9 | RSA-OAEP key wrapping, AES-256-GCM ciphering, signature schemes |
-| | `MeshPacketTest` & `PaymentInstructionTest` | 15 | Immutability, canonical representation, validation invariants |
-| | `IdempotencyServiceTest` | 5 | Atomic in-memory claims, state lifecycle transitions |
-| | *Other Core Spring Tests* | 68 | Entity mapping, repository queries, controller contracts |
-| **Swift (iOS / macOS)** | `TrueOfflineStoreAndForwardTests` | 10 | Local creation without backend, persist-before-ack, crash recovery, delayed settlement |
-| | `PeerTransportTests` | 25 | Multipeer handshake, state recovery, tie-breaker, packet serialization, ping/pong |
+| | `CrossLanguageCanonicalizationTest` | 1 | RFC 8785 byte-for-byte serialization match between Java & Swift |
+| | `UpimeshApplicationTests` | 1 | Spring Boot application context initialization |
+| **Swift (iOS / macOS)** | `PeerTransportTests` | 25 | Multipeer handshake, state recovery, tie-breaker, packet serialization, ping/pong |
 | | `ReconciliationServiceTests` | 16 | Settlement transitions, terminal rejections, timeout recovery, retry safety |
 | | `MacCompanionTests` | 16 | macOS packet decoding, deduplication, tampering rejection, lifecycle states |
 | | `OfflineAllowanceTests` | 13 | Voucher parsing, RSASSA-PSS verification, spend creation, cumulative tracking |
-| | `OfflinePaymentPacketTests` | 9 | Packet creation, canonicalization, P-256 signing, deduplication |
+| | `TrueOfflineStoreAndForwardTests` | 10 | Local creation without backend, persist-before-ack, crash recovery, delayed settlement |
+| | `OfflinePaymentPacketTests` | 9 | Packet creation, canonicalization, RSA signing, deduplication |
 | | `MeshLedgerViewModelTests` | 7 | Live backend transaction sync, offline local counts, preview isolation |
-| **Total** | **26 Test Suites** | **399** | **399 Passed / 0 Failures / 0 Errors** |
+| **Total** | **37 Test Suites** | **399** | **399 Passed / 0 Failures / 0 Errors (303 Java + 96 Swift)** |
 
 ---
 
@@ -472,17 +492,21 @@ The repository is rigorously covered by **399 automated tests** with zero failur
 
 > [!WARNING]
 > **RESEARCH & EDUCATIONAL PROTOTYPE CLASSIFICATION**  
-> MeshPay is an experimental prototype demonstrating distributed systems and cryptographic patterns for offline payments. It is not connected to live UPI / NPCI banking rails.
+> MeshPay / UPI Offline Mesh is an experimental prototype demonstrating distributed systems and cryptographic patterns for offline payments. It is not connected to live UPI / NPCI banking rails.
 
-The system adheres to an honest security model and explicitly discloses inherent physical constraints:
+The system adheres to an honest security model and explicitly discloses inherent physical and distributed systems constraints:
 
 1. **SEC-01 (Offline Double-Spending is an Inherent Architectural Limitation)**:
-   - In disconnected peer-to-peer networks without central online authorization or tamper-proof monotonic hardware counters, a compromised payer device can present validly-signed vouchers to multiple disconnected merchants.
-   - The first merchant to sync with the backend settles successfully; subsequent merchants incur a 100% credit loss. Offline transaction finality is **strictly provisional** until bridge settlement. Sequence forks are detected and trigger immediate allowance revocation.
-2. **SEC-03 (Software Keychain vs. Hardware Secure Enclave)**:
-   - Device keys are stored in the Apple iOS software Keychain (`kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly`).
-   - The Apple Secure Enclave processor lacks RSA hardware coprocessors and supports ECC NIST P-256 exclusively. Full hardware-enforced private-key attestation requires a Version 2 ECDSA migration.
-3. **SEC-05 (Client-Signed Timestamps Do Not Establish True Time)**:
+   - In disconnected peer-to-peer networks lacking a continuous central clearinghouse or tamper-proof monotonic hardware counters (e.g. smartcards), a rogue payer device can sign multiple conflicting spend records against the same allowance to different disconnected merchants.
+   - The first merchant to establish internet connectivity and reconcile with the bank bridge settles successfully. Subsequent merchants attempting to settle conflicting sequence numbers incur a **100% credit loss**.
+   - Offline transaction finality is **strictly provisional** until authoritative bridge settlement. Sequence forks are detected upon settlement, triggering an automatic `SEQUENCE_FORK_CONFLICT` audit event and immediate revocation of the parent allowance.
+2. **SEC-02 (Mathematical Signature Validity Does Not Prove Account Identity)**:
+   - When a merchant node receives an offline payment packet, it verifies that the bank voucher signature is valid (via the bank's pinned public key) and that the spend record was mathematically signed by the device's public key.
+   - However, **mathematical signature validity alone does not prove the sender's account identity is authentic**. An offline signature demonstrates cryptographic possession of a private key, but the authoritative binding between that device key and the account (`alice`) is only authenticated when the bank bridge reconciles the spend record against the authoritative registry.
+3. **SEC-03 (Software Keychain vs. Hardware Secure Enclave)**:
+   - Active device keys are stored in the Apple iOS software Keychain (`kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly`).
+   - The Apple Secure Enclave processor lacks RSA hardware coprocessors and supports NIST P-256 ECC exclusively. The prototype standardizes on 2048-bit RSASSA-PSS for byte-level cross-platform parity with standard Java cryptographic primitives. Hardware-enforced private-key attestation requires a future NIST P-256 ECDSA migration.
+4. **SEC-05 (Client-Signed Timestamps Do Not Establish True Time)**:
    - Server-side validation enforces syntactic timestamp bounds (`createdAt >= issuedAt - 5m`, allowance expiration, and sequence monotonicity).
    - However, a client-signed timestamp proves only that the private key signed that timestamp string, **not that the device clock was truthful**. Establishing trustworthy offline time without trusted hardware remains an open distributed systems challenge.
 
@@ -504,4 +528,4 @@ The `docs/` directory contains complete technical reports and verification gates
 
 ## 📄 License
 
-This project is licensed under the [Apache License 2.0](LICENSE).
+This project is intended to be distributed under the [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0). *(A repository LICENSE file will be included following formal administrative review).*

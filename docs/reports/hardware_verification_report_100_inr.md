@@ -33,14 +33,14 @@ A legitimate **₹100 allowance-backed offline payment** was issued, signed on p
 ---
 
 ## 4. Minimal Code Fixes Applied
-1. [OfflinePayView.swift](file:///Users/munshijarjisalam/Documents/Projects/upimesh/ios/UPIMesh/UPIMesh/OfflinePayView.swift):
+1. [OfflinePayView.swift](../../ios/UPIMesh/UPIMesh/OfflinePayView.swift):
    - Changed default `amount` to `100.00`.
    - Updated `createOfflinePacketAction` to set `selectedPacketForTransfer = packet` on spend creation.
    - Updated transmit picker to select `targetPacket = selectedPacketForTransfer ?? queuedPackets.last` by default so the newest packet is always highlighted and transmitted.
    - Updated `reloadActiveAllowance()` to auto-enable `useAllowance = true` when an unexpired voucher exists.
-2. [MeshWalletsView.swift](file:///Users/munshijarjisalam/Documents/Projects/upimesh/ios/UPIMesh/UPIMesh/MeshWalletsView.swift):
+2. [MeshWalletsView.swift](../../ios/UPIMesh/UPIMesh/MeshWalletsView.swift):
    - Added `₹100` quick chip to `[100.0, 200.0, 500.0, 1000.0]` and defaulted request amount to `100.0`.
-3. [OfflineAllowanceTests.swift](file:///Users/munshijarjisalam/Documents/Projects/upimesh/ios/UPIMesh/UPIMesh/OfflineAllowanceTests.swift):
+3. [OfflineAllowanceTests.swift](../../ios/UPIMesh/UPIMesh/OfflineAllowanceTests.swift):
    - Updated mock voucher test expiry dates to `2026-10-30T10:00:00Z` to prevent local time clock expiry during automated runs.
 
 ---
