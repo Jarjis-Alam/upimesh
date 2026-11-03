@@ -174,7 +174,7 @@ sequenceDiagram
     Bob-->>Alice: PeerTransferMessage: HandshakeAck
     Alice->>Bob: PeerTransferMessage: PacketTransfer (Voucher + SpendRecord)
     Bob->>Bob: Verify Voucher Signature using Pinned Bank Public Key
-    Bob->>Bob: Verify Payer Digital Signature (Mathematical only; identity unauthenticated until bridge settlement)
+    Bob->>Bob: Verify Payer Digital Signature (Mathematical only — identity unauthenticated until bridge settlement)
     Bob->>Bob: Store in Isolated Inbox with status: RECEIVED (Provisional — Not Settled)
     Bob-->>Alice: PeerTransferMessage: TransferAck (accepted: true)
 
