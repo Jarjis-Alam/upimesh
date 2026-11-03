@@ -77,5 +77,8 @@ brag-output-*/
 /icon.png
 
 ### Antigravity & Agent Development Tooling ###
-.agents/
+.agents/*
+!.agents/skills/
+.agents/skills/*
+!.agents/skills/unslop/
 skills-lock.json
