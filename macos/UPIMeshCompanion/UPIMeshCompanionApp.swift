@@ -5,9 +5,9 @@ struct UPIMeshCompanionApp: App {
     var body: some Scene {
         WindowGroup {
             MacCompanionView()
-                .frame(minWidth: 1040, minHeight: 640)
+                .frame(minWidth: 920, minHeight: 580)
         }
         .windowStyle(.titleBar)
-        .defaultSize(width: 1300, height: 820)
+        .defaultSize(width: 1180, height: 760)
     }
 }

@@ -2,7 +2,7 @@ import SwiftUI
 import MultipeerConnectivity
 
 /// Native macOS Companion Screen for Testing Offline Peer Packet Transport against iPhone.
-/// Styled with true AMOLED black, obsidian surfaces, and amber-400 hackathon presentation accents.
+/// Professional Hackathon Station in True Pitch AMOLED Black (#000000) & Obsidian Amber.
 public struct MacCompanionView: View {
 
     @ObservedObject private var transport = MacPeerTransportService.shared
@@ -13,30 +13,14 @@ public struct MacCompanionView: View {
     @State private var isPulsing: Bool = false
 
     public enum CompanionTab: String, CaseIterable, Identifiable {
-        case demoMode = "DEMO MODE (Research Station)"
-        case packetInbox = "PAYMENT PACKET INBOX"
+        case demoMode = "DEMO MODE"
+        case packetInbox = "PACKET INBOX"
 
         public var id: String { self.rawValue }
     }
 
-    // MARK: - Bridge Registration State
-    @State private var bridgeRegistrationState: BridgeRegistrationState = .unregistered
-    @State private var bridgeErrorMessage: String? = nil
-    @State private var bridgeSuccessMessage: String? = nil
-    @State private var isRegistering: Bool = false
-
-    public enum BridgeRegistrationState: Equatable, Sendable {
-        case unregistered
-        case registering
-        case registered(isNew: Bool)
-        case failed(String)
-    }
-
     // MARK: - Palette (True AMOLED Black & Obsidian Amber)
     private let bgAmoled = Color.black
-    private let surfaceBlack = Color(red: 0.03, green: 0.04, blue: 0.05)
-    private let cardBlack = Color(red: 0.05, green: 0.06, blue: 0.07)
-    private let subpanelBlack = Color(red: 0.08, green: 0.09, blue: 0.10)
     private let cardBorder = Color.white.opacity(0.10)
     private let amberAccent = Color(red: 0.98, green: 0.80, blue: 0.08)       // #FACC15
     private let amberLight = Color(red: 0.99, green: 0.85, blue: 0.25)        // #FDE047
@@ -56,8 +40,8 @@ public struct MacCompanionView: View {
 
     public var body: some View {
         VStack(spacing: 0) {
-            // Window Titlebar
-            windowTitleBar
+            // Window Header
+            windowHeaderBar
 
             // Main Content Area
             if selectedCompanionTab == .demoMode {
@@ -66,7 +50,7 @@ public struct MacCompanionView: View {
                 inboxDashboard
             }
 
-            // Bottom Status Bar
+            // Bottom Status Ribbon
             appFooterStatusBar
         }
         .background(bgAmoled)
@@ -89,29 +73,29 @@ public struct MacCompanionView: View {
         }
     }
 
-    // MARK: - 1. Window Title Bar (macOS Native Style)
+    // MARK: - 1. Window Header Bar
 
-    private var windowTitleBar: some View {
-        HStack(spacing: 14) {
-            // macOS Traffic Light Mimic Dots
+    private var windowHeaderBar: some View {
+        HStack(spacing: 12) {
+            // macOS Traffic Light Dots
             HStack(spacing: 6) {
                 Circle().fill(Color(red: 1.0, green: 0.37, blue: 0.34)).frame(width: 10, height: 10)
                 Circle().fill(Color(red: 1.0, green: 0.74, blue: 0.18)).frame(width: 10, height: 10)
                 Circle().fill(Color(red: 0.15, green: 0.79, blue: 0.25)).frame(width: 10, height: 10)
             }
-            .padding(.trailing, 2)
+            .padding(.trailing, 4)
 
             Rectangle()
                 .fill(cardBorder)
                 .frame(width: 1, height: 16)
 
-            // App Title & Badge
+            // App Identity
             HStack(spacing: 8) {
                 ZStack {
                     RoundedRectangle(cornerRadius: 6)
                         .fill(Color.white.opacity(0.05))
                         .overlay(RoundedRectangle(cornerRadius: 6).stroke(amberBorder, lineWidth: 1))
-                        .frame(width: 24, height: 24)
+                        .frame(width: 22, height: 22)
                     Image(systemName: "antenna.radiowaves.left.and.right")
                         .font(.system(size: 11, weight: .bold))
                         .foregroundColor(amberAccent)
@@ -121,23 +105,23 @@ public struct MacCompanionView: View {
                     .font(.system(size: 13, weight: .bold))
                     .foregroundColor(textPrimary)
 
-                Text("macOS Peer Companion")
+                Text("macOS Companion")
                     .font(.system(size: 10, weight: .semibold, design: .monospaced))
                     .foregroundColor(amberAccent)
-                    .padding(.horizontal, 7)
+                    .padding(.horizontal, 6)
                     .padding(.vertical, 2)
-                    .background(RoundedRectangle(cornerRadius: 10).fill(bgAmoled))
-                    .overlay(RoundedRectangle(cornerRadius: 10).stroke(amberBorder, lineWidth: 1))
+                    .background(RoundedRectangle(cornerRadius: 6).fill(bgAmoled))
+                    .overlay(RoundedRectangle(cornerRadius: 6).stroke(amberBorder, lineWidth: 1))
             }
 
             Spacer()
 
-            // View Switcher (Demo Station vs Packet Inbox)
+            // View Mode Switcher
             HStack(spacing: 0) {
                 Button {
                     selectedCompanionTab = .demoMode
                 } label: {
-                    HStack(spacing: 5) {
+                    HStack(spacing: 4) {
                         Image(systemName: "gauge.with.needle.fill")
                         Text("DEMO MODE")
                     }
@@ -152,7 +136,7 @@ public struct MacCompanionView: View {
                 Button {
                     selectedCompanionTab = .packetInbox
                 } label: {
-                    HStack(spacing: 5) {
+                    HStack(spacing: 4) {
                         Image(systemName: "tray.fill")
                         Text("PACKET INBOX (\(receivedPackets.count))")
                     }
@@ -170,39 +154,39 @@ public struct MacCompanionView: View {
 
             Spacer()
 
-            // Simulator Online Pill
+            // Simulator Status Pill
             HStack(spacing: 6) {
                 Circle()
-                    .fill(bridgeClient.isConnectedToSimulator ? amberAccent : redDanger)
+                    .fill(bridgeClient.isConnectedToSimulator ? greenSuccess : redDanger)
                     .frame(width: 7, height: 7)
                     .opacity(isPulsing ? 1.0 : 0.4)
 
                 Text(bridgeClient.isConnectedToSimulator ? "Simulator Online" : "Simulator Offline")
                     .font(.system(size: 11, weight: .semibold))
-                    .foregroundColor(amberAccent)
+                    .foregroundColor(bridgeClient.isConnectedToSimulator ? amberLight : redDanger)
 
                 Text("·")
-                    .foregroundColor(amberAccent.opacity(0.5))
+                    .foregroundColor(textMuted)
 
                 Text("127.0.0.1:8050")
                     .font(.system(size: 10, design: .monospaced))
-                    .foregroundColor(amberLight)
+                    .foregroundColor(textSecondary)
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 4)
             .background(Capsule().fill(amberBackground))
             .overlay(Capsule().stroke(amberBorder, lineWidth: 1))
 
-            // Peer Discovery / Connection Pill
+            // Remote Peer Connection State Pill
             HStack(spacing: 6) {
                 Circle()
-                    .fill(transport.connectedPeer != nil ? greenSuccess : (transport.isDiscovering ? amberAccent : textMuted))
+                    .fill(remotePeerIndicatorColor)
                     .frame(width: 7, height: 7)
-                    .scaleEffect(isPulsing && transport.isDiscovering ? 1.2 : 1.0)
+                    .scaleEffect(isPulsing && transport.isDiscovering && transport.connectedPeer == nil ? 1.2 : 1.0)
 
-                Text(transport.connectedPeer != nil ? "Peer Connected" : (transport.isDiscovering ? "Discovering Peers" : "Discovery Idle"))
+                Text(remotePeerStatusText)
                     .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(transport.connectedPeer != nil ? greenSuccess : amberLight)
+                    .foregroundColor(transport.connectedPeer != nil ? greenSuccess : textSecondary)
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 4)
@@ -215,36 +199,56 @@ public struct MacCompanionView: View {
         .overlay(Rectangle().frame(height: 1).foregroundColor(cardBorder), alignment: .bottom)
     }
 
-    // MARK: - 2. Demo Station Dashboard (Two-Column Presentation Grid)
+    private var remotePeerIndicatorColor: Color {
+        if transport.connectedPeer != nil {
+            return greenSuccess
+        } else if transport.isDiscovering {
+            return amberAccent
+        } else {
+            return textMuted
+        }
+    }
+
+    private var remotePeerStatusText: String {
+        if let peer = transport.connectedPeer {
+            return "iPhone Connected (\(peer.displayName))"
+        } else if transport.isDiscovering {
+            return "Discovering Peers"
+        } else {
+            return "Discovery Idle"
+        }
+    }
+
+    // MARK: - 2. Demo Station Dashboard
 
     private var demoStationDashboard: some View {
         ScrollView {
-            HStack(alignment: .top, spacing: 20) {
-                // LEFT COLUMN (Hero Simulation Controller + Risk Telemetry)
-                VStack(spacing: 20) {
+            HStack(alignment: .top, spacing: 18) {
+                // LEFT COLUMN (Main Focus: Simulation Controller + Risk Telemetry)
+                VStack(spacing: 18) {
                     heroDemoControllerSection
                     predictiveAllocationPanelSection
                     judgeExplanationCompactSection
                 }
                 .frame(maxWidth: .infinity)
 
-                // RIGHT COLUMN (Device & Security Bridge + Live Audit Stream)
-                VStack(spacing: 20) {
-                    securityIdentityDeckSection
-                    auditFeedSection
+                // RIGHT COLUMN (Secondary: Device/Security Bridge + Live Audit Stream)
+                VStack(spacing: 18) {
+                    deviceBridgeSection
+                    liveAuditStreamSection
                 }
-                .frame(width: 380)
+                .frame(minWidth: 310, idealWidth: 330, maxWidth: 360)
             }
-            .padding(20)
+            .padding(18)
         }
         .background(bgAmoled)
     }
 
-    // MARK: - Left Section: Hero Demo Controller
+    // MARK: - Hero Demo Controller
 
     private var heroDemoControllerSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            // Error banner if any
+        VStack(alignment: .leading, spacing: 14) {
+            // Error banner
             if let err = bridgeClient.lastFetchError {
                 HStack(spacing: 8) {
                     Image(systemName: "exclamationmark.triangle.fill")
@@ -254,36 +258,38 @@ public struct MacCompanionView: View {
                         .foregroundColor(redDanger)
                     Spacer()
                 }
-                .padding(10)
+                .padding(9)
                 .background(redDanger.opacity(0.12))
                 .cornerRadius(8)
                 .overlay(RoundedRectangle(cornerRadius: 8).stroke(redDanger.opacity(0.3), lineWidth: 1))
             }
 
-            // Title Row & Shock Actions
-            HStack(alignment: .center) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("HACKATHON STATION")
-                        .font(.system(size: 10, weight: .bold, design: .monospaced))
-                        .foregroundColor(amberAccent)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(RoundedRectangle(cornerRadius: 4).fill(amberBackground))
-                        .overlay(RoundedRectangle(cornerRadius: 4).stroke(amberBorder, lineWidth: 1))
-
+            // Header Row: Clean Two-Line Heading + Spaced Buttons
+            HStack(alignment: .center, spacing: 16) {
+                VStack(alignment: .leading, spacing: 3) {
                     HStack(spacing: 6) {
-                        Text("Research Station —")
-                            .font(.system(size: 20, weight: .heavy))
-                            .foregroundColor(textPrimary)
-                        Text("Demo Mode")
-                            .font(.system(size: 20, weight: .heavy))
+                        Text("HACKATHON STATION")
+                            .font(.system(size: 9, weight: .bold, design: .monospaced))
                             .foregroundColor(amberAccent)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(amberBackground)
+                            .cornerRadius(4)
+                            .overlay(RoundedRectangle(cornerRadius: 4).stroke(amberBorder, lineWidth: 1))
+
+                        Text("DEMO CONTROLLER")
+                            .font(.system(size: 9, weight: .bold, design: .monospaced))
+                            .foregroundColor(textMuted)
                     }
+
+                    Text("Research Station — Demo Mode")
+                        .font(.system(size: 20, weight: .heavy))
+                        .foregroundColor(textPrimary)
                 }
 
-                Spacer()
+                Spacer(minLength: 20)
 
-                // Action Buttons
+                // Actions: Inject Shock & Reset
                 HStack(spacing: 10) {
                     Button {
                         Task {
@@ -294,13 +300,13 @@ public struct MacCompanionView: View {
                             Image(systemName: "bolt.fill")
                             Text("Inject Grid Shock")
                         }
-                        .font(.system(size: 11, weight: .heavy))
+                        .font(.system(size: 12, weight: .heavy))
                         .padding(.horizontal, 14)
                         .padding(.vertical, 8)
                         .background(amberAccent)
                         .foregroundColor(.black)
                         .cornerRadius(8)
-                        .shadow(color: amberAccent.opacity(0.3), radius: 6, x: 0, y: 2)
+                        .shadow(color: amberAccent.opacity(0.35), radius: 6, x: 0, y: 1)
                     }
                     .buttonStyle(.plain)
 
@@ -309,14 +315,14 @@ public struct MacCompanionView: View {
                             await bridgeClient.resetDemo()
                         }
                     } label: {
-                        HStack(spacing: 6) {
+                        HStack(spacing: 5) {
                             Image(systemName: "arrow.counterclockwise")
                             Text("Reset Demo")
                         }
                         .font(.system(size: 11, weight: .semibold))
                         .padding(.horizontal, 12)
                         .padding(.vertical, 8)
-                        .background(bgAmoled)
+                        .background(Color.white.opacity(0.04))
                         .foregroundColor(textSecondary)
                         .cornerRadius(8)
                         .overlay(RoundedRectangle(cornerRadius: 8).stroke(cardBorder, lineWidth: 1))
@@ -327,11 +333,11 @@ public struct MacCompanionView: View {
             .padding(.bottom, 8)
             .overlay(Rectangle().frame(height: 1).foregroundColor(cardBorder), alignment: .bottom)
 
-            // Guided Demonstration Scenarios Bar
+            // Guided Scenarios Bar
             VStack(alignment: .leading, spacing: 10) {
                 HStack {
                     Text("GUIDED DEMONSTRATION SCENARIOS")
-                        .font(.system(size: 11, weight: .bold))
+                        .font(.system(size: 10, weight: .bold))
                         .foregroundColor(textPrimary)
                         .tracking(0.5)
 
@@ -339,7 +345,7 @@ public struct MacCompanionView: View {
 
                     HStack(spacing: 6) {
                         Text("Wallet Balance:")
-                            .font(.system(size: 11, design: .monospaced))
+                            .font(.system(size: 10, design: .monospaced))
                             .foregroundColor(textMuted)
 
                         Button("₹122 Test") {
@@ -348,7 +354,7 @@ public struct MacCompanionView: View {
                             }
                         }
                         .font(.system(size: 10, weight: .bold, design: .monospaced))
-                        .padding(.horizontal, 8)
+                        .padding(.horizontal, 7)
                         .padding(.vertical, 3)
                         .background(bridgeClient.customWalletBalance == 122.0 ? amberBackground : Color.white.opacity(0.04))
                         .foregroundColor(bridgeClient.customWalletBalance == 122.0 ? amberAccent : textMuted)
@@ -362,7 +368,7 @@ public struct MacCompanionView: View {
                             }
                         }
                         .font(.system(size: 10, weight: .bold, design: .monospaced))
-                        .padding(.horizontal, 8)
+                        .padding(.horizontal, 7)
                         .padding(.vertical, 3)
                         .background(bridgeClient.customWalletBalance == 5000.0 ? amberBackground : Color.white.opacity(0.04))
                         .foregroundColor(bridgeClient.customWalletBalance == 5000.0 ? amberAccent : textMuted)
@@ -372,88 +378,99 @@ public struct MacCompanionView: View {
                     }
                 }
 
-                // 5 Horizontal Scenario Cards
+                // 5 Responsive Scenario Cards (No Text Truncation)
                 HStack(spacing: 8) {
-                    scenarioCard(id: 1, phase: "Phase 1", risk: "6% Risk", title: "Normal 5G", reserve: "₹57")
-                    scenarioCard(id: 2, phase: "Phase 2", risk: "45% Risk", title: "Deteriorating", reserve: "₹105")
-                    scenarioCard(id: 3, phase: "Phase 3", risk: "88% Risk", title: "Grid Shock", reserve: "₹268")
-                    scenarioCard(id: 4, phase: "Phase 4", risk: "95% Risk", title: "Fully Offline", reserve: "₹286")
-                    scenarioCard(id: 5, phase: "Phase 5", risk: "5% Risk", title: "Recovery", reserve: "₹53")
+                    scenarioCard(id: 1, phase: "Phase 1", risk: "6% Risk", title: "Normal 5G", reserveAmount: 57)
+                    scenarioCard(id: 2, phase: "Phase 2", risk: "45% Risk", title: "Deteriorating", reserveAmount: 105)
+                    scenarioCard(id: 3, phase: "Phase 3", risk: "88% Risk", title: "Grid Shock", reserveAmount: 268)
+                    scenarioCard(id: 4, phase: "Phase 4", risk: "95% Risk", title: "Fully Offline", reserveAmount: 286)
+                    scenarioCard(id: 5, phase: "Phase 5", risk: "5% Risk", title: "Recovery", reserveAmount: 53)
                 }
             }
         }
-        .padding(20)
+        .padding(18)
         .background(bgAmoled)
         .cornerRadius(12)
         .overlay(RoundedRectangle(cornerRadius: 12).stroke(cardBorder, lineWidth: 1))
     }
 
-    private func scenarioCard(id: Int, phase: String, risk: String, title: String, reserve: String) -> some View {
-        let isActive = bridgeClient.activeScenarioId == id
+    private func scenarioCard(id: Int, phase: String, risk: String, title: String, reserveAmount: Int) -> some View {
+        let activeId = bridgeClient.activeScenarioId
+        let isActive = (activeId == id)
+        let isCompleted = (id < activeId)
+
+        // If this scenario is active, use the live rounded reserve; otherwise the standard preset
+        let displayReserve = (isActive && activePredictionMessage != nil) ? (activePredictionMessage?.roundedRecommendedReserve ?? reserveAmount) : reserveAmount
+
         return Button {
             Task {
                 await bridgeClient.triggerScenario(id)
             }
         } label: {
-            VStack(alignment: .leading, spacing: 6) {
-                HStack {
+            VStack(alignment: .leading, spacing: 4) {
+                // Top Meta Badge (Stacked cleanly, zero truncation)
+                HStack(spacing: 4) {
                     if isActive {
-                        HStack(spacing: 4) {
-                            Circle().fill(amberAccent).frame(width: 5, height: 5)
-                            Text(phase)
-                                .font(.system(size: 10, weight: .bold))
-                                .foregroundColor(amberLight)
-                        }
+                        Circle().fill(amberAccent).frame(width: 5, height: 5)
+                        Text("\(phase) · \(risk)")
+                            .font(.system(size: 9, weight: .bold, design: .monospaced))
+                            .foregroundColor(amberLight)
+                            .lineLimit(1)
+                    } else if isCompleted {
+                        Text("✓ \(phase) · \(risk)")
+                            .font(.system(size: 9, weight: .medium, design: .monospaced))
+                            .foregroundColor(greenSuccess)
+                            .lineLimit(1)
                     } else {
-                        Text(phase)
-                            .font(.system(size: 10, weight: .medium))
+                        Text("\(phase) · \(risk)")
+                            .font(.system(size: 9, weight: .regular, design: .monospaced))
                             .foregroundColor(textMuted)
+                            .lineLimit(1)
                     }
-
-                    Spacer()
-
-                    Text(risk)
-                        .font(.system(size: 9, weight: .semibold, design: .monospaced))
-                        .foregroundColor(isActive ? amberAccent : amberLight.opacity(0.8))
                 }
 
+                // Scenario Title
                 Text(title)
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundColor(isActive ? amberLight : textPrimary)
+                    .font(.system(size: 12, weight: isActive ? .heavy : .semibold))
+                    .foregroundColor(isActive ? amberLight : (isCompleted ? textSecondary : textPrimary))
+                    .lineLimit(1)
 
+                Spacer(minLength: 4)
+
+                // Reserve Row
                 HStack {
                     Text("Reserve")
                         .font(.system(size: 9))
                         .foregroundColor(textMuted)
                     Spacer()
-                    Text(reserve)
+                    Text("₹\(displayReserve)")
                         .font(.system(size: 12, weight: .heavy, design: .monospaced))
-                        .foregroundColor(textPrimary)
+                        .foregroundColor(isActive ? amberLight : textPrimary)
                 }
                 .padding(.top, 4)
                 .overlay(Rectangle().frame(height: 1).foregroundColor(Color.white.opacity(0.06)), alignment: .top)
             }
             .padding(10)
-            .frame(maxWidth: .infinity, minHeight: 80, alignment: .topLeading)
-            .background(bgAmoled)
-            .cornerRadius(10)
+            .frame(maxWidth: .infinity, minHeight: 82, alignment: .topLeading)
+            .background(isActive ? amberBackground : bgAmoled)
+            .cornerRadius(8)
             .overlay(
-                RoundedRectangle(cornerRadius: 10)
-                    .stroke(isActive ? amberAccent : cardBorder, lineWidth: isActive ? 2 : 1)
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(isActive ? amberAccent : (isCompleted ? greenSuccess.opacity(0.4) : cardBorder), lineWidth: isActive ? 2 : 1)
             )
-            .shadow(color: isActive ? amberAccent.opacity(0.25) : Color.clear, radius: 8, x: 0, y: 0)
+            .shadow(color: isActive ? amberAccent.opacity(0.25) : Color.clear, radius: 6, x: 0, y: 0)
         }
         .buttonStyle(.plain)
     }
 
-    // MARK: - Left Section: Predictive Allocation Panel
+    // MARK: - Predictive Allocation Panel
 
     private var predictiveAllocationPanelSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            // Card Header
+        VStack(alignment: .leading, spacing: 14) {
+            // Panel Header
             HStack {
                 Text("PREDICTIVE ALLOCATION & RISK TELEMETRY")
-                    .font(.system(size: 11, weight: .bold))
+                    .font(.system(size: 10, weight: .bold))
                     .foregroundColor(textPrimary)
                     .tracking(0.5)
 
@@ -463,7 +480,7 @@ public struct MacCompanionView: View {
                     HStack(spacing: 5) {
                         Circle()
                             .fill(amberAccent)
-                            .frame(width: 6, height: 6)
+                            .frame(width: 5, height: 5)
                             .opacity(isPulsing ? 1.0 : 0.4)
 
                         Text("Seq: #\(msg.sequenceNumber)")
@@ -483,19 +500,24 @@ public struct MacCompanionView: View {
                     .overlay(RoundedRectangle(cornerRadius: 6).stroke(amberBorder, lineWidth: 1))
                 }
             }
-            .padding(.bottom, 8)
+            .padding(.bottom, 6)
             .overlay(Rectangle().frame(height: 1).foregroundColor(cardBorder), alignment: .bottom)
 
             if let msg = activePredictionMessage {
-                VStack(spacing: 14) {
-                    // Split Comparison Cards (Target State vs Baseline)
+                VStack(spacing: 12) {
+                    // Authoritative Values: Integer consistency guaranteed
+                    let rec = msg.roundedRecommendedReserve
+                    let prev = msg.roundedPreviousReserve
+                    let delta = msg.roundedDeltaReserve // Mathematically: rec - prev
+
+                    // Main Comparison (Target State vs Baseline)
                     ZStack {
-                        HStack(spacing: 14) {
-                            // Left Box: Target State (Recommended Reserve)
-                            VStack(alignment: .leading, spacing: 10) {
+                        HStack(spacing: 12) {
+                            // Left Box: Target State (Recommended Offline Reserve)
+                            VStack(alignment: .leading, spacing: 8) {
                                 HStack {
                                     Text("RECOMMENDED OFFLINE RESERVE")
-                                        .font(.system(size: 10, weight: .semibold))
+                                        .font(.system(size: 9, weight: .semibold))
                                         .foregroundColor(textMuted)
                                     Spacer()
                                     Text("TARGET STATE")
@@ -509,22 +531,22 @@ public struct MacCompanionView: View {
                                 }
 
                                 HStack(alignment: .firstTextBaseline, spacing: 10) {
-                                    Text("₹\(Int(msg.recommendedReserveInr))")
+                                    Text("₹\(rec)")
                                         .font(.system(size: 52, weight: .black, design: .monospaced))
                                         .foregroundColor(textPrimary)
 
                                     // Delta Pill
-                                    HStack(spacing: 4) {
-                                        if msg.deltaReserveInr > 0 {
-                                            Text("↑ +₹\(Int(msg.deltaReserveInr))")
-                                        } else if msg.deltaReserveInr < 0 {
-                                            Text("↓ -₹\(Int(abs(msg.deltaReserveInr)))")
+                                    HStack(spacing: 3) {
+                                        if delta > 0 {
+                                            Text("↑ +₹\(delta)")
+                                        } else if delta < 0 {
+                                            Text("↓ -₹\(abs(delta))")
                                         } else {
-                                            Text("±₹0 (Stable)")
+                                            Text("±₹0")
                                         }
                                     }
                                     .font(.system(size: 11, weight: .heavy, design: .monospaced))
-                                    .foregroundColor(msg.deltaReserveInr >= 0 ? amberAccent : amberLight)
+                                    .foregroundColor(delta >= 0 ? amberAccent : amberLight)
                                     .padding(.horizontal, 8)
                                     .padding(.vertical, 4)
                                     .background(amberBackground)
@@ -532,46 +554,45 @@ public struct MacCompanionView: View {
                                     .overlay(RoundedRectangle(cornerRadius: 6).stroke(amberBorder, lineWidth: 1))
                                 }
 
-                                // Status Footer
+                                // Funding & Liquid Status Banner (Clear Visual Hierarchy)
                                 HStack {
-                                    if msg.fundingShortfallInr > 0 {
+                                    if msg.roundedFundingShortfall > 0 {
                                         HStack(spacing: 4) {
                                             Image(systemName: "exclamationmark.triangle.fill")
                                                 .foregroundColor(redDanger)
-                                            Text("Shortfall: ₹\(Int(msg.fundingShortfallInr)) (Cap: ₹\(Int(msg.availableBalanceInr)))")
-                                                .font(.system(size: 11, weight: .bold))
+                                            Text("Shortfall: ₹\(msg.roundedFundingShortfall) (Cap: ₹\(msg.roundedAvailableBalance), Rec: ₹\(rec))")
+                                                .font(.system(size: 10, weight: .bold))
                                                 .foregroundColor(redDanger)
                                         }
                                     } else {
                                         HStack(spacing: 4) {
                                             Image(systemName: "checkmark.circle.fill")
                                                 .foregroundColor(greenSuccess)
-                                            Text("Fully Funded & Calibrated (₹\(Int(msg.remainingLiquidInr)) liquid)")
-                                                .font(.system(size: 11, weight: .bold))
+                                            Text("Fully Funded · ₹\(msg.roundedRemainingLiquid) liquid retained in bank")
+                                                .font(.system(size: 10, weight: .bold))
                                                 .foregroundColor(greenSuccess)
                                         }
                                     }
 
                                     Spacer()
 
-                                    Text("Synced: Peer ACK")
-                                        .font(.system(size: 10, design: .monospaced))
-                                        .foregroundColor(textMuted)
+                                    // Real Peer Acknowledgment Status (Never claim ACK unless verified!)
+                                    peerSyncStatusIndicator
                                 }
-                                .padding(.top, 8)
+                                .padding(.top, 6)
                                 .overlay(Rectangle().frame(height: 1).foregroundColor(Color.white.opacity(0.06)), alignment: .top)
                             }
-                            .padding(16)
+                            .padding(14)
                             .frame(maxWidth: .infinity)
                             .background(bgAmoled)
                             .cornerRadius(10)
                             .overlay(RoundedRectangle(cornerRadius: 10).stroke(amberBorder, lineWidth: 1))
 
-                            // Right Box: Baseline (Previous Reserve)
-                            VStack(alignment: .leading, spacing: 10) {
+                            // Right Box: Baseline (Previous Scenario Reserve)
+                            VStack(alignment: .leading, spacing: 8) {
                                 HStack {
                                     Text("PREVIOUS SCENARIO RESERVE")
-                                        .font(.system(size: 10, weight: .semibold))
+                                        .font(.system(size: 9, weight: .semibold))
                                         .foregroundColor(textMuted)
                                     Spacer()
                                     Text("BASELINE")
@@ -580,7 +601,7 @@ public struct MacCompanionView: View {
                                 }
 
                                 HStack(alignment: .firstTextBaseline) {
-                                    Text("₹\(Int(msg.previousReserveInr))")
+                                    Text("₹\(prev)")
                                         .font(.system(size: 52, weight: .black, design: .monospaced))
                                         .foregroundColor(textMuted)
 
@@ -590,7 +611,7 @@ public struct MacCompanionView: View {
                                         Text("ABSORBED DELTA")
                                             .font(.system(size: 8, design: .monospaced))
                                             .foregroundColor(textMuted)
-                                        Text("\(msg.deltaReserveInr >= 0 ? "+" : "-")₹\(Int(abs(msg.deltaReserveInr)))")
+                                        Text("\(delta >= 0 ? "+" : "-")₹\(abs(delta))")
                                             .font(.system(size: 12, weight: .bold, design: .monospaced))
                                             .foregroundColor(amberAccent)
                                     }
@@ -598,58 +619,58 @@ public struct MacCompanionView: View {
 
                                 HStack {
                                     Text("De-escalation Phase \(bridgeClient.activeScenarioId)")
-                                        .font(.system(size: 10, design: .monospaced))
+                                        .font(.system(size: 9, design: .monospaced))
                                         .foregroundColor(textMuted)
                                     Spacer()
                                     Text("Adaptive Mode")
-                                        .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                                        .font(.system(size: 9, weight: .semibold, design: .monospaced))
                                         .foregroundColor(amberAccent.opacity(0.8))
                                 }
-                                .padding(.top, 8)
+                                .padding(.top, 6)
                                 .overlay(Rectangle().frame(height: 1).foregroundColor(Color.white.opacity(0.06)), alignment: .top)
                             }
-                            .padding(16)
+                            .padding(14)
                             .frame(maxWidth: .infinity)
                             .background(bgAmoled)
                             .cornerRadius(10)
                             .overlay(RoundedRectangle(cornerRadius: 10).stroke(cardBorder, lineWidth: 1))
                         }
 
-                        // Floating Center Arrow Badge
-                        HStack(spacing: 6) {
-                            Text("₹\(Int(msg.previousReserveInr))")
+                        // Floating Center Arrow Badge (Exact transition: prev -> rec)
+                        HStack(spacing: 5) {
+                            Text("₹\(prev)")
                             Image(systemName: "arrow.right")
                                 .foregroundColor(amberAccent)
-                            Text("₹\(Int(msg.recommendedReserveInr))")
+                            Text("₹\(rec)")
                         }
-                        .font(.system(size: 11, weight: .heavy, design: .monospaced))
+                        .font(.system(size: 10, weight: .heavy, design: .monospaced))
                         .foregroundColor(amberLight)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 5)
+                        .padding(.horizontal, 9)
+                        .padding(.vertical, 4)
                         .background(bgAmoled)
-                        .cornerRadius(20)
+                        .cornerRadius(16)
                         .overlay(Capsule().stroke(amberBorder, lineWidth: 1))
-                        .shadow(color: amberAccent.opacity(0.3), radius: 6, x: 0, y: 0)
+                        .shadow(color: amberAccent.opacity(0.35), radius: 6, x: 0, y: 0)
                     }
 
                     // 4 Risk Metric Sub-Cards
-                    HStack(spacing: 10) {
-                        metricTile(title: "Outage Probability", value: "\(Int(msg.robustOutageProbability * 100))%", isAccent: true)
+                    HStack(spacing: 8) {
+                        metricTile(title: "Outage Probability", value: "\(Int(round(msg.robustOutageProbability * 100)))%", isAccent: true)
                         metricTile(title: "Predicted Duration", value: String(format: "%.1f h", msg.predictedDurationHours), isAccent: false)
-                        metricTile(title: "Predicted Demand", value: "₹\(Int(msg.predictedDemandInr))", isAccent: false)
-                        metricTile(title: "Confidence Floor", value: "\(Int(msg.confidenceLevel * 100))%", isAccent: false)
+                        metricTile(title: "Predicted Demand", value: "₹\(Int(round(msg.predictedDemandInr)))", isAccent: false)
+                        metricTile(title: "Confidence Floor", value: "\(Int(round(msg.confidenceLevel * 100)))%", isAccent: false)
                     }
 
-                    // Strategy Snapshots Strip
+                    // Strategy Comparison Strip (Clean Labels, Zero Duplicate Currency)
                     HStack(spacing: 8) {
                         Text("STRATEGIES:")
                             .font(.system(size: 9, weight: .bold, design: .monospaced))
                             .foregroundColor(textMuted)
 
-                        strategyChip(name: "Fixed-₹500", amount: msg.strategySnapshot.fixedAllowanceInr, isTarget: false)
-                        strategyChip(name: "Demand-Only", amount: msg.strategySnapshot.demandOnlyInr, isTarget: false)
-                        strategyChip(name: "Proposed M1", amount: msg.strategySnapshot.proposedM1Inr, isTarget: false)
-                        strategyChip(name: "Uncertainty M2", amount: msg.strategySnapshot.uncertaintyM2Inr, isTarget: true)
+                        strategyChip(label: "Fixed: ₹500", isTarget: false)
+                        strategyChip(label: "Demand-only: ₹\(Int(round(msg.strategySnapshot.demandOnlyInr)))", isTarget: false)
+                        strategyChip(label: "Proposed M1: ₹\(Int(round(msg.strategySnapshot.proposedM1Inr)))", isTarget: false)
+                        strategyChip(label: "Proposed M2: ₹\(rec)", isTarget: true)
 
                         Spacer()
                     }
@@ -657,16 +678,17 @@ public struct MacCompanionView: View {
                     .background(Color.white.opacity(0.02))
                     .cornerRadius(6)
 
-                    // Narrative
+                    // Recommendation Narrative Box
                     HStack(alignment: .top, spacing: 8) {
                         Image(systemName: "quote.opening")
-                            .font(.system(size: 11, weight: .bold))
+                            .font(.system(size: 10, weight: .bold))
                             .foregroundColor(amberAccent)
                         Text(msg.recommendationNarrative)
-                            .font(.system(size: 11))
+                            .font(.system(size: 10))
                             .foregroundColor(textSecondary)
+                            .lineSpacing(2)
                     }
-                    .padding(10)
+                    .padding(9)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(bgAmoled)
                     .cornerRadius(8)
@@ -679,87 +701,107 @@ public struct MacCompanionView: View {
                         .font(.system(size: 11))
                         .foregroundColor(textMuted)
                 }
-                .padding(16)
+                .padding(14)
             }
         }
-        .padding(20)
+        .padding(18)
         .background(bgAmoled)
         .cornerRadius(12)
         .overlay(RoundedRectangle(cornerRadius: 12).stroke(cardBorder, lineWidth: 1))
     }
 
+    private var peerSyncStatusIndicator: some View {
+        Group {
+            if bridgeClient.lastAckReceived != nil && transport.connectedPeer != nil {
+                HStack(spacing: 3) {
+                    Image(systemName: "checkmark.seal.fill")
+                        .foregroundColor(greenSuccess)
+                    Text("Peer Acknowledged")
+                        .foregroundColor(greenSuccess)
+                }
+                .font(.system(size: 9, weight: .bold, design: .monospaced))
+            } else if transport.connectedPeer != nil {
+                HStack(spacing: 3) {
+                    Circle().fill(amberAccent).frame(width: 5, height: 5)
+                    Text("Transmitted · Awaiting ACK")
+                        .foregroundColor(amberLight)
+                }
+                .font(.system(size: 9, design: .monospaced))
+            } else {
+                Text("Local Calculation (No iPhone)")
+                    .font(.system(size: 9, design: .monospaced))
+                    .foregroundColor(textMuted)
+            }
+        }
+    }
+
     private func metricTile(title: String, value: String, isAccent: Bool) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 3) {
             Text(title)
-                .font(.system(size: 10, weight: .medium))
+                .font(.system(size: 9, weight: .medium))
                 .foregroundColor(textMuted)
             Text(value)
-                .font(.system(size: 18, weight: .bold, design: .monospaced))
+                .font(.system(size: 16, weight: .bold, design: .monospaced))
                 .foregroundColor(isAccent ? amberLight : textPrimary)
         }
-        .padding(12)
+        .padding(10)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(bgAmoled)
-        .cornerRadius(10)
-        .overlay(RoundedRectangle(cornerRadius: 10).stroke(cardBorder, lineWidth: 1))
+        .cornerRadius(8)
+        .overlay(RoundedRectangle(cornerRadius: 8).stroke(cardBorder, lineWidth: 1))
     }
 
-    private func strategyChip(name: String, amount: Double, isTarget: Bool) -> some View {
-        HStack(spacing: 4) {
-            Text(name)
-                .font(.system(size: 9, weight: isTarget ? .bold : .medium))
-                .foregroundColor(isTarget ? amberAccent : textMuted)
-            Text("₹\(Int(amount))")
-                .font(.system(size: 10, weight: .bold, design: .monospaced))
-                .foregroundColor(isTarget ? amberLight : textSecondary)
-        }
-        .padding(.horizontal, 7)
-        .padding(.vertical, 3)
-        .background(isTarget ? amberBackground : Color.white.opacity(0.04))
-        .cornerRadius(4)
-        .overlay(RoundedRectangle(cornerRadius: 4).stroke(isTarget ? amberBorder : Color.clear, lineWidth: 1))
+    private func strategyChip(label: String, isTarget: Bool) -> some View {
+        Text(label)
+            .font(.system(size: 9, weight: isTarget ? .bold : .medium, design: .monospaced))
+            .foregroundColor(isTarget ? amberLight : textSecondary)
+            .padding(.horizontal, 7)
+            .padding(.vertical, 3)
+            .background(isTarget ? amberBackground : Color.white.opacity(0.04))
+            .cornerRadius(4)
+            .overlay(RoundedRectangle(cornerRadius: 4).stroke(isTarget ? amberBorder : Color.clear, lineWidth: 1))
     }
 
-    // MARK: - Left Section: Judge Explanation Compact
+    // MARK: - Judge Explanation Compact
 
     private var judgeExplanationCompactSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 6) {
                 Image(systemName: "lightbulb.fill")
                     .foregroundColor(amberAccent)
-                    .font(.system(size: 11))
-                Text("WHY PREDICTIVE ADAPTIVE PROVISIONING MATTERS")
-                    .font(.system(size: 10, weight: .bold))
+                    .font(.system(size: 10))
+                Text("WHY ADAPTIVE PROVISIONING MATTERS")
+                    .font(.system(size: 9, weight: .bold))
                     .foregroundColor(textMuted)
                     .tracking(0.5)
             }
 
-            Text("Offline payments require locking reserves BEFORE connectivity is severed. Static reserves lock excessive bank capital during stable 5G while failing during long transit tunnel blackouts. UPIMesh anticipates disruptions via real-time telemetry, compounds outage variance with spending demand, and provisions optimal vouchers over direct P2P transport with zero Wi-Fi or cellular dependency.")
+            Text("Offline payments require locking bank reserves BEFORE network severance occurs. Static reserves lock excessive funds during stable 5G while failing during long transit blackouts. UPIMesh anticipates connectivity disruptions from network telemetry, compounds variance with payment demand, and provisions optimal vouchers over direct peer transport.")
                 .font(.system(size: 10))
                 .foregroundColor(textMuted)
                 .lineSpacing(2)
         }
-        .padding(14)
+        .padding(12)
         .background(bgAmoled)
         .cornerRadius(10)
         .overlay(RoundedRectangle(cornerRadius: 10).stroke(cardBorder, lineWidth: 1))
     }
 
-    // MARK: - Right Section: Device & Security Bridge
+    // MARK: - 3. Right Column: Device & Security Bridge
 
-    private var securityIdentityDeckSection: some View {
-        VStack(alignment: .leading, spacing: 14) {
+    private var deviceBridgeSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
             // Header
             HStack {
-                Text("DEVICE & SECURITY BRIDGE")
-                    .font(.system(size: 11, weight: .bold))
+                Text("DEVICE & TRANSPORT BRIDGE")
+                    .font(.system(size: 10, weight: .bold))
                     .foregroundColor(textPrimary)
                     .tracking(0.5)
 
                 Spacer()
 
                 Text("REST / HTTP ONLINE")
-                    .font(.system(size: 9, weight: .bold, design: .monospaced))
+                    .font(.system(size: 8, weight: .bold, design: .monospaced))
                     .foregroundColor(amberAccent)
                     .padding(.horizontal, 6)
                     .padding(.vertical, 2)
@@ -767,66 +809,123 @@ public struct MacCompanionView: View {
                     .cornerRadius(4)
                     .overlay(RoundedRectangle(cornerRadius: 4).stroke(amberBorder, lineWidth: 1))
             }
-            .padding(.bottom, 6)
+            .padding(.bottom, 4)
             .overlay(Rectangle().frame(height: 1).foregroundColor(cardBorder), alignment: .bottom)
 
-            // Authenticated Peer
-            HStack {
-                Text("Authenticated Peer")
-                    .font(.system(size: 11))
+            // Section A: Local Mac Cryptographic Identity (Real implementation)
+            VStack(alignment: .leading, spacing: 6) {
+                Text("LOCAL MAC IDENTITY")
+                    .font(.system(size: 8, weight: .bold, design: .monospaced))
                     .foregroundColor(textMuted)
-                Spacer()
-                Text(transport.connectedPeer?.displayName ?? "MacBook Pro 16″ (Local)")
-                    .font(.system(size: 11, weight: .bold))
-                    .foregroundColor(textPrimary)
+
+                HStack {
+                    Text("Device ID:")
+                        .font(.system(size: 10))
+                        .foregroundColor(textMuted)
+                    Spacer()
+                    Text(macIdentity?.deviceId ?? "mac-companion")
+                        .font(.system(size: 10, design: .monospaced))
+                        .foregroundColor(textPrimary)
+                }
+
+                HStack {
+                    Text("Cryptographic Engine:")
+                        .font(.system(size: 10))
+                        .foregroundColor(textMuted)
+                    Spacer()
+                    Text("RSASSA-PSS (SHA-256)")
+                        .font(.system(size: 10, weight: .bold, design: .monospaced))
+                        .foregroundColor(amberAccent)
+                }
+
+                if let id = macIdentity {
+                    HStack {
+                        Text("Public Key:")
+                            .font(.system(size: 10))
+                            .foregroundColor(textMuted)
+                        Spacer()
+                        Text("\(id.publicKeyFingerprint.prefix(16))…")
+                            .font(.system(size: 10, design: .monospaced))
+                            .foregroundColor(textSecondary)
+                    }
+                }
             }
             .padding(10)
-            .background(bgAmoled)
+            .background(Color.white.opacity(0.02))
             .cornerRadius(8)
             .overlay(RoundedRectangle(cornerRadius: 8).stroke(cardBorder, lineWidth: 1))
 
-            // 2x2 Security Parameters Grid
-            HStack(spacing: 8) {
-                securityTile(label: "Key Engine", value: "RSASSA-PSS", isAccent: false)
-                securityTile(label: "Enclave Status", value: "Verified ✓", isAccent: true)
-            }
-
-            // Security Profile
-            HStack {
-                Text("Security Profile")
-                    .font(.system(size: 11))
+            // Section B: Remote Peer Connection (Real connection state)
+            VStack(alignment: .leading, spacing: 6) {
+                Text("REMOTE PEER CONNECTION")
+                    .font(.system(size: 8, weight: .bold, design: .monospaced))
                     .foregroundColor(textMuted)
-                Spacer()
-                Text("FIPS-140-3 HW")
-                    .font(.system(size: 11, weight: .bold, design: .monospaced))
-                    .foregroundColor(amberAccent)
+
+                HStack {
+                    Text("Peer State:")
+                        .font(.system(size: 10))
+                        .foregroundColor(textMuted)
+                    Spacer()
+                    HStack(spacing: 4) {
+                        Circle()
+                            .fill(transport.connectedPeer != nil ? greenSuccess : (transport.isDiscovering ? amberAccent : textMuted))
+                            .frame(width: 6, height: 6)
+                        Text(transport.connectedPeer?.displayName ?? (transport.isDiscovering ? "Searching for iPhones" : "Disconnected"))
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundColor(transport.connectedPeer != nil ? greenSuccess : textSecondary)
+                    }
+                }
+
+                HStack {
+                    Text("Transport Mode:")
+                        .font(.system(size: 10))
+                        .foregroundColor(textMuted)
+                    Spacer()
+                    Text("Apple AWDL / Bluetooth P2P")
+                        .font(.system(size: 10, design: .monospaced))
+                        .foregroundColor(textSecondary)
+                }
+
+                HStack {
+                    Text("Delivery Status:")
+                        .font(.system(size: 10))
+                        .foregroundColor(textMuted)
+                    Spacer()
+                    if let ack = bridgeClient.lastAckReceived {
+                        Text("Acknowledged (Seq #\(ack.sequenceNumber))")
+                            .font(.system(size: 10, weight: .bold, design: .monospaced))
+                            .foregroundColor(greenSuccess)
+                    } else if transport.connectedPeer != nil {
+                        Text("Awaiting Peer ACK")
+                            .font(.system(size: 10, design: .monospaced))
+                            .foregroundColor(amberLight)
+                    } else {
+                        Text("Awaiting Connection")
+                            .font(.system(size: 10, design: .monospaced))
+                            .foregroundColor(textMuted)
+                    }
+                }
             }
             .padding(10)
-            .background(bgAmoled)
+            .background(Color.white.opacity(0.02))
             .cornerRadius(8)
             .overlay(RoundedRectangle(cornerRadius: 8).stroke(cardBorder, lineWidth: 1))
 
-            // 2x2 Ciphertext Grid
-            HStack(spacing: 8) {
-                securityTile(label: "Ciphertext Mode", value: "AES-GCM-256", isAccent: false)
-                securityTile(label: "Key Expiry", value: "47m 12s", isAccent: true)
-            }
-
-            // Interactive Discovery & Peer Ping Triggers
-            VStack(spacing: 8) {
+            // Peer Actions (Diagnostic Ping & Discovery Toggle)
+            VStack(spacing: 6) {
                 if let peer = transport.connectedPeer {
                     Button {
                         Task {
                             await transport.sendPing(to: peer)
                         }
                     } label: {
-                        HStack(spacing: 6) {
+                        HStack(spacing: 5) {
                             Image(systemName: "bolt.horizontal.fill")
                             Text("Diagnostic Ping (\(peer.displayName))")
                         }
-                        .font(.system(size: 11, weight: .bold))
+                        .font(.system(size: 10, weight: .bold))
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 7)
+                        .padding(.vertical, 6)
                         .background(amberBackground)
                         .foregroundColor(amberAccent)
                         .cornerRadius(6)
@@ -842,7 +941,7 @@ public struct MacCompanionView: View {
                         transport.startDiscovery()
                     }
                 } label: {
-                    HStack(spacing: 6) {
+                    HStack(spacing: 5) {
                         Image(systemName: transport.isDiscovering ? "stop.circle" : "play.circle")
                         Text(transport.isDiscovering ? "Stop Scanning Peers" : "Start Scanning for iPhones")
                     }
@@ -857,40 +956,24 @@ public struct MacCompanionView: View {
                 .buttonStyle(.plain)
             }
         }
-        .padding(18)
+        .padding(16)
         .background(bgAmoled)
         .cornerRadius(12)
         .overlay(RoundedRectangle(cornerRadius: 12).stroke(cardBorder, lineWidth: 1))
     }
 
-    private func securityTile(label: String, value: String, isAccent: Bool) -> some View {
-        VStack(alignment: .leading, spacing: 3) {
-            Text(label.uppercased())
-                .font(.system(size: 9, weight: .semibold))
-                .foregroundColor(textMuted)
-            Text(value)
-                .font(.system(size: 11, weight: .bold, design: .monospaced))
-                .foregroundColor(isAccent ? amberAccent : textPrimary)
-        }
-        .padding(10)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(bgAmoled)
-        .cornerRadius(8)
-        .overlay(RoundedRectangle(cornerRadius: 8).stroke(cardBorder, lineWidth: 1))
-    }
+    // MARK: - 4. Right Column: Live Audit Stream
 
-    // MARK: - Right Section: Live Audit Stream
-
-    private var auditFeedSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
+    private var liveAuditStreamSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
             // Header
             HStack {
-                HStack(spacing: 6) {
+                HStack(spacing: 5) {
                     Image(systemName: "list.bullet.indent")
                         .foregroundColor(amberAccent)
-                        .font(.system(size: 11, weight: .bold))
+                        .font(.system(size: 10, weight: .bold))
                     Text("LIVE AUDIT STREAM")
-                        .font(.system(size: 11, weight: .bold))
+                        .font(.system(size: 10, weight: .bold))
                         .foregroundColor(textPrimary)
                         .tracking(0.5)
                 }
@@ -898,7 +981,7 @@ public struct MacCompanionView: View {
                 Spacer()
 
                 Text("Auto-Sync ON")
-                    .font(.system(size: 9, weight: .bold, design: .monospaced))
+                    .font(.system(size: 8, weight: .bold, design: .monospaced))
                     .foregroundColor(amberAccent)
                     .padding(.horizontal, 6)
                     .padding(.vertical, 2)
@@ -906,86 +989,106 @@ public struct MacCompanionView: View {
                     .cornerRadius(4)
                     .overlay(RoundedRectangle(cornerRadius: 4).stroke(amberBorder, lineWidth: 1))
             }
-            .padding(.bottom, 6)
+            .padding(.bottom, 4)
             .overlay(Rectangle().frame(height: 1).foregroundColor(cardBorder), alignment: .bottom)
 
-            // Audit Event Feed Items
-            VStack(spacing: 8) {
-                // Latest ACK confirmation item if exists
+            // Audit Feed List (Only real state transitions, zero duplicates)
+            VStack(spacing: 6) {
+                // If genuine ACK was received, display top verification pill
                 if let ack = bridgeClient.lastAckReceived {
                     HStack {
-                        HStack(spacing: 6) {
+                        HStack(spacing: 5) {
                             Text("✓")
-                                .font(.system(size: 11, weight: .bold))
-                                .foregroundColor(amberAccent)
-                            Text("Receipt Confirmed")
-                                .font(.system(size: 11, weight: .semibold))
-                                .foregroundColor(amberLight)
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundColor(greenSuccess)
+                            Text("Peer ACK Confirmed")
+                                .font(.system(size: 10, weight: .semibold))
+                                .foregroundColor(greenSuccess)
                         }
                         Spacer()
                         Text("Seq #\(ack.sequenceNumber)")
                             .font(.system(size: 9, design: .monospaced))
                             .foregroundColor(amberAccent)
                     }
-                    .padding(9)
-                    .background(amberBackground)
-                    .cornerRadius(8)
-                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(amberBorder, lineWidth: 1))
+                    .padding(8)
+                    .background(greenSuccess.opacity(0.12))
+                    .cornerRadius(6)
+                    .overlay(RoundedRectangle(cornerRadius: 6).stroke(greenSuccess.opacity(0.3), lineWidth: 1))
                 }
 
                 if bridgeClient.timelineEvents.isEmpty {
-                    VStack(spacing: 4) {
+                    VStack(spacing: 3) {
                         Text("No audit events recorded yet.")
-                            .font(.system(size: 11))
-                            .foregroundColor(textMuted)
-                        Text("Trigger any demo scenario to populate peer events.")
                             .font(.system(size: 10))
-                            .foregroundColor(textMuted.opacity(0.8))
+                            .foregroundColor(textMuted)
+                        Text("Select any demo scenario to begin.")
+                            .font(.system(size: 9))
+                            .foregroundColor(textMuted.opacity(0.7))
                     }
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 16)
+                    .padding(.vertical, 14)
                 } else {
                     ForEach(bridgeClient.timelineEvents.prefix(6)) { item in
-                        HStack {
-                            HStack(spacing: 6) {
-                                Circle()
-                                    .fill(item.type == .acknowledged ? greenSuccess : (item.type == .shockInjected ? redDanger : amberAccent))
-                                    .frame(width: 5, height: 5)
+                        HStack(alignment: .top, spacing: 6) {
+                            Circle()
+                                .fill(auditItemColor(item.type))
+                                .frame(width: 5, height: 5)
+                                .padding(.top, 4)
+
+                            VStack(alignment: .leading, spacing: 1) {
                                 Text(item.title)
-                                    .font(.system(size: 11, weight: .medium))
+                                    .font(.system(size: 10, weight: .semibold))
                                     .foregroundColor(textSecondary)
                                     .lineLimit(1)
+
+                                Text(item.details)
+                                    .font(.system(size: 8))
+                                    .foregroundColor(textMuted)
+                                    .lineLimit(1)
                             }
+
                             Spacer()
+
                             Text(item.timestamp, style: .time)
-                                .font(.system(size: 9, design: .monospaced))
+                                .font(.system(size: 8, design: .monospaced))
                                 .foregroundColor(textMuted)
                         }
-                        .padding(8)
-                        .background(bgAmoled)
+                        .padding(6)
+                        .background(Color.white.opacity(0.02))
                         .cornerRadius(6)
                         .overlay(RoundedRectangle(cornerRadius: 6).stroke(cardBorder, lineWidth: 1))
                     }
                 }
             }
         }
-        .padding(18)
+        .padding(16)
         .background(bgAmoled)
         .cornerRadius(12)
         .overlay(RoundedRectangle(cornerRadius: 12).stroke(cardBorder, lineWidth: 1))
     }
 
-    // MARK: - 3. Inbox Dashboard (Payment Packet Inbox)
+    private func auditItemColor(_ type: DemoTimelineItem.EventType) -> Color {
+        switch type {
+        case .acknowledged: return greenSuccess
+        case .shockInjected: return redDanger
+        case .sent: return amberAccent
+        case .recalculated: return Color.cyan
+        case .restored: return Color.mint
+        case .scenarioStarted, .conditionChanged: return amberLight
+        }
+    }
+
+    // MARK: - 5. Inbox Dashboard (Payment Packet Inbox)
 
     private var inboxDashboard: some View {
         ScrollView {
-            VStack(spacing: 16) {
+            VStack(spacing: 14) {
                 HStack {
                     HStack(spacing: 6) {
                         Image(systemName: "tray.and.arrow.down.fill")
                             .foregroundColor(amberAccent)
                         Text("Offline Payment Packet Inbox")
-                            .font(.system(size: 16, weight: .bold))
+                            .font(.system(size: 15, weight: .bold))
                             .foregroundColor(textPrimary)
                     }
 
@@ -994,7 +1097,7 @@ public struct MacCompanionView: View {
                     Text("\(receivedPackets.count) PACKETS")
                         .font(.system(size: 10, weight: .bold, design: .monospaced))
                         .foregroundColor(amberAccent)
-                        .padding(.horizontal, 8)
+                        .padding(.horizontal, 7)
                         .padding(.vertical, 3)
                         .background(amberBackground)
                         .cornerRadius(4)
@@ -1008,19 +1111,19 @@ public struct MacCompanionView: View {
                         .buttonStyle(.bordered)
                     }
                 }
-                .padding(.bottom, 8)
+                .padding(.bottom, 6)
                 .overlay(Rectangle().frame(height: 1).foregroundColor(cardBorder), alignment: .bottom)
 
                 if receivedPackets.isEmpty {
-                    VStack(spacing: 8) {
+                    VStack(spacing: 6) {
                         Image(systemName: "tray")
-                            .font(.system(size: 32))
+                            .font(.system(size: 28))
                             .foregroundColor(textMuted)
                         Text("No received offline packets on Mac.")
                             .font(.system(size: 12, weight: .semibold))
                             .foregroundColor(textSecondary)
-                        Text("Transmitting a packet from iPhone will display signature verification and settlement controls here.")
-                            .font(.system(size: 11))
+                        Text("Packets signed on iPhone will arrive here over direct Multipeer transport.")
+                            .font(.system(size: 10))
                             .foregroundColor(textMuted)
                     }
                     .frame(maxWidth: .infinity)
@@ -1031,21 +1134,21 @@ public struct MacCompanionView: View {
                     }
                 }
             }
-            .padding(20)
+            .padding(18)
         }
         .background(bgAmoled)
     }
 
     private func macPacketCard(_ record: MacReceivedPacketRecord) -> some View {
         let packet = record.packet
-        return VStack(alignment: .leading, spacing: 10) {
+        return VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Text("₹\(String(format: "%.2f", packet.amountDouble))")
-                    .font(.system(size: 20, weight: .heavy, design: .monospaced))
+                    .font(.system(size: 18, weight: .heavy, design: .monospaced))
                     .foregroundColor(textPrimary)
 
                 Text("from \(packet.fromAccount.uppercased()) → \(packet.toAccount.uppercased())")
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(.system(size: 10, weight: .semibold))
                     .foregroundColor(amberLight)
 
                 Spacer()
@@ -1053,19 +1156,19 @@ public struct MacCompanionView: View {
                 Text(record.reconciliationStatus == .settled ? "SETTLED" : "RECEIVED — NOT SETTLED")
                     .font(.system(size: 9, weight: .bold, design: .monospaced))
                     .foregroundColor(record.reconciliationStatus == .settled ? greenSuccess : amberAccent)
-                    .padding(.horizontal, 7)
-                    .padding(.vertical, 3)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
                     .background(record.reconciliationStatus == .settled ? greenSuccess.opacity(0.15) : amberBackground)
                     .cornerRadius(4)
             }
 
             HStack {
                 Text("Payment ID: \(packet.paymentId)")
-                    .font(.system(size: 10, design: .monospaced))
+                    .font(.system(size: 9, design: .monospaced))
                     .foregroundColor(textMuted)
                 Spacer()
                 Text("Signature: \(record.isSignatureMathematicallyValid ? "VALID ✓" : "INVALID ✗")")
-                    .font(.system(size: 10, weight: .bold, design: .monospaced))
+                    .font(.system(size: 9, weight: .bold, design: .monospaced))
                     .foregroundColor(record.isSignatureMathematicallyValid ? greenSuccess : redDanger)
             }
 
@@ -1080,7 +1183,7 @@ public struct MacCompanionView: View {
                         Image(systemName: "arrow.triangle.2.circlepath")
                         Text("Reconcile and Settle Packet")
                     }
-                    .font(.system(size: 10, weight: .bold))
+                    .font(.system(size: 9, weight: .bold))
                     .padding(.horizontal, 10)
                     .padding(.vertical, 5)
                     .background(amberAccent)
@@ -1090,51 +1193,53 @@ public struct MacCompanionView: View {
                 .buttonStyle(.plain)
             }
         }
-        .padding(14)
+        .padding(12)
         .background(bgAmoled)
         .cornerRadius(10)
         .overlay(RoundedRectangle(cornerRadius: 10).stroke(cardBorder, lineWidth: 1))
     }
 
-    // MARK: - 4. Bottom Status Bar (Status Ribbon)
+    // MARK: - 6. Bottom Status Ribbon
 
     private var appFooterStatusBar: some View {
         HStack {
-            // Status Info
+            // Live Status Message
             HStack(spacing: 6) {
-                if let ack = bridgeClient.lastAckReceived {
+                if let ack = bridgeClient.lastAckReceived, let peer = transport.connectedPeer {
                     Image(systemName: "checkmark.circle.fill")
-                        .foregroundColor(amberAccent)
-                        .font(.system(size: 11))
-                    Text("Prediction #\(ack.sequenceNumber) acknowledged by iPhone")
-                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(greenSuccess)
+                        .font(.system(size: 10))
+                    Text("Prediction #\(ack.sequenceNumber) acknowledged by \(peer.displayName)")
+                        .font(.system(size: 10, weight: .medium))
                         .foregroundColor(amberLight)
-                } else if let send = transport.sendStatus {
-                    Image(systemName: "paperplane.fill")
+                } else if let peer = transport.connectedPeer {
+                    Image(systemName: "antenna.radiowaves.left.and.right")
                         .foregroundColor(amberAccent)
-                    Text(send)
-                        .font(.system(size: 11))
+                        .font(.system(size: 10))
+                    Text("Connected to \(peer.displayName) — Multipeer session active")
+                        .font(.system(size: 10, weight: .medium))
                         .foregroundColor(textPrimary)
-                } else if let msg = transport.statusMessage {
-                    Image(systemName: "info.circle.fill")
+                } else if transport.isDiscovering {
+                    Image(systemName: "dot.radiowaves.left.and.right")
                         .foregroundColor(amberAccent)
-                    Text(msg)
-                        .font(.system(size: 11))
+                        .font(.system(size: 10))
+                    Text("Scanning for nearby iPhones (AWDL / BLE)...")
+                        .font(.system(size: 10))
                         .foregroundColor(textSecondary)
                 } else {
-                    Image(systemName: "checkmark.circle.fill")
-                        .foregroundColor(amberAccent)
-                        .font(.system(size: 11))
-                    Text("Simulator and Bluetooth/AWDL P2P Mesh Operational")
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundColor(amberLight)
+                    Image(systemName: "info.circle")
+                        .foregroundColor(textMuted)
+                        .font(.system(size: 10))
+                    Text("Peer transport idle. Tap 'Start Scanning' to search for iPhones.")
+                        .font(.system(size: 10))
+                        .foregroundColor(textMuted)
                 }
             }
 
             Spacer()
 
-            // Protocol Specs
-            HStack(spacing: 12) {
+            // Protocol Metadata
+            HStack(spacing: 10) {
                 Text("Protocol: UPI-Mesh/2.4")
                 Text("AWDL Channel: 44")
                 HStack(spacing: 2) {
@@ -1144,11 +1249,11 @@ public struct MacCompanionView: View {
                         .fontWeight(.bold)
                 }
             }
-            .font(.system(size: 10, design: .monospaced))
+            .font(.system(size: 9, design: .monospaced))
             .foregroundColor(textMuted)
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 8)
+        .padding(.vertical, 7)
         .background(bgAmoled)
         .overlay(Rectangle().frame(height: 1).foregroundColor(cardBorder), alignment: .top)
     }

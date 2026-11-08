@@ -100,6 +100,29 @@ public struct PeerPredictionMessage: Sendable, Codable, Equatable {
     public let remainingLiquidInr: Double
     public let allocatableReserveInr: Double
 
+    // MARK: - Authoritative Rounded Currency Accessors
+    public var roundedRecommendedReserve: Int {
+        Int(round(recommendedReserveInr))
+    }
+    public var roundedPreviousReserve: Int {
+        Int(round(previousReserveInr))
+    }
+    public var roundedDeltaReserve: Int {
+        roundedRecommendedReserve - roundedPreviousReserve
+    }
+    public var roundedAllocatableReserve: Int {
+        Int(round(allocatableReserveInr))
+    }
+    public var roundedFundingShortfall: Int {
+        Int(round(fundingShortfallInr))
+    }
+    public var roundedRemainingLiquid: Int {
+        Int(round(remainingLiquidInr))
+    }
+    public var roundedAvailableBalance: Int {
+        Int(round(availableBalanceInr))
+    }
+
     // MARK: - Strategy Snapshot
     public let strategySnapshot: StrategyRecommendationSnapshot
 

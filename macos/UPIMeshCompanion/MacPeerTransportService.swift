@@ -589,6 +589,12 @@ extension MacPeerTransportService: MCSessionDelegate {
                 self.connectedPeer = peerID
                 self.connectionState = "Connected to \(peerID.displayName)"
                 self.statusMessage = "Connected to \(peerID.displayName)"
+                MacPredictionBridgeClient.shared.logTimeline(
+                    type: .scenarioStarted,
+                    title: "iPhone Connected",
+                    details: "\(peerID.displayName) connected over Apple Multipeer AWDL/BLE transport.",
+                    isConfirmed: true
+                )
             case .connecting:
                 self.connectionState = "Connecting to \(peerID.displayName)..."
             case .notConnected:
@@ -601,6 +607,12 @@ extension MacPeerTransportService: MCSessionDelegate {
                 let wasConnected = (self.connectedPeer == peerID)
                 if wasConnected {
                     self.connectedPeer = nil
+                    MacPredictionBridgeClient.shared.logTimeline(
+                        type: .scenarioStarted,
+                        title: "iPhone Disconnected",
+                        details: "\(peerID.displayName) disconnected from Multipeer session.",
+                        isConfirmed: false
+                    )
                 }
                 self.connectionState = "Disconnected"
                 if wasPending {

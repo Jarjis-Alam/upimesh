@@ -366,11 +366,15 @@ class DemoEngine:
         if delta_floor > 10.0:
             reasons.append(f"lifeline safety floor enforced at ₹{curr.safety_floor:.0f}")
 
+        curr_int = int(round(curr.recommended_reserve))
+        prev_int = int(round(prev.recommended_reserve))
+        delta_int = curr_int - prev_int
+
         if not reasons:
-            narrative = f"Recommended reserve remains steady at ₹{curr.recommended_reserve:.0f} (stable network conditions)."
+            narrative = f"Recommended reserve remains steady at ₹{curr_int} (stable network conditions)."
         else:
-            diff_str = f"+₹{delta_R:.0f}" if delta_R >= 0 else f"-₹{abs(delta_R):.0f}"
-            narrative = f"Recommendation shifted by {diff_str} (₹{prev.recommended_reserve:.0f} → ₹{curr.recommended_reserve:.0f}) because {', and '.join(reasons)}."
+            diff_str = f"+₹{delta_int}" if delta_int >= 0 else f"-₹{abs(delta_int)}"
+            narrative = f"Recommendation shifted by {diff_str} (₹{prev_int} → ₹{curr_int}) because {', and '.join(reasons)}."
 
         narrative_with_funding = narrative
         if curr.funding_shortfall > 0:

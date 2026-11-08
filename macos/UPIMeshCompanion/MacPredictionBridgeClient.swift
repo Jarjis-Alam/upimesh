@@ -141,6 +141,9 @@ public final class MacPredictionBridgeClient: ObservableObject {
     // MARK: - Presentation Timeline Logging
 
     public func logTimeline(type: DemoTimelineItem.EventType, title: String, details: String, isConfirmed: Bool = true) {
+        if let first = timelineEvents.first, first.title == title && first.details == details {
+            return
+        }
         let item = DemoTimelineItem(
             timestamp: Date(),
             type: type,
@@ -339,13 +342,12 @@ public final class MacPredictionBridgeClient: ObservableObject {
             return
         }
 
-        logTimeline(type: .scenarioStarted, title: scenarioTitle, details: "Initiated presenter scenario.")
         if isShock {
-            logTimeline(type: .shockInjected, title: "Grid Shock Injected", details: conditionDesc)
+            logTimeline(type: .shockInjected, title: scenarioTitle, details: conditionDesc)
         } else if scenarioId == 5 {
-            logTimeline(type: .restored, title: "Connectivity Restored", details: conditionDesc)
+            logTimeline(type: .restored, title: scenarioTitle, details: conditionDesc)
         } else {
-            logTimeline(type: .conditionChanged, title: "Network Conditions Changed", details: conditionDesc)
+            logTimeline(type: .scenarioStarted, title: scenarioTitle, details: conditionDesc)
         }
 
         // Post scenario trigger to local Python simulator
@@ -381,16 +383,14 @@ public final class MacPredictionBridgeClient: ObservableObject {
             self.lastFetchedStatus = dto
             self.lastFetchError = nil
 
-            let currentReserve = dto.recommendation_diff.current_reserve
-            let deltaReserve = dto.recommendation_diff.delta_reserve
-
             let msg = createPredictionMessage(from: dto)
             self.activePredictionDisplay = msg
 
+            let deltaStr = msg.roundedDeltaReserve >= 0 ? "+\(msg.roundedDeltaReserve)" : "\(msg.roundedDeltaReserve)"
             logTimeline(
                 type: .recalculated,
                 title: "Prediction Recalculated",
-                details: "Recommended Reserve: ₹\(Int(currentReserve)) (Δ \(deltaReserve >= 0 ? "+" : "")₹\(Int(deltaReserve))). \(dto.recommendation_diff.narrative)"
+                details: "Reserve recommendation: ₹\(msg.roundedRecommendedReserve) (Δ ₹\(deltaStr)). \(dto.recommendation_diff.narrative)"
             )
 
             await broadcastPredictionMessage(msg)
@@ -457,12 +457,7 @@ public final class MacPredictionBridgeClient: ObservableObject {
 
     public func broadcastPredictionMessage(_ msg: PeerPredictionMessage) async {
         guard let peer = MacPeerTransportService.shared.connectedPeer else {
-            logTimeline(
-                type: .scenarioStarted,
-                title: "iPhone Awaiting Connection",
-                details: "Prediction updated locally (Reserve ₹\(Int(msg.recommendedReserveInr))). Waiting for iPhone Multipeer connection.",
-                isConfirmed: false
-            )
+            // Do not pollute the timeline on routine polls when disconnected.
             return
         }
 

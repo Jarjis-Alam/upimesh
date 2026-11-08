@@ -155,6 +155,7 @@ def find_available_port(start_port: int = 8050, max_attempts: int = 20) -> int:
 
 
 def run_server(port: int = 8050) -> None:
+    HTTPServer.allow_reuse_address = True
     assigned_port = find_available_port(port)
     engine = DemoEngine(seed=42)
     DemoServerHandler.engine = engine
