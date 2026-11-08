@@ -1428,7 +1428,7 @@ public struct MeshWalletsView: View {
                             .font(DesignTokens.Typography.caption)
                             .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
                         Spacer()
-                        Text("₹\(voucher.allocatedAmount) / ₹\(voucher.remainingAmount)")
+                        Text("₹\(voucher.allocatedAmount.description) / ₹\(voucher.remainingAmount.description)")
                             .font(DesignTokens.Typography.labelNumericSm)
                             .foregroundColor(DesignTokens.Colors.meshGold)
                     }
@@ -1833,7 +1833,7 @@ public struct MeshWalletsView: View {
                                             .fontWeight(.medium)
                                             .foregroundColor(DesignTokens.Colors.onSurface)
                                         Spacer()
-                                        Text("₹\(voucher.remainingAmount) remaining")
+                                        Text("₹\(voucher.remainingAmount.description) remaining")
                                             .font(DesignTokens.Typography.labelNumericSm)
                                             .fontWeight(.bold)
                                             .foregroundColor(DesignTokens.Colors.meshGold)

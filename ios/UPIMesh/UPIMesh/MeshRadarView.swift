@@ -553,11 +553,11 @@ public struct MeshRadarView: View {
         guard pingState == .idle else { return }
         pingState = .verifying
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
-            _ = withAnimation(.default) {
+            withAnimation(.default) {
                 pingState = .verified
             }
             DispatchQueue.main.asyncAfter(deadline: .now() + 2.4) {
-                _ = withAnimation(.default) {
+                withAnimation(.default) {
                     pingState = .idle
                 }
             }

@@ -1916,7 +1916,7 @@ public struct OfflinePayView: View {
     private func reconcileReceivedPacket(paymentId: String) async {
         guard !reconcilingPaymentIds.contains(paymentId) else { return }
         withAnimation(.easeInOut(duration: 0.2)) {
-            reconcilingPaymentIds.insert(paymentId)
+            _ = reconcilingPaymentIds.insert(paymentId)
         }
 
         let outcome = await reconciliationService.reconcile(paymentId: paymentId)
