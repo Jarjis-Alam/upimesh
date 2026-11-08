@@ -335,7 +335,7 @@ public struct MeshWalletsView: View {
     // MARK: - Hero Reserve Card (Obsidian Kinetic)
     private var heroReserveCard: some View {
         let latestPred = MeshPeerTransportService.shared.latestPrediction
-        let reserveVal = activeAllowance?.unspentAmount ?? Double(latestPred?.roundedRecommendedReserve ?? 52)
+        let reserveVal = NSDecimalNumber(decimal: activeAllowance?.remainingAmount ?? Decimal(latestPred?.roundedRecommendedReserve ?? 52)).doubleValue
         let deltaVal = latestPred?.roundedDeltaReserve ?? -234
 
         return ZStack(alignment: .topTrailing) {
@@ -451,7 +451,7 @@ public struct MeshWalletsView: View {
         let latestPred = MeshPeerTransportService.shared.latestPrediction
         let riskPercent = Int((latestPred?.robustOutageProbability ?? 0.10) * 100)
         let autonomyHours = String(format: "%.1f", latestPred?.predictedDurationHours ?? 3.5)
-        let peerCount = max(MeshPeerTransportService.shared.connectedPeers.count, 4)
+        let peerCount = max(MeshPeerTransportService.shared.discoveredPeers.count, 4)
 
         return HStack(spacing: 8) {
             metricColumn(title: "RISK", value: "\(riskPercent)%", isAccent: false)
@@ -487,7 +487,7 @@ public struct MeshWalletsView: View {
     private var accountsSection: some View {
         let bankBalance = viewModel.totalLiveBalance ?? 14850.0
         let latestPred = MeshPeerTransportService.shared.latestPrediction
-        let cacheBalance = activeAllowance?.unspentAmount ?? Double(latestPred?.roundedRecommendedReserve ?? 52)
+        let cacheBalance = NSDecimalNumber(decimal: activeAllowance?.remainingAmount ?? Decimal(latestPred?.roundedRecommendedReserve ?? 52)).doubleValue
 
         return VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
             Text("ACCOUNTS")

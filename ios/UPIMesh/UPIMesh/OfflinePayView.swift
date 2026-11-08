@@ -152,7 +152,7 @@ public struct OfflinePayView: View {
                 Circle()
                     .fill(DesignTokens.Colors.primaryContainer)
                     .frame(width: 8, height: 8)
-                Text("\(max(transportService.connectedPeers.count, 4)) Peers")
+                Text("\(max(transportService.discoveredPeers.count, 4)) Peers")
                     .font(DesignTokens.Typography.telemetrySm)
                     .fontWeight(.semibold)
                     .foregroundColor(DesignTokens.Colors.primaryContainer)
@@ -392,7 +392,7 @@ public struct OfflinePayView: View {
                         .font(DesignTokens.Typography.bodySm)
                         .fontWeight(.semibold)
                         .foregroundColor(DesignTokens.Colors.onSurface)
-                    Text("Available: ₹\(voucher.remainingAmount) · Escrow-Backed")
+                    Text("Available: ₹\(voucher.remainingAmount.description) · Escrow-Backed")
                         .font(DesignTokens.Typography.caption)
                         .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
                 }
@@ -556,7 +556,7 @@ public struct OfflinePayView: View {
                                 .fontWeight(.semibold)
                                 .foregroundColor(DesignTokens.Colors.onSurface)
                         }
-                        Text("Available: ₹\(voucher.remainingAmount) · Escrow-Backed")
+                        Text("Available: ₹\(voucher.remainingAmount.description) · Escrow-Backed")
                             .font(DesignTokens.Typography.caption)
                             .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
                     }

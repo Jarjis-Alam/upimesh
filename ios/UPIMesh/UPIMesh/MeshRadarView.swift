@@ -1,4 +1,5 @@
 import SwiftUI
+import Combine
 
 /// Mesh Radar Screen ("Obsidian Kinetic" — `ios 2/mesh_radar_ios/`)
 ///
@@ -552,11 +553,11 @@ public struct MeshRadarView: View {
         guard pingState == .idle else { return }
         pingState = .verifying
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
-            withAnimation {
+            _ = withAnimation(.default) {
                 pingState = .verified
             }
             DispatchQueue.main.asyncAfter(deadline: .now() + 2.4) {
-                withAnimation {
+                _ = withAnimation(.default) {
                     pingState = .idle
                 }
             }
