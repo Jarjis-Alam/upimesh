@@ -570,9 +570,9 @@ public final class MeshPeerTransportService: NSObject, ObservableObject, @unchec
         do {
             let msg = try PeerPredictionMessage.decodeAndValidate(from: data)
 
-            // 1. Verify sequence monotonicity (discard out-of-order or duplicate updates)
+            // 1. Verify sequence monotonicity (allow sequence 1 as fresh demo reset session)
             stateLock.lock()
-            if msg.sequenceNumber <= self.lastPredictionSequenceNumber {
+            if msg.sequenceNumber > 1 && msg.sequenceNumber <= self.lastPredictionSequenceNumber {
                 let current = self.lastPredictionSequenceNumber
                 stateLock.unlock()
                 print("[MeshPeerTransportService] Discarded duplicate/stale prediction sequence #\(msg.sequenceNumber) <= current #\(current)")
@@ -689,6 +689,9 @@ extension MeshPeerTransportService: MCSessionDelegate {
                 self.connectedPeer = peerID
                 self.connectionState = .connected
                 self.statusMessage = "Connected to \(peerID.displayName)"
+                self.stateLock.lock()
+                self.lastPredictionSequenceNumber = 0
+                self.stateLock.unlock()
             case .connecting:
                 self.connectionState = .connecting
                 self.statusMessage = "Connecting to \(peerID.displayName)..."

@@ -1038,10 +1038,31 @@ public struct MacCompanionView: View {
         .overlay(RoundedRectangle(cornerRadius: 8).stroke(cardBorder, lineWidth: 1))
     }
 
+    // MARK: - Active Prediction Helper
+
+    private var activePredictionMessage: PeerPredictionMessage? {
+        bridgeClient.activePredictionDisplay ?? bridgeClient.lastTransmittedMessage
+    }
+
     // MARK: - 1. Guided Scenario Selector (5 Scenarios)
 
     private var guidedScenariosCard: some View {
         VStack(alignment: .leading, spacing: 10) {
+            // Error banner if bridge connection failed
+            if let err = bridgeClient.lastFetchError {
+                HStack(spacing: 6) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundColor(Color.red)
+                    Text(err)
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundColor(Color.red)
+                    Spacer()
+                }
+                .padding(8)
+                .background(Color.red.opacity(0.15))
+                .cornerRadius(6)
+            }
+
             HStack {
                 Text("GUIDED DEMONSTRATION SCENARIOS (5 PHASES)")
                     .font(.system(size: 10, weight: .bold))
@@ -1050,9 +1071,32 @@ public struct MacCompanionView: View {
 
                 Spacer()
 
-                Text("Tap any scenario to trigger live prediction")
-                    .font(.system(size: 10))
-                    .foregroundColor(Color.cyan.opacity(0.8))
+                HStack(spacing: 6) {
+                    Text("Wallet:")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundColor(textSecondary)
+                    Text("₹\(Int(bridgeClient.customWalletBalance))")
+                        .font(.system(size: 11, weight: .bold, design: .rounded))
+                        .foregroundColor(Color.yellow)
+
+                    Button("₹122 Test") {
+                        Task {
+                            await bridgeClient.updateWalletBalance(122.0)
+                        }
+                    }
+                    .font(.system(size: 9, weight: .bold))
+                    .buttonStyle(.bordered)
+                    .tint(bridgeClient.customWalletBalance == 122.0 ? Color.yellow : Color.gray)
+
+                    Button("₹5,000 Base") {
+                        Task {
+                            await bridgeClient.updateWalletBalance(5000.0)
+                        }
+                    }
+                    .font(.system(size: 9, weight: .bold))
+                    .buttonStyle(.bordered)
+                    .tint(bridgeClient.customWalletBalance == 5000.0 ? Color.cyan : Color.gray)
+                }
             }
 
             // 5 Scenario Cards Grid
@@ -1062,7 +1106,7 @@ public struct MacCompanionView: View {
                     title: "1. Normal 5G",
                     subtitle: "Dense Urban",
                     risk: "6% Risk · 0.35h",
-                    reserve: "₹54",
+                    reserve: "₹57",
                     tint: Color.green
                 )
 
@@ -1071,7 +1115,7 @@ public struct MacCompanionView: View {
                     title: "2. Deteriorating",
                     subtitle: "Transit Corridor",
                     risk: "45% Risk · 1.25h",
-                    reserve: "₹178",
+                    reserve: "₹105",
                     tint: Color.yellow
                 )
 
@@ -1080,7 +1124,7 @@ public struct MacCompanionView: View {
                     title: "3. Grid Shock",
                     subtitle: "Tunnel Blackout",
                     risk: "88% Risk · 4.5h",
-                    reserve: "₹388",
+                    reserve: "₹268",
                     tint: Color.red
                 )
 
@@ -1089,7 +1133,7 @@ public struct MacCompanionView: View {
                     title: "4. Fully Offline",
                     subtitle: "0 Internet P2P",
                     risk: "95% Risk · 5.0h",
-                    reserve: "₹410",
+                    reserve: "₹286",
                     tint: Color.purple
                 )
 
@@ -1098,7 +1142,7 @@ public struct MacCompanionView: View {
                     title: "5. Recovery",
                     subtitle: "Restored to 5G",
                     risk: "5% Risk · 0.30h",
-                    reserve: "₹50",
+                    reserve: "₹53",
                     tint: Color.cyan
                 )
             }
@@ -1170,17 +1214,17 @@ public struct MacCompanionView: View {
 
                 Spacer()
 
-                if let msg = bridgeClient.lastTransmittedMessage {
+                if let msg = activePredictionMessage {
                     HStack(spacing: 4) {
-                        Circle().fill(Color.green).frame(width: 5, height: 5)
-                        Text("Seq #\(msg.sequenceNumber) · Broadcast at \(bridgeClient.lastTransmittedAt ?? Date(), style: .time)")
+                        Circle().fill(bridgeClient.lastTransmittedMessage != nil ? Color.green : Color.orange).frame(width: 5, height: 5)
+                        Text(bridgeClient.lastTransmittedMessage != nil ? "Seq #\(msg.sequenceNumber) · Broadcast at \(bridgeClient.lastTransmittedAt ?? Date(), style: .time)" : "Active Prediction · Awaiting iPhone Sync")
                             .font(.system(size: 9, design: .monospaced))
                             .foregroundColor(textMuted)
                     }
                 }
             }
 
-            if let msg = bridgeClient.lastTransmittedMessage {
+            if let msg = activePredictionMessage {
                 VStack(spacing: 8) {
                     // Hero Row: Recommended Reserve M2 vs Baseline
                     HStack(alignment: .center) {
@@ -1227,6 +1271,44 @@ public struct MacCompanionView: View {
                     .padding(10)
                     .background(Color.white.opacity(0.02))
                     .cornerRadius(6)
+
+                    // Wallet Balance & Funding Status Row
+                    HStack(spacing: 6) {
+                        if msg.fundingShortfallInr > 0 {
+                            HStack(spacing: 4) {
+                                Image(systemName: "exclamationmark.triangle.fill")
+                                    .font(.system(size: 10))
+                                    .foregroundColor(Color.red)
+                                Text("WALLET SHORTFALL: ₹\(Int(msg.fundingShortfallInr))")
+                                    .font(.system(size: 10, weight: .bold))
+                                    .foregroundColor(Color.red)
+                                Text("(Available: ₹\(Int(msg.availableBalanceInr)) · Unfunded: ₹\(Int(msg.fundingShortfallInr)))")
+                                    .font(.system(size: 9))
+                                    .foregroundColor(textMuted)
+                            }
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Color.red.opacity(0.12))
+                            .cornerRadius(4)
+                        } else if msg.availableBalanceInr > 0 {
+                            HStack(spacing: 4) {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .font(.system(size: 10))
+                                    .foregroundColor(Color.green)
+                                Text("FULLY FUNDED")
+                                    .font(.system(size: 10, weight: .bold))
+                                    .foregroundColor(Color.green)
+                                Text("(₹\(Int(msg.remainingLiquidInr)) liquid balance retained · Wallet: ₹\(Int(msg.availableBalanceInr)))")
+                                    .font(.system(size: 9))
+                                    .foregroundColor(textMuted)
+                            }
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Color.green.opacity(0.12))
+                            .cornerRadius(4)
+                        }
+                        Spacer()
+                    }
 
                     // 4 Telemetry Metrics
                     HStack(spacing: 8) {
@@ -1609,11 +1691,11 @@ public struct MacCompanionView: View {
                 }
 
                 VStack(spacing: 4) {
-                    leftScenarioRow(id: 1, name: "1. Normal 5G", reserve: "₹54", tint: .green)
-                    leftScenarioRow(id: 2, name: "2. Deteriorating", reserve: "₹178", tint: .yellow)
-                    leftScenarioRow(id: 3, name: "3. Grid Shock", reserve: "₹388", tint: .red)
-                    leftScenarioRow(id: 4, name: "4. Fully Offline", reserve: "₹410", tint: .purple)
-                    leftScenarioRow(id: 5, name: "5. Recovery", reserve: "₹50", tint: .cyan)
+                    leftScenarioRow(id: 1, name: "1. Normal 5G", reserve: "₹57", tint: .green)
+                    leftScenarioRow(id: 2, name: "2. Deteriorating", reserve: "₹105", tint: .yellow)
+                    leftScenarioRow(id: 3, name: "3. Grid Shock", reserve: "₹268", tint: .red)
+                    leftScenarioRow(id: 4, name: "4. Fully Offline", reserve: "₹286", tint: .purple)
+                    leftScenarioRow(id: 5, name: "5. Recovery", reserve: "₹53", tint: .cyan)
                 }
             }
             .padding(6)
@@ -1671,10 +1753,10 @@ public struct MacCompanionView: View {
             }
 
             // Latest Broadcast Status
-            if let msg = bridgeClient.lastTransmittedMessage {
+            if let msg = activePredictionMessage {
                 VStack(alignment: .leading, spacing: 4) {
                     HStack {
-                        Text("LAST BROADCAST (Seq #\(msg.sequenceNumber))")
+                        Text(bridgeClient.lastTransmittedMessage != nil ? "LAST BROADCAST (Seq #\(msg.sequenceNumber))" : "ACTIVE PREDICTION (LOCAL)")
                             .font(.system(size: 8, weight: .bold))
                             .foregroundColor(Color.cyan)
                         Spacer()

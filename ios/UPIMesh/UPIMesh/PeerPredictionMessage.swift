@@ -101,6 +101,12 @@ public struct PeerPredictionMessage: Sendable, Codable, Equatable {
     public let deltaReserveInr: Double
     public let recommendationNarrative: String
 
+    // MARK: - Balance & Funding Shortfall Indicators
+    public let availableBalanceInr: Double
+    public let fundingShortfallInr: Double
+    public let remainingLiquidInr: Double
+    public let allocatableReserveInr: Double
+
     // MARK: - Strategy Snapshot
     public let strategySnapshot: StrategyRecommendationSnapshot
 
@@ -126,6 +132,10 @@ public struct PeerPredictionMessage: Sendable, Codable, Equatable {
         previousReserveInr: Double,
         deltaReserveInr: Double,
         recommendationNarrative: String,
+        availableBalanceInr: Double = 0.0,
+        fundingShortfallInr: Double = 0.0,
+        remainingLiquidInr: Double = 0.0,
+        allocatableReserveInr: Double = 0.0,
         strategySnapshot: StrategyRecommendationSnapshot
     ) {
         self.messageType = Self.messageType
@@ -150,7 +160,51 @@ public struct PeerPredictionMessage: Sendable, Codable, Equatable {
         self.previousReserveInr = previousReserveInr
         self.deltaReserveInr = deltaReserveInr
         self.recommendationNarrative = recommendationNarrative
+        self.availableBalanceInr = availableBalanceInr
+        self.fundingShortfallInr = fundingShortfallInr
+        self.remainingLiquidInr = remainingLiquidInr
+        self.allocatableReserveInr = allocatableReserveInr
         self.strategySnapshot = strategySnapshot
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.messageType = try container.decode(String.self, forKey: .messageType)
+        self.protocolVersion = try container.decode(Int.self, forKey: .protocolVersion)
+        self.predictionId = try container.decode(String.self, forKey: .predictionId)
+        self.sequenceNumber = try container.decode(UInt64.self, forKey: .sequenceNumber)
+        self.timestamp = try container.decode(String.self, forKey: .timestamp)
+        self.senderDeviceId = try container.decode(String.self, forKey: .senderDeviceId)
+        self.isSimulated = try container.decode(Bool.self, forKey: .isSimulated)
+        self.networkStatus = try container.decode(String.self, forKey: .networkStatus)
+        self.signalDbm = try container.decode(Int.self, forKey: .signalDbm)
+        self.outageProbability = try container.decode(Double.self, forKey: .outageProbability)
+        self.robustOutageProbability = try container.decode(Double.self, forKey: .robustOutageProbability)
+        self.predictedDurationHours = try container.decode(Double.self, forKey: .predictedDurationHours)
+        self.durationStdHours = try container.decode(Double.self, forKey: .durationStdHours)
+        self.predictedDemandInr = try container.decode(Double.self, forKey: .predictedDemandInr)
+        self.compoundDemandStdInr = try container.decode(Double.self, forKey: .compoundDemandStdInr)
+        self.uncertaintyMarginInr = try container.decode(Double.self, forKey: .uncertaintyMarginInr)
+        self.safetyFloorInr = try container.decode(Double.self, forKey: .safetyFloorInr)
+        self.confidenceLevel = try container.decode(Double.self, forKey: .confidenceLevel)
+        self.recommendedReserveInr = try container.decode(Double.self, forKey: .recommendedReserveInr)
+        self.previousReserveInr = try container.decode(Double.self, forKey: .previousReserveInr)
+        self.deltaReserveInr = try container.decode(Double.self, forKey: .deltaReserveInr)
+        self.recommendationNarrative = try container.decode(String.self, forKey: .recommendationNarrative)
+        self.availableBalanceInr = try container.decodeIfPresent(Double.self, forKey: .availableBalanceInr) ?? 0.0
+        self.fundingShortfallInr = try container.decodeIfPresent(Double.self, forKey: .fundingShortfallInr) ?? 0.0
+        self.remainingLiquidInr = try container.decodeIfPresent(Double.self, forKey: .remainingLiquidInr) ?? 0.0
+        self.allocatableReserveInr = try container.decodeIfPresent(Double.self, forKey: .allocatableReserveInr) ?? 0.0
+        self.strategySnapshot = try container.decode(StrategyRecommendationSnapshot.self, forKey: .strategySnapshot)
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case messageType, protocolVersion, predictionId, sequenceNumber, timestamp, senderDeviceId, isSimulated
+        case networkStatus, signalDbm, outageProbability, robustOutageProbability, predictedDurationHours, durationStdHours
+        case predictedDemandInr, compoundDemandStdInr, uncertaintyMarginInr, safetyFloorInr, confidenceLevel
+        case recommendedReserveInr, previousReserveInr, deltaReserveInr, recommendationNarrative
+        case availableBalanceInr, fundingShortfallInr, remainingLiquidInr, allocatableReserveInr
+        case strategySnapshot
     }
 
     /// Validates message invariants before encoding or after decoding.

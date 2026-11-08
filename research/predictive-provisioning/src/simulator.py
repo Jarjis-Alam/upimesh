@@ -114,7 +114,7 @@ class ProvisioningSimulator:
                     predictor=pred,
                     horizon_hours=horizon_hours,
                 )
-                allocated_reserve = decision.recommended_reserve
+                allocated_reserve = decision.allocatable_reserve
 
                 # 2. Simulate transaction execution against the allocated reserve
                 remaining_reserve = allocated_reserve

@@ -174,6 +174,35 @@ public struct PredictiveAdvisoryCardView: View {
                             .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
                     }
                 }
+
+                // Balance & Funding Shortfall Breakdown
+                if pred.fundingShortfallInr > 0 {
+                    HStack(spacing: 5) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .font(.system(size: 10))
+                            .foregroundColor(DesignTokens.Colors.alertRed)
+
+                        Text(String(format: "Wallet Shortfall: ₹%.0f (Available: ₹%.0f · Unfunded: ₹%.0f)", pred.fundingShortfallInr, pred.availableBalanceInr, pred.fundingShortfallInr))
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundColor(DesignTokens.Colors.alertRed)
+                    }
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 3)
+                    .background(RoundedRectangle(cornerRadius: 4).fill(DesignTokens.Colors.alertRed.opacity(0.12)))
+                } else if pred.availableBalanceInr > 0 {
+                    HStack(spacing: 5) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.system(size: 10))
+                            .foregroundColor(DesignTokens.Colors.primary)
+
+                        Text(String(format: "Fully Funded · ₹%.0f liquid cash retained in bank (Available: ₹%.0f)", pred.remainingLiquidInr, pred.availableBalanceInr))
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundColor(DesignTokens.Colors.primary)
+                    }
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 3)
+                    .background(RoundedRectangle(cornerRadius: 4).fill(DesignTokens.Colors.primary.opacity(0.12)))
+                }
             }
             .padding(10)
             .background(DesignTokens.Colors.surfaceContainerLowest.opacity(0.5))

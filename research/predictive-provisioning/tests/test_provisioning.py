@@ -55,11 +55,19 @@ class TestPredictiveProvisioningInvariants(unittest.TestCase):
         for strat in strategies:
             decision = strat.compute_allocation(low_balance_user, self.predictor)
             self.assertLessEqual(
-                decision.recommended_reserve,
+                decision.allocatable_reserve,
                 low_balance_user.available_balance,
-                f"Strategy {strat.name} exceeded available balance!",
+                f"Strategy {strat.name} allocatable reserve exceeded available balance!",
             )
-            self.assertGreaterEqual(decision.recommended_reserve, 0.0)
+            self.assertGreaterEqual(decision.allocatable_reserve, 0.0)
+            self.assertEqual(
+                decision.allocatable_reserve,
+                min(decision.recommended_reserve, low_balance_user.available_balance),
+            )
+            self.assertEqual(
+                decision.funding_shortfall,
+                max(0.0, decision.recommended_reserve - low_balance_user.available_balance),
+            )
 
     # -------------------------------------------------------------------------
     # Invariant 2: Reserve never exceeds configured allowance limit
@@ -196,7 +204,9 @@ class TestPredictiveProvisioningInvariants(unittest.TestCase):
         )
         strat = ProposedJointOptimizationStrategy(config=self.config)
         decision = strat.compute_allocation(zero_user, self.predictor)
-        self.assertEqual(decision.recommended_reserve, 0.0)
+        self.assertEqual(decision.allocatable_reserve, 0.0)
+        self.assertEqual(decision.remaining_liquid_balance, 0.0)
+        self.assertEqual(decision.funding_shortfall, decision.recommended_reserve)
 
     # -------------------------------------------------------------------------
     # Invariant 8: Cost trade-off sensitivity

@@ -79,6 +79,26 @@ class DemoServerHandler(BaseHTTPRequestHandler):
         except Exception:
             payload = {}
 
+        if path == "/api/scenario":
+            scenario_id = int(payload.get("scenario_id", 1))
+            wallet_balance = payload.get("wallet_balance", payload.get("available_balance"))
+            wb = float(wallet_balance) if wallet_balance is not None else None
+            try:
+                state = self.engine.apply_scenario(scenario_id, wallet_balance=wb)
+                self._set_headers(200, "application/json")
+                self.wfile.write(json.dumps(state).encode("utf-8"))
+            except Exception as e:
+                self._set_headers(400, "application/json")
+                self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
+            return
+
+        if path == "/api/wallet_balance":
+            bal = float(payload.get("available_balance", payload.get("wallet_balance", 122.0)))
+            state = self.engine.set_wallet_balance(bal)
+            self._set_headers(200, "application/json")
+            self.wfile.write(json.dumps(state).encode("utf-8"))
+            return
+
         if path == "/api/guided_step":
             stage_id = payload.get("stage_id", 1)
             try:

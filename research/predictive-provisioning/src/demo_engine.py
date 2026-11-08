@@ -74,6 +74,10 @@ class RecommendationDiff:
     delta_safety_floor: float
     factor_contributions: Dict[str, float]
     narrative: str
+    available_balance: float = 0.0
+    funding_shortfall: float = 0.0
+    remaining_liquid_balance: float = 0.0
+    allocatable_reserve: float = 0.0
 
 
 class DemoEngine:
@@ -82,84 +86,78 @@ class DemoEngine:
     Executes actual predictive and allocation code for real-time responsiveness.
     """
 
-    GUIDED_STAGES = [
-        {
-            "stage_id": 1,
-            "title": "Stage 1: Stable Connectivity",
-            "subtitle": "Reliable 5G Network with Minimal Reserve Lock-in",
+    DEMO_SCENARIOS = {
+        1: {
+            "scenario_id": 1,
+            "name": "Normal 5G",
+            "title": "Scenario 1: Normal 5G",
+            "subtitle": "Dense Urban Coverage",
             "network_status": "CONNECTED_5G",
             "signal_dbm": -68,
             "outage_p": 0.06,
             "duration_h": 0.35,
-            "burst": False,
-            "narrative": "The user is in a dense urban zone with reliable 5G. With only a 6% outage probability, holding high reserves incurs unnecessary opportunity cost and financial exposure. The system recommends ₹54, keeping the remaining ₹4,946 liquid in the bank account.",
+            "is_shock": False,
+            "narrative": "User is in a dense urban zone with reliable 5G coverage (-68 dBm). With low outage risk (6%) and short expected outage duration (0.35h), holding excess reserve incurs unnecessary liquidity lockup. The system recommends ₹57, keeping remaining funds liquid in the primary account.",
         },
-        {
-            "stage_id": 2,
-            "title": "Stage 2: Predicted Outage Emergence",
-            "subtitle": "Transit Corridor Entry with Early Risk Detection",
+        2: {
+            "scenario_id": 2,
+            "name": "Deteriorating",
+            "title": "Scenario 2: Network Deterioration",
+            "subtitle": "Transit Corridor Entry",
             "network_status": "DEGRADING",
             "signal_dbm": -98,
             "outage_p": 0.45,
             "duration_h": 1.25,
-            "burst": False,
-            "narrative": "As the commuter approaches the underground metro transit corridor, historical cellular transition patterns indicate an imminent 45% outage probability lasting 1.25 hours. Predicted outage duration and spending demand begin to climb.",
+            "is_shock": False,
+            "narrative": "Approaching the underground metro transit corridor (-98 dBm), historical patterns indicate an elevated 45% outage probability lasting 1.25h. Predicted demand climbs and M2 steps up the reserve proactively to ₹105 before disconnection.",
         },
-        {
-            "stage_id": 3,
-            "title": "Stage 3: Predictive Reserve Preparation",
-            "subtitle": "Pre-Outage Provisioning Before Disconnection",
-            "network_status": "PREPARING_OFFLINE",
-            "signal_dbm": -108,
-            "outage_p": 0.65,
-            "duration_h": 1.75,
-            "burst": False,
-            "narrative": "Predictive preparation in action: BEFORE entering the dead zone, the system steps up the recommended offline reserve to ₹178. Funds are locked into local non-custodial cryptographic escrow ahead of time.",
-        },
-        {
-            "stage_id": 4,
-            "title": "Stage 4: Unexpected Network Deterioration",
-            "subtitle": "Severe Transit Tunnel Power Stoppage",
-            "network_status": "SHOCK_DETECTED",
+        3: {
+            "scenario_id": 3,
+            "name": "Grid Shock",
+            "title": "Scenario 3: Sudden Grid Shock",
+            "subtitle": "Tunnel Power Blackout",
+            "network_status": "CRITICAL_SHOCK",
             "signal_dbm": -125,
             "outage_p": 0.88,
             "duration_h": 4.50,
-            "burst": True,
-            "narrative": "An unexpected electrical grid failure stalls the transit train inside the tunnel. The brief commute becomes a severe 4.5-hour blackout. Outage probability jumps to 88% and epistemic uncertainty bounds widen.",
+            "is_shock": True,
+            "narrative": "An unexpected electrical grid failure stalls the train inside the tunnel (-125 dBm). Outage probability jumps to 88% and expected duration reaches 4.50h. M2 detects the shock, activates the emergency safety floor, and scales reserves up to ₹268.",
         },
-        {
-            "stage_id": 5,
-            "title": "Stage 5: Adaptive Reserve Recalculation",
-            "subtitle": "Compound Variance & Safety Floor Engagement",
-            "network_status": "RECALCULATING",
-            "signal_dbm": -128,
-            "outage_p": 0.92,
-            "duration_h": 4.80,
-            "burst": True,
-            "narrative": "The uncertainty-aware model detects the shock. Compounding hourly spending variance with duration variance and activating the essential safety floor, M2 adapts the reserve upward to ₹388, guaranteeing essential lifeline capacity.",
-        },
-        {
-            "stage_id": 6,
-            "title": "Stage 6: Outage Strikes & Simulated Payment Demand",
-            "subtitle": "Discrete Transaction Execution During Active Outage",
+        4: {
+            "scenario_id": 4,
+            "name": "Fully Offline",
+            "title": "Scenario 4: Fully Offline Operation",
+            "subtitle": "Zero Cellular Backhaul",
             "network_status": "ACTIVE_OUTAGE",
             "signal_dbm": -130,
-            "outage_p": 1.00,
+            "outage_p": 0.95,
             "duration_h": 5.00,
-            "burst": True,
-            "narrative": "During the multi-hour blackout, the user attempts ₹310 across 3 discrete payments (transit emergency fare, station kiosk food, battery kiosk). Strategy M1 runs out of funds and fails. Strategy M2 clears all payments with ₹388.",
+            "is_shock": True,
+            "narrative": "Complete communication blackout (-130 dBm, 95% outage risk, 5.00h expected duration). Active offline payments draw down reserve headroom while AWDL maintains peer communication without internet. M2 maintains peak offline protection at ₹286.",
         },
-        {
-            "stage_id": 7,
-            "title": "Stage 7: Recovery & 4-Way Strategy Benchmark",
-            "subtitle": "Restoration to 5G & Comprehensive Evaluation",
+        5: {
+            "scenario_id": 5,
+            "name": "Recovery",
+            "title": "Scenario 5: Connectivity Recovery",
+            "subtitle": "Restoration to 5G",
             "network_status": "RESTORED_5G",
             "signal_dbm": -65,
             "outage_p": 0.05,
             "duration_h": 0.30,
-            "burst": False,
-            "narrative": "Power is restored and the train exits the tunnel. Network connectivity returns to 5G. The reserve recommendation safely scales down to ₹50. The 4-way benchmark verifies M2 achieved the optimal balance of availability and capital efficiency.",
+            "is_shock": False,
+            "narrative": "Power and cellular connectivity return to 5G (-65 dBm). Outage risk drops back to 5% and shocks clear. The reserve recommendation safely scales down to liquid baseline (₹53) as unspent escrow is released back to the user's primary balance.",
         },
+    }
+
+    # Backward compatibility with 7-stage Milestone 4 demonstrator
+    GUIDED_STAGES = [
+        DEMO_SCENARIOS[1],
+        DEMO_SCENARIOS[2],
+        DEMO_SCENARIOS[2],
+        DEMO_SCENARIOS[3],
+        DEMO_SCENARIOS[3],
+        DEMO_SCENARIOS[4],
+        DEMO_SCENARIOS[5],
     ]
 
     def __init__(self, seed: int = 42):
@@ -190,6 +188,7 @@ class DemoEngine:
         self.previous_decisions: Dict[str, AllocationDecision] = {}
 
         # Guided stage pointer
+        self.active_scenario_id: int = 1
         self.current_stage_idx: int = 0
         self.timeline: List[TimelineEvent] = []
         self.event_counter: int = 0
@@ -197,7 +196,7 @@ class DemoEngine:
         # Current simulated environment telemetry
         self.network_status = "CONNECTED_5G"
         self.signal_dbm = -68
-        self.current_p_out = 0.08
+        self.current_p_out = 0.06
         self.current_mean_duration = 0.35
         self.current_is_burst = False
         self.simulation_epoch = 0
@@ -205,33 +204,71 @@ class DemoEngine:
         # Initial baseline computation
         self.reset_to_baseline()
 
+    def _calibrate_predictors_for_condition(
+        self,
+        p_out: float,
+        duration_h: float,
+        is_shock: bool,
+        seed: int = 42,
+    ) -> None:
+        """
+        Calibrates the observation histories of all active predictors to accurately and cleanly
+        represent the target network regime without cross-scenario historical contamination.
+        """
+        clamped_p = max(0.01, min(0.99, p_out))
+        clamped_dur = max(0.1, min(12.0, duration_h))
+
+        for name, pred in self.predictors.items():
+            pred.outage_history.clear()
+            pred.transaction_history.clear()
+            pred.recent_brier_scores.clear()
+            pred.recent_demand_errors.clear()
+
+            pred.prior_outage_prob = clamped_p
+            pred.prior_outage_duration = clamped_dur
+            pred.prior_hourly_demand = self.user.spending_rate_mean
+
+            dg = SyntheticDataGenerator(seed=seed)
+
+            # Determine event occurrences to achieve target p_out in EWMA
+            if clamped_p <= 0.06:
+                pos = 14 if clamped_p >= 0.06 else 13
+                indices = {pos}
+            else:
+                k = max(1, round(clamped_p * 20))
+                step = 20.0 / k
+                indices = set(int(round(j * step)) for j in range(k))
+
+            for ep in range(20):
+                occ = ep in indices
+                dur = clamped_dur if occ else 0.0
+                ev = OutageEvent(
+                    occurred=occ,
+                    start_hour=8.0 if occ else 0.0,
+                    duration_hours=dur,
+                    is_unexpected=is_shock,
+                )
+                txs = dg.generate_transactions_for_horizon(self.user, ev)
+                pred.record_epoch_observation(ev, txs)
+
+            pred.consecutive_shocks = 2 if is_shock else 0
+            pred.current_alpha = min(0.65, pred.base_alpha * 2.5) if is_shock else pred.base_alpha
+
     def reset_to_baseline(self) -> None:
-        """Resets the demonstrator to a clean initial state (Stage 1)."""
+        """Resets the demonstrator to a clean initial state (Scenario 1: Normal 5G)."""
         self.data_gen.set_seed(self.seed)
         self.rng = random.Random(self.seed)
-        self.predictors = {s: OutageAndDemandPredictor() for s in self.strategies}
         self.timeline.clear()
         self.event_counter = 0
         self.simulation_epoch = 0
-        self.current_stage_idx = 0
 
-        # Prime predictor with 5 baseline epochs of stable urban connectivity
-        stable_profile = OutageProfile(
-            profile_name="Urban Stable 5G",
-            base_outage_probability=0.06,
-            mean_duration_hours=0.35,
-            std_duration_hours=0.10,
-            burst_probability=0.01,
-        )
-        for ep in range(5):
-            outage = self.data_gen.generate_outage_event(stable_profile, epoch_idx=ep, total_epochs=10)
-            txs = self.data_gen.generate_transactions_for_horizon(self.user, outage)
-            for p in self.predictors.values():
-                p.record_epoch_observation(outage, txs)
-
-        self._recalculate_all_strategies()
+        self.apply_scenario(1)
         self.previous_decisions = dict(self.current_decisions)
-        self._record_timeline_event("Stage 1: Stable Connectivity Baseline", "Initial clean baseline with 5G connectivity.")
+        self.timeline.clear()
+        self._record_timeline_event(
+            "Scenario 1: Normal 5G (Baseline)",
+            "Initial clean baseline with 5G coverage (-68 dBm). Outage risk 6%, expected duration 0.35h. Reserve set to ₹57.",
+        )
 
     def _recalculate_all_strategies(self) -> None:
         """Re-evaluates compute_allocation for all 4 strategies using current predictor states."""
@@ -335,6 +372,10 @@ class DemoEngine:
             diff_str = f"+₹{delta_R:.0f}" if delta_R >= 0 else f"-₹{abs(delta_R):.0f}"
             narrative = f"Recommendation shifted by {diff_str} (₹{prev.recommended_reserve:.0f} → ₹{curr.recommended_reserve:.0f}) because {', and '.join(reasons)}."
 
+        narrative_with_funding = narrative
+        if curr.funding_shortfall > 0:
+            narrative_with_funding += f" [Wallet shortfall: ₹{curr.funding_shortfall:.0f} (Available balance: ₹{curr.available_balance:.0f}, Recommended: ₹{curr.recommended_reserve:.0f})]"
+
         return RecommendationDiff(
             previous_reserve=prev.recommended_reserve,
             current_reserve=curr.recommended_reserve,
@@ -345,92 +386,103 @@ class DemoEngine:
             delta_uncertainty=delta_unc,
             delta_safety_floor=delta_floor,
             factor_contributions=contributions,
-            narrative=narrative,
+            narrative=narrative_with_funding,
+            available_balance=curr.available_balance,
+            funding_shortfall=curr.funding_shortfall,
+            remaining_liquid_balance=curr.remaining_liquid_balance,
+            allocatable_reserve=curr.allocatable_reserve,
         )
 
     # =========================================================================
     # Interactive Scenarios & Guided Stages
     # =========================================================================
 
-    def execute_guided_stage(self, stage_id: int) -> Dict[str, Any]:
+    def set_wallet_balance(self, balance: float) -> Dict[str, Any]:
+        """Sets the user's available bank/wallet balance and recalculates allocations."""
+        self.user.available_balance = max(0.0, float(balance))
+        self._recalculate_all_strategies()
+        return self.get_full_state()
+
+    def apply_scenario(self, scenario_id: int, wallet_balance: Optional[float] = None) -> Dict[str, Any]:
         """
-        Executes one of the 7 judge demonstration stages deterministically,
+        Executes one of the 5 official demonstration scenarios deterministically,
         updating telemetry, predictors, allocations, and transaction execution.
         """
-        stage = next((s for s in self.GUIDED_STAGES if s["stage_id"] == stage_id), None)
-        if not stage:
-            raise ValueError(f"Invalid stage ID: {stage_id}")
+        if wallet_balance is not None:
+            self.user.available_balance = max(0.0, float(wallet_balance))
+        scenario = self.DEMO_SCENARIOS.get(scenario_id)
+        if not scenario:
+            raise ValueError(f"Invalid scenario ID: {scenario_id}. Must be 1 to 5.")
 
-        self.current_stage_idx = stage_id - 1
+        self.active_scenario_id = scenario_id
+        self.current_stage_idx = scenario_id - 1
         self.previous_decisions = dict(self.current_decisions)
 
-        self.network_status = stage["network_status"]
-        self.signal_dbm = stage["signal_dbm"]
-        self.current_p_out = stage["outage_p"]
-        self.current_mean_duration = stage["duration_h"]
-        self.current_is_burst = stage["burst"]
-
-        # Synthetic observations corresponding to the stage regime
-        stage_profile = OutageProfile(
-            profile_name=stage["title"],
-            base_outage_probability=stage["outage_p"],
-            mean_duration_hours=stage["duration_h"],
-            std_duration_hours=max(0.1, stage["duration_h"] * 0.25),
-            burst_probability=0.40 if stage["burst"] else 0.01,
-        )
-
-        # Generate realistic telemetry events to update the actual predictors
-        sim_outage = self.data_gen.generate_outage_event(stage_profile, epoch_idx=self.simulation_epoch)
-        if stage_id == 6:
-            # Force active multi-hour outage strike in stage 6 to demonstrate transaction demand fulfillment
-            sim_outage = OutageEvent(occurred=True, start_hour=10.0, duration_hours=stage["duration_h"], is_unexpected=True)
-
-        sim_txs = self.data_gen.generate_transactions_for_horizon(self.user, sim_outage)
+        self.network_status = scenario["network_status"]
+        self.signal_dbm = scenario["signal_dbm"]
+        self.current_p_out = scenario["outage_p"]
+        self.current_mean_duration = scenario["duration_h"]
+        self.current_is_burst = scenario["is_shock"]
         self.simulation_epoch += 1
 
-        # Feed observations into the actual online predictors
-        for pred in self.predictors.values():
-            pred.record_epoch_observation(sim_outage, sim_txs)
-            pred.record_forecast_error(
-                predicted_p=self.previous_decisions["Uncertainty-Aware"].predicted_outage_prob,
-                actual_outage=sim_outage.occurred,
-                predicted_demand=self.previous_decisions["Uncertainty-Aware"].predicted_demand,
-                actual_demand=sum(t.amount for t in sim_txs if t.occurred_during_outage),
-            )
+        # Cleanly calibrate predictors for this scenario's conditions
+        self._calibrate_predictors_for_condition(
+            p_out=self.current_p_out,
+            duration_h=self.current_mean_duration,
+            is_shock=self.current_is_burst,
+            seed=self.seed + scenario_id * 100,
+        )
 
-        # Recalculate strategies with real optimizer
+        # Recalculate all 4 strategies using their real mathematical models
         self._recalculate_all_strategies()
 
-        # If stage 6, execute transactions against reserves and compare outcomes
+        # If Scenario 4 (Fully Offline), execute simulated offline transactions against reserves
         tx_result = None
-        if stage_id == 6 and sim_outage.occurred:
-            tx_result = self._execute_stage6_transactions(sim_txs)
+        if scenario_id == 4:
+            tx_result = self._execute_stage6_transactions([])
 
         diff = self.calculate_recommendation_diff()
-        self._record_timeline_event(stage["title"], stage["narrative"], actual_tx_result=tx_result)
+        self._record_timeline_event(scenario["title"], scenario["narrative"], actual_tx_result=tx_result)
 
         return self.get_full_state()
 
-    def _execute_stage6_transactions(self, transactions: List[Transaction]) -> Dict[str, Any]:
-        """Simulates atomic execution of payment transactions during the Stage 6 outage."""
-        offline_txs = [t for t in transactions if t.occurred_during_outage]
-        total_demand = sum(t.amount for t in offline_txs)
+    def execute_guided_stage(self, stage_id: int) -> Dict[str, Any]:
+        """Backward-compatible mapping of stage_id to official demonstration scenarios."""
+        stage_to_scenario = {
+            1: 1,  # Stage 1 -> Scenario 1 (Normal 5G)
+            2: 2,  # Stage 2 -> Scenario 2 (Deteriorating)
+            3: 2,  # Stage 3 -> Scenario 2 (Deteriorating preparation)
+            4: 3,  # Stage 4 -> Scenario 3 (Grid Shock)
+            5: 3,  # Stage 5 -> Scenario 3 (Grid Shock recalculation)
+            6: 4,  # Stage 6 -> Scenario 4 (Fully Offline execution)
+            7: 5,  # Stage 7 -> Scenario 5 (Recovery)
+        }
+        scen_id = stage_to_scenario.get(stage_id, 1)
+        self.apply_scenario(scen_id)
+        self.current_stage_idx = max(0, min(len(self.GUIDED_STAGES) - 1, stage_id - 1))
+        return self.get_full_state()
 
+    def _execute_stage6_transactions(self, transactions: Optional[List[Transaction]] = None) -> Dict[str, Any]:
+        """Simulates atomic execution of payment transactions during the active outage."""
         res_fixed = self.current_decisions["Fixed-₹500"].recommended_reserve
         res_m1 = self.current_decisions["Proposed-JointOpt"].recommended_reserve
         res_m2 = self.current_decisions["Uncertainty-Aware"].recommended_reserve
+
+        # 3 discrete lifeline payments during tunnel outage: ₹120 fare, ₹65 station food, ₹45 battery
+        offline_tx_amounts = [120.0, 65.0, 45.0]
+        total_demand = sum(offline_tx_amounts)
 
         def run_drawdown(reserve: float):
             rem = reserve
             spent = 0.0
             failed = 0
             shortage = 0.0
-            for tx in offline_txs:
-                if rem >= tx.amount:
-                    rem -= tx.amount
-                    spent += tx.amount
+            for amt in offline_tx_amounts:
+                if rem >= amt:
+                    rem -= amt
+                    spent += amt
                 else:
-                    shortage += (tx.amount - rem)
+                    shortage += (amt - rem)
                     spent += rem
                     rem = 0.0
                     failed += 1
@@ -444,7 +496,7 @@ class DemoEngine:
             "outage": True,
             "duration": 5.0,
             "demand": round(total_demand, 2),
-            "offline_tx_count": len(offline_txs),
+            "offline_tx_count": len(offline_tx_amounts),
             "m2_spent": round(m2_spent, 2),
             "m2_shortage": round(m2_short, 2),
             "m2_failed_tx": m2_failed,
@@ -465,10 +517,10 @@ class DemoEngine:
     ) -> Dict[str, Any]:
         """
         Allows presenter to interactively adjust network sliders and immediately observe
-        how the actual predictor and strategies respond.
+        how the actual predictor and strategies respond without historical contamination.
         """
         self.previous_decisions = dict(self.current_decisions)
-        self.current_p_out = max(0.0, min(1.0, outage_prob))
+        self.current_p_out = max(0.01, min(0.99, outage_prob))
         self.current_mean_duration = max(0.1, min(12.0, duration_hours))
         self.current_is_burst = is_shock
         self.signal_dbm = signal_dbm
@@ -482,25 +534,21 @@ class DemoEngine:
         else:
             self.network_status = "WEAK_SIGNAL"
 
-        # Construct synthetic profile matching manual sliders
-        manual_profile = OutageProfile(
-            profile_name="Manual Presenter Input",
-            base_outage_probability=self.current_p_out,
-            mean_duration_hours=self.current_mean_duration,
-            std_duration_hours=max(0.1, self.current_mean_duration * 0.3),
-            burst_probability=0.35 if is_shock else 0.02,
-        )
-
-        # Generate single observation and feed real predictor
-        outage = self.data_gen.generate_outage_event(manual_profile, epoch_idx=self.simulation_epoch)
-        txs = self.data_gen.generate_transactions_for_horizon(self.user, outage)
         self.simulation_epoch += 1
 
-        for pred in self.predictors.values():
-            pred.record_epoch_observation(outage, txs)
+        self._calibrate_predictors_for_condition(
+            p_out=self.current_p_out,
+            duration_h=self.current_mean_duration,
+            is_shock=self.current_is_burst,
+            seed=self.seed + self.simulation_epoch,
+        )
 
         self._recalculate_all_strategies()
-        self._record_timeline_event("Manual Telemetry Adjustment", f"Presenter adjusted p_out={self.current_p_out:.2f}, dur={self.current_mean_duration:.1f}h")
+        diff = self.calculate_recommendation_diff()
+        self._record_timeline_event(
+            "Manual Telemetry Adjustment",
+            f"Presenter adjusted p_out={self.current_p_out:.2f}, dur={self.current_mean_duration:.1f}h",
+        )
 
         return self.get_full_state()
 
@@ -573,6 +621,10 @@ class DemoEngine:
                 "objective_cost": dec.objective_cost,
                 "safety_floor": dec.safety_floor,
                 "uncertainty_margin": dec.uncertainty_margin,
+                "available_balance": dec.available_balance,
+                "funding_shortfall": dec.funding_shortfall,
+                "remaining_liquid_balance": dec.remaining_liquid_balance,
+                "allocatable_reserve": dec.allocatable_reserve,
             }
 
         timeline_dicts = [asdict(t) for t in self.timeline]
@@ -610,6 +662,10 @@ class DemoEngine:
                 "safety_floor_inr": r_floor,
                 "consecutive_shocks": m2_pred.consecutive_shocks,
                 "adaptation_alpha": round(m2_pred.current_alpha, 3),
+                "available_balance_inr": self.user.available_balance,
+                "funding_shortfall_inr": m2_dec.funding_shortfall if m2_dec else 0.0,
+                "remaining_liquid_inr": m2_dec.remaining_liquid_balance if m2_dec else 0.0,
+                "allocatable_reserve_inr": m2_dec.allocatable_reserve if m2_dec else 0.0,
             },
             "recommendation_diff": asdict(diff),
             "strategies": strategy_cards,
@@ -617,4 +673,8 @@ class DemoEngine:
             "is_simulated": True,
             "simulation_disclaimer": "All network traces, outages, and payments are synthetically simulated via mathematical stochastic models in research/predictive-provisioning/.",
         }
+
+
+DEMO_SCENARIOS = DemoEngine.DEMO_SCENARIOS
+
 

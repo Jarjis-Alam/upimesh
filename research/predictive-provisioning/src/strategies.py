@@ -61,17 +61,25 @@ class FixedAllowanceStrategy(BaseProvisioningStrategy):
         mean_dur, _ = predictor.estimate_outage_duration()
         mean_demand, _ = predictor.estimate_demand_during_outage(mean_dur, horizon_hours)
 
-        reserve = self.clamp_reserve(self.fixed_amount, user.available_balance, user.maximum_allowance)
+        policy_limit = max(0.0, user.maximum_allowance)
+        recommended = round(min(self.fixed_amount, policy_limit), 2)
+        avail = max(0.0, user.available_balance)
+        allocatable = round(min(recommended, avail), 2)
+        shortfall = round(max(0.0, recommended - avail), 2)
+        remaining = round(max(0.0, avail - recommended), 2)
 
         return AllocationDecision(
             strategy=self.name,
-            recommended_reserve=reserve,
+            recommended_reserve=recommended,
             predicted_outage_prob=p_out,
             predicted_outage_duration=mean_dur,
             predicted_demand=mean_demand,
             available_balance=user.available_balance,
             allowance_limit=user.maximum_allowance,
             objective_cost=0.0,
+            funding_shortfall=shortfall,
+            remaining_liquid_balance=remaining,
+            allocatable_reserve=allocatable,
         )
 
 
@@ -104,17 +112,25 @@ class DemandOnlyStrategy(BaseProvisioningStrategy):
         total_horizon_demand = predictor.estimate_total_horizon_demand(horizon_hours)
         raw_reserve = total_horizon_demand * self.safety_factor
 
-        reserve = self.clamp_reserve(raw_reserve, user.available_balance, user.maximum_allowance)
+        policy_limit = max(0.0, user.maximum_allowance)
+        recommended = round(min(raw_reserve, policy_limit), 2)
+        avail = max(0.0, user.available_balance)
+        allocatable = round(min(recommended, avail), 2)
+        shortfall = round(max(0.0, recommended - avail), 2)
+        remaining = round(max(0.0, avail - recommended), 2)
 
         return AllocationDecision(
             strategy=self.name,
-            recommended_reserve=reserve,
+            recommended_reserve=recommended,
             predicted_outage_prob=p_out,
             predicted_outage_duration=mean_dur,
             predicted_demand=mean_outage_demand,
             available_balance=user.available_balance,
             allowance_limit=user.maximum_allowance,
             objective_cost=0.0,
+            funding_shortfall=shortfall,
+            remaining_liquid_balance=remaining,
+            allocatable_reserve=allocatable,
         )
 
 
@@ -220,9 +236,9 @@ class ProposedJointOptimizationStrategy(BaseProvisioningStrategy):
         mean_dur, _ = predictor.estimate_outage_duration()
         mu_D, sigma_D = predictor.estimate_demand_during_outage(mean_dur, horizon_hours)
 
-        upper_bound = min(max(0.0, user.available_balance), max(0.0, user.maximum_allowance))
+        upper_bound = max(0.0, user.maximum_allowance)
 
-        # Trivial boundary condition: zero upper bound or zero balance
+        # Trivial boundary condition: zero policy limit
         if upper_bound <= 0.0:
             return AllocationDecision(
                 strategy=self.name,
@@ -233,6 +249,9 @@ class ProposedJointOptimizationStrategy(BaseProvisioningStrategy):
                 available_balance=user.available_balance,
                 allowance_limit=user.maximum_allowance,
                 objective_cost=0.0,
+                funding_shortfall=0.0,
+                remaining_liquid_balance=max(0.0, user.available_balance),
+                allocatable_reserve=0.0,
             )
 
         # Exact discrete grid minimization over Rupee grid (resolution: 1.0 INR)
@@ -271,7 +290,11 @@ class ProposedJointOptimizationStrategy(BaseProvisioningStrategy):
             best_cost = edge_cost
             best_R = upper_bound
 
-        final_R = self.clamp_reserve(best_R, user.available_balance, user.maximum_allowance)
+        final_R = round(best_R, 2)
+        avail = max(0.0, user.available_balance)
+        allocatable = round(min(final_R, avail), 2)
+        shortfall = round(max(0.0, final_R - avail), 2)
+        remaining = round(max(0.0, avail - final_R), 2)
 
         return AllocationDecision(
             strategy=self.name,
@@ -282,6 +305,9 @@ class ProposedJointOptimizationStrategy(BaseProvisioningStrategy):
             available_balance=user.available_balance,
             allowance_limit=user.maximum_allowance,
             objective_cost=round(best_cost, 4),
+            funding_shortfall=shortfall,
+            remaining_liquid_balance=remaining,
+            allocatable_reserve=allocatable,
         )
 
 
@@ -330,7 +356,7 @@ class UncertaintyAwareJointOptimizationStrategy(ProposedJointOptimizationStrateg
             maximum_allowance=user.maximum_allowance,
         )
 
-        upper_bound = min(max(0.0, user.available_balance), max(0.0, user.maximum_allowance))
+        upper_bound = max(0.0, user.maximum_allowance)
         if upper_bound <= 0.0:
             return AllocationDecision(
                 strategy=self.name,
@@ -343,6 +369,9 @@ class UncertaintyAwareJointOptimizationStrategy(ProposedJointOptimizationStrateg
                 objective_cost=0.0,
                 uncertainty_margin=0.0,
                 safety_floor=0.0,
+                funding_shortfall=0.0,
+                remaining_liquid_balance=max(0.0, user.available_balance),
+                allocatable_reserve=0.0,
             )
 
         lower_bound = min(upper_bound, R_floor) if self.use_safety_floor else 0.0
@@ -380,7 +409,11 @@ class UncertaintyAwareJointOptimizationStrategy(ProposedJointOptimizationStrateg
             best_cost = edge_cost
             best_R = upper_bound
 
-        final_R = self.clamp_reserve(best_R, user.available_balance, user.maximum_allowance)
+        final_R = round(best_R, 2)
+        avail = max(0.0, user.available_balance)
+        allocatable = round(min(final_R, avail), 2)
+        shortfall = round(max(0.0, final_R - avail), 2)
+        remaining = round(max(0.0, avail - final_R), 2)
 
         mean_baseline_dur, _ = predictor.estimate_outage_duration()
         mean_baseline_demand, _ = predictor.estimate_demand_during_outage(mean_baseline_dur, horizon_hours)
@@ -397,5 +430,8 @@ class UncertaintyAwareJointOptimizationStrategy(ProposedJointOptimizationStrateg
             objective_cost=round(best_cost, 4),
             uncertainty_margin=round(uncertainty_margin, 2),
             safety_floor=round(R_floor, 2),
+            funding_shortfall=shortfall,
+            remaining_liquid_balance=remaining,
+            allocatable_reserve=allocatable,
         )
 

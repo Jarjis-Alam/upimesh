@@ -67,6 +67,9 @@ class AllocationDecision:
     objective_cost: float = 0.0
     uncertainty_margin: float = 0.0
     safety_floor: float = 0.0
+    funding_shortfall: float = 0.0
+    remaining_liquid_balance: float = 0.0
+    allocatable_reserve: float = 0.0
 
 
 @dataclass
