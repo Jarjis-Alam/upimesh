@@ -25,7 +25,8 @@ public struct OfflinePayView: View {
         case failed(String)
     }
 
-    @State private var amount: Double = 20.00
+    @State private var amount: Double = 120.00
+    @State private var amountInput: String = "120"
     @State private var memo: String = "Lunch payment (Offline)"
     @State private var senderId: String = "alice"
     @State private var recipientId: String = "bob"
@@ -59,14 +60,25 @@ public struct OfflinePayView: View {
                 // MARK: - Header
                 headerView
 
-                // MARK: - Payment Terminal Card
-                terminalCard
+                // MARK: - Terminal Selector Pill
+                terminalSelectorPill
+
+                // MARK: - Amount Readout Hero
+                amountHeroReadout
+
+                // MARK: - 12-Key Numeric Keypad
+                numericKeypad
+
+                // MARK: - Pay CTA Button
+                payCTAButton
+
+                // MARK: - Allowance Payment Option (Phase 2B)
+                if let voucher = activeAllowance, !voucher.isExpired() {
+                    allowanceOptionPill(voucher: voucher)
+                }
 
                 // MARK: - Security Notice Banner
                 securityBanner
-
-                // MARK: - Primary & Secondary Actions
-                actionButtons
 
                 // MARK: - Live Mesh Journey Telemetry
                 journeyTelemetryCard
@@ -129,235 +141,270 @@ public struct OfflinePayView: View {
     // MARK: - Header Subview
     private var headerView: some View {
         HStack(alignment: .center) {
-            VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 8) {
-                    Text("Offline Pay")
-                        .font(DesignTokens.Typography.headlineSm)
-                        .foregroundColor(DesignTokens.Colors.onSurface)
-
-                    HStack(spacing: 5) {
-                        Circle()
-                            .fill(DesignTokens.Colors.meshGold)
-                            .frame(width: 6, height: 6)
-                        Text("MESH ACTIVE")
-                            .font(DesignTokens.Typography.labelCaps)
-                            .foregroundColor(DesignTokens.Colors.meshGold)
-                    }
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 3)
-                    .background(
-                        Capsule()
-                            .fill(DesignTokens.Colors.surfaceContainerHigh.opacity(0.7))
-                    )
-                }
-
-                Text("Offline P2P Protocol")
-                    .font(DesignTokens.Typography.caption)
-                    .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
-            }
+            Text("Pay Offline")
+                .font(DesignTokens.Typography.headlineSm)
+                .fontWeight(.bold)
+                .foregroundColor(DesignTokens.Colors.onSurface)
 
             Spacer()
 
-            Circle()
-                .fill(DesignTokens.Colors.meshGold)
-                .frame(width: 36, height: 36)
-                .overlay(
-                    Image(systemName: "person.fill")
-                        .foregroundColor(DesignTokens.Colors.onMeshGold)
-                        .font(.system(size: 17, weight: .bold))
-                )
-                .shadow(color: DesignTokens.Colors.meshGold.opacity(0.35), radius: 8, x: 0, y: 2)
-        }
-        .padding(.vertical, 8)
-    }
-
-    // MARK: - Terminal Card
-    private var terminalCard: some View {
-        VStack(spacing: DesignTokens.Spacing.md) {
-            // Amount Hero Section
-            VStack(spacing: 4) {
-                Text("PAYMENT VALUE")
-                    .font(DesignTokens.Typography.labelCaps)
-                    .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
-                    .tracking(1.5)
-
-                HStack(alignment: .firstTextBaseline, spacing: 3) {
-                    Text("₹")
-                        .font(DesignTokens.Typography.displayHeroMobile)
-                        .foregroundColor(DesignTokens.Colors.meshGold)
-                        .fontWeight(.bold)
-
-                    Text(String(format: "%.2f", amount))
-                        .font(DesignTokens.Typography.displayHero)
-                        .foregroundColor(DesignTokens.Colors.onSurface)
-                        .fontWeight(.bold)
-
-                    Rectangle()
-                        .fill(DesignTokens.Colors.meshGold)
-                        .frame(width: 2, height: 30)
-                }
-
-                // Quick Amount Chips
-                HStack(spacing: 8) {
-                    amountChip(delta: 100, label: "+₹100")
-                    amountChip(delta: 500, label: "+₹500")
-                    amountChip(delta: 1000, label: "+₹1,000")
-                }
-                .padding(.top, 4)
+            HStack(spacing: 6) {
+                Circle()
+                    .fill(DesignTokens.Colors.primaryContainer)
+                    .frame(width: 8, height: 8)
+                Text("\(max(transportService.connectedPeers.count, 4)) Peers")
+                    .font(DesignTokens.Typography.telemetrySm)
+                    .fontWeight(.semibold)
+                    .foregroundColor(DesignTokens.Colors.primaryContainer)
             }
-            .padding(.vertical, 8)
-
-            // Sender & Recipient Pickers
-            VStack(spacing: 8) {
-                // Sender Card (Alice)
-                HStack(spacing: 10) {
-                    Circle()
-                        .fill(DesignTokens.Colors.meshGold.opacity(0.2))
-                        .frame(width: 38, height: 38)
-                        .overlay(
-                            Image(systemName: "person.circle.fill")
-                                .foregroundColor(DesignTokens.Colors.meshGold)
-                                .font(.system(size: 20))
-                        )
-
-                    VStack(alignment: .leading, spacing: 2) {
-                        HStack(spacing: 6) {
-                            Text("From (Local Node)")
-                                .font(DesignTokens.Typography.caption)
-                                .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
-
-                            if isLiveBalance {
-                                Text("LIVE")
-                                    .font(.system(size: 8, weight: .bold))
-                                    .foregroundColor(DesignTokens.Colors.meshGold)
-                                    .padding(.horizontal, 4)
-                                    .padding(.vertical, 1)
-                                    .background(Capsule().fill(DesignTokens.Colors.meshGold.opacity(0.15)))
-                            }
-                        }
-
-                        Text("Alice")
-                            .font(DesignTokens.Typography.bodyMd)
-                            .fontWeight(.medium)
-                            .foregroundColor(DesignTokens.Colors.onSurface)
-                    }
-
-                    Spacer()
-
-                    HStack(spacing: 4) {
-                        Image(systemName: "wallet.bifold.fill")
-                            .font(.system(size: 13))
-                            .foregroundColor(DesignTokens.Colors.meshGold)
-
-                        if let balance = senderBalance {
-                            Text(CurrencyFormatter.format(amount: balance))
-                                .font(DesignTokens.Typography.labelNumericSm)
-                                .foregroundColor(DesignTokens.Colors.onSurface)
-                        } else {
-                            Text("₹5,000.00")
-                                .font(DesignTokens.Typography.labelNumericSm)
-                                .foregroundColor(DesignTokens.Colors.onSurface)
-                        }
-                    }
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 4)
-                    .background(Capsule().fill(DesignTokens.Colors.surfaceContainerHigh.opacity(0.7)))
-                }
-                .padding(10)
-                .background(
-                    RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.base)
-                        .fill(DesignTokens.Colors.surfaceContainerLow.opacity(0.8))
-                )
-
-                // Recipient Card (Bob)
-                HStack(spacing: 10) {
-                    Circle()
-                        .fill(DesignTokens.Colors.secondary.opacity(0.2))
-                        .frame(width: 38, height: 38)
-                        .overlay(
-                            Image(systemName: "storefront.fill")
-                                .foregroundColor(DesignTokens.Colors.secondary)
-                                .font(.system(size: 18))
-                        )
-
-                    VStack(alignment: .leading, spacing: 2) {
-                        HStack(spacing: 6) {
-                            Text("Bob")
-                                .font(DesignTokens.Typography.bodyMd)
-                                .fontWeight(.medium)
-                                .foregroundColor(DesignTokens.Colors.onSurface)
-
-                            Text("MERCHANT")
-                                .font(DesignTokens.Typography.labelCaps)
-                                .foregroundColor(DesignTokens.Colors.secondary)
-                                .padding(.horizontal, 6)
-                                .padding(.vertical, 2)
-                                .background(Capsule().fill(DesignTokens.Colors.secondaryContainer.opacity(0.25)))
-                        }
-                        Text("Node ID: #B-240 · Signal -68dBm")
-                            .font(DesignTokens.Typography.caption)
-                            .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
-                    }
-
-                    Spacer()
-
-                    HStack(spacing: 4) {
-                        Image(systemName: "checkmark.seal.fill")
-                            .font(.system(size: 14))
-                            .foregroundColor(DesignTokens.Colors.meshGold)
-                        Text("PAIRED")
-                            .font(DesignTokens.Typography.labelCaps)
-                            .foregroundColor(DesignTokens.Colors.meshGold)
-                    }
-                }
-                .padding(10)
-                .background(
-                    RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.base)
-                        .fill(DesignTokens.Colors.surfaceContainerLow.opacity(0.8))
-                )
-            }
-
-            // Memo Input Pill
-            HStack(spacing: 10) {
-                Image(systemName: "pencil.line")
-                    .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
-                    .font(.system(size: 16))
-
-                TextField("Add payment memo...", text: $memo)
-                    .font(DesignTokens.Typography.bodySm)
-                    .foregroundColor(DesignTokens.Colors.onSurface)
-
-                Image(systemName: "lock.fill")
-                    .foregroundColor(DesignTokens.Colors.meshGold)
-                    .font(.system(size: 13))
-            }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 10)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
             .background(
                 Capsule()
-                    .fill(DesignTokens.Colors.surfaceContainerLow.opacity(0.6))
+                    .fill(DesignTokens.Colors.surfaceContainerHigh)
             )
         }
-        .padding(DesignTokens.Spacing.md)
-        .liquidCard(strokeColor: DesignTokens.Colors.glassStrokeLight)
+        .padding(.vertical, 4)
     }
 
-    private func amountChip(delta: Double, label: String) -> some View {
-        Button {
-            amount += delta
-        } label: {
-            Text(label)
-                .font(DesignTokens.Typography.labelNumericSm)
+    // MARK: - Terminal Selector Pill
+    private var terminalSelectorPill: some View {
+        HStack(spacing: 8) {
+            Circle()
+                .fill(DesignTokens.Colors.primaryContainer)
+                .frame(width: 8, height: 8)
+
+            Text(recipientId == "bob" ? "Chai Point Terminal" : "Metro POS Terminal")
+                .font(DesignTokens.Typography.telemetryMd)
                 .foregroundColor(DesignTokens.Colors.onSurface)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 7)
+                .lineLimit(1)
+
+            Spacer()
+
+            Text("NEARBY")
+                .font(DesignTokens.Typography.labelCaps)
+                .foregroundColor(DesignTokens.Colors.primaryContainer)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 3)
                 .background(
                     Capsule()
-                        .fill(DesignTokens.Colors.surfaceContainerHighest.opacity(0.6))
-                        .overlay(Capsule().stroke(DesignTokens.Colors.glassStrokeDim, lineWidth: 1))
+                        .fill(DesignTokens.Colors.surfaceContainer)
+                )
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .background(
+            Capsule()
+                .fill(DesignTokens.Colors.surfaceContainerLow)
+        )
+    }
+
+    // MARK: - Amount Readout Hero
+    private var amountHeroReadout: some View {
+        VStack(spacing: 12) {
+            HStack(alignment: .firstTextBaseline, spacing: 2) {
+                Text("₹")
+                    .font(DesignTokens.Typography.displayHeroMobile)
+                    .fontWeight(.heavy)
+                    .foregroundColor(DesignTokens.Colors.primaryContainer)
+
+                Text(amountInput.isEmpty ? "0" : amountInput)
+                    .font(DesignTokens.Typography.displayHeroMobile)
+                    .fontWeight(.heavy)
+                    .foregroundColor(DesignTokens.Colors.onSurface)
+                    .tracking(-1.0)
+            }
+
+            // Quick increment chips
+            HStack(spacing: 8) {
+                quickChip(delta: 50, label: "+₹50")
+                quickChip(delta: 100, label: "+₹100")
+                quickChip(delta: 500, label: "+₹500")
+            }
+        }
+        .padding(.vertical, 10)
+    }
+
+    private func quickChip(delta: Double, label: String) -> some View {
+        Button {
+            amount = max(0, amount + delta)
+            amountInput = String(format: "%.0f", amount)
+        } label: {
+            Text(label)
+                .font(DesignTokens.Typography.telemetrySm)
+                .fontWeight(.medium)
+                .foregroundColor(DesignTokens.Colors.onSurface)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+                .background(
+                    Capsule()
+                        .fill(DesignTokens.Colors.surfaceContainer)
                 )
         }
         .buttonStyle(.plain)
+    }
+
+    // MARK: - 12-Key Numeric Keypad
+    private var numericKeypad: some View {
+        VStack(spacing: 10) {
+            HStack(spacing: 10) {
+                keypadButton("1")
+                keypadButton("2")
+                keypadButton("3")
+            }
+            HStack(spacing: 10) {
+                keypadButton("4")
+                keypadButton("5")
+                keypadButton("6")
+            }
+            HStack(spacing: 10) {
+                keypadButton("7")
+                keypadButton("8")
+                keypadButton("9")
+            }
+            HStack(spacing: 10) {
+                keypadButton(".")
+                keypadButton("0")
+                backspaceButton
+            }
+        }
+    }
+
+    private func keypadButton(_ val: String) -> some View {
+        Button {
+            pressKey(val)
+        } label: {
+            Text(val)
+                .font(DesignTokens.Typography.telemetryLg)
+                .fontWeight(.bold)
+                .foregroundColor(DesignTokens.Colors.onSurface)
+                .frame(maxWidth: .infinity)
+                .frame(height: 56)
+                .background(
+                    RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.full)
+                        .fill(val == "." ? DesignTokens.Colors.surfaceContainerLow : DesignTokens.Colors.surfaceContainer)
+                )
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var backspaceButton: some View {
+        Button {
+            backspaceKey()
+        } label: {
+            Image(systemName: "delete.left.fill")
+                .font(.system(size: 20))
+                .foregroundColor(DesignTokens.Colors.onSurface)
+                .frame(maxWidth: .infinity)
+                .frame(height: 56)
+                .background(
+                    RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.full)
+                        .fill(DesignTokens.Colors.surfaceContainerLow)
+                )
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func pressKey(_ key: String) {
+        if amountInput == "0" { amountInput = "" }
+        if key == "." {
+            if !amountInput.contains(".") {
+                amountInput += "."
+            }
+        } else {
+            if amountInput.count < 6 {
+                amountInput += key
+            }
+        }
+        if let val = Double(amountInput) {
+            amount = val
+        }
+    }
+
+    private func backspaceKey() {
+        if !amountInput.isEmpty {
+            amountInput.removeLast()
+        }
+        if amountInput.isEmpty {
+            amountInput = "0"
+        }
+        amount = Double(amountInput) ?? 0.0
+    }
+
+    // MARK: - Pay CTA Button
+    private var payCTAButton: some View {
+        Button {
+            Task {
+                await createOfflinePacketAction()
+            }
+        } label: {
+            HStack(spacing: 8) {
+                switch offlineCreationState {
+                case .creating:
+                    ProgressView()
+                        .tint(DesignTokens.Colors.onPrimary)
+                    Text("Signing with SE Key...")
+                        .font(DesignTokens.Typography.headlineSm)
+                        .fontWeight(.bold)
+
+                case .created:
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 20, weight: .bold))
+                    Text("Beamed to Terminal")
+                        .font(DesignTokens.Typography.headlineSm)
+                        .fontWeight(.bold)
+
+                case .failed:
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.system(size: 20, weight: .bold))
+                    Text("Retry Payment")
+                        .font(DesignTokens.Typography.headlineSm)
+                        .fontWeight(.bold)
+
+                case .idle:
+                    Text("Pay ₹\(amountInput.isEmpty ? "0" : amountInput)")
+                        .font(DesignTokens.Typography.headlineSm)
+                        .fontWeight(.bold)
+                }
+            }
+            .foregroundColor(DesignTokens.Colors.onPrimary)
+            .frame(maxWidth: .infinity)
+            .frame(height: 56)
+            .background(
+                Capsule()
+                    .fill(DesignTokens.Colors.primaryContainer)
+                    .shadow(color: DesignTokens.Colors.primaryContainer.opacity(0.40), radius: 24, x: 0, y: 4)
+            )
+        }
+        .disabled(offlineCreationState == .creating || amount <= 0)
+        .buttonStyle(.plain)
+        .padding(.top, 4)
+    }
+
+    // MARK: - Allowance Payment Option (Phase 2B)
+    private func allowanceOptionPill(voucher: OfflineAllowanceVoucher) -> some View {
+        Toggle(isOn: $useAllowance) {
+            HStack(spacing: 8) {
+                Image(systemName: "banknote.fill")
+                    .foregroundColor(DesignTokens.Colors.primaryContainer)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Use Offline Allowance")
+                        .font(DesignTokens.Typography.bodySm)
+                        .fontWeight(.semibold)
+                        .foregroundColor(DesignTokens.Colors.onSurface)
+                    Text("Available: ₹\(voucher.remainingAmount) · Escrow-Backed")
+                        .font(DesignTokens.Typography.caption)
+                        .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
+                }
+            }
+        }
+        .toggleStyle(SwitchToggleStyle(tint: DesignTokens.Colors.primaryContainer))
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .background(
+            RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.base)
+                .fill(DesignTokens.Colors.surfaceContainerLow)
+        )
     }
 
     // MARK: - Security Notice Banner

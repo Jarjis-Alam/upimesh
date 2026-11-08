@@ -62,14 +62,20 @@ public struct MeshWalletsView: View {
                 // MARK: - Live Network / Status Banner
                 networkStatusBanner
 
-                // MARK: - Mesh Vault Hero Card
-                vaultHeroCard
+                // MARK: - Hero Reserve Card (Obsidian Kinetic)
+                heroReserveCard
 
-                // MARK: - Device Cryptographic Identity & Bridge Registration Card
-                deviceKeyRegistrationCard
+                // MARK: - Simplified 3-Column Metrics Row (Risk, Autonomy, Peers)
+                metricsRow
+
+                // MARK: - Linked Accounts & Cache
+                accountsSection
 
                 // MARK: - Predictive Provisioning Research Advisory Card
                 PredictiveAdvisoryCardView()
+
+                // MARK: - Device Cryptographic Identity & Bridge Registration Card
+                deviceKeyRegistrationCard
 
                 // MARK: - Offline Allowance Management Card (Phase 2B)
                 offlineAllowanceCard
@@ -166,42 +172,41 @@ public struct MeshWalletsView: View {
     // MARK: - Header
     private var headerView: some View {
         HStack(alignment: .center) {
-            VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 8) {
-                    Text("Mesh Wallets")
-                        .font(DesignTokens.Typography.headlineSm)
-                        .foregroundColor(DesignTokens.Colors.onSurface)
-
-                    HStack(spacing: 5) {
-                        Circle()
-                            .fill(DesignTokens.Colors.meshGold)
-                            .frame(width: 6, height: 6)
-                        Text("MESH ACTIVE")
-                            .font(DesignTokens.Typography.labelCaps)
-                            .foregroundColor(DesignTokens.Colors.meshGold)
-                    }
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 3)
-                    .background(Capsule().fill(DesignTokens.Colors.surfaceContainerHigh.opacity(0.7)))
-                }
-
-                Text("Offline P2P Protocol")
-                    .font(DesignTokens.Typography.caption)
+            HStack(spacing: 6) {
+                Circle()
+                    .fill(DesignTokens.Colors.primaryContainer)
+                    .frame(width: 8, height: 8)
+                Text(viewModel.status == .liveConnected ? "ONLINE" : "OFFLINE MESH")
+                    .font(DesignTokens.Typography.labelCaps)
                     .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
+                    .tracking(1.0)
             }
 
             Spacer()
 
-            Circle()
-                .fill(DesignTokens.Colors.meshGold)
-                .frame(width: 36, height: 36)
-                .overlay(
-                    Image(systemName: "person.fill")
-                        .foregroundColor(DesignTokens.Colors.onMeshGold)
-                        .font(.system(size: 17, weight: .bold))
-                )
+            Text("Wallets")
+                .font(DesignTokens.Typography.headlineSm)
+                .fontWeight(.bold)
+                .foregroundColor(DesignTokens.Colors.onSurface)
+
+            Spacer()
+
+            Button {
+                inputHostUrl = APIConfiguration.shared.baseURL.absoluteString
+                showingHostConfigAlert = true
+            } label: {
+                Circle()
+                    .fill(DesignTokens.Colors.surfaceContainer)
+                    .frame(width: 38, height: 38)
+                    .overlay(
+                        Image(systemName: "person.fill")
+                            .font(.system(size: 16))
+                            .foregroundColor(DesignTokens.Colors.onSurface)
+                    )
+            }
+            .buttonStyle(.plain)
         }
-        .padding(.vertical, 8)
+        .padding(.vertical, 6)
     }
 
     // MARK: - Live Network / Status Banner
@@ -327,184 +332,228 @@ public struct MeshWalletsView: View {
         }
     }
 
-    // MARK: - Vault Hero Card
-    private var vaultHeroCard: some View {
-        VStack(spacing: DesignTokens.Spacing.sm) {
-            HStack {
-                HStack(spacing: 6) {
-                    Image(systemName: "wallet.bifold.fill")
-                        .foregroundColor(DesignTokens.Colors.meshGold)
-                        .font(.system(size: 18))
+    // MARK: - Hero Reserve Card (Obsidian Kinetic)
+    private var heroReserveCard: some View {
+        let latestPred = MeshPeerTransportService.shared.latestPrediction
+        let reserveVal = activeAllowance?.unspentAmount ?? Double(latestPred?.roundedRecommendedReserve ?? 52)
+        let deltaVal = latestPred?.roundedDeltaReserve ?? -234
 
-                    Text("Mesh Vault")
-                        .font(DesignTokens.Typography.headlineMd)
-                        .fontWeight(.semibold)
-                        .foregroundColor(DesignTokens.Colors.onSurface)
-                }
+        return ZStack(alignment: .topTrailing) {
+            // Subtle kinetic amber radial glow in top right
+            Circle()
+                .fill(DesignTokens.Colors.primaryContainer.opacity(0.10))
+                .frame(width: 170, height: 170)
+                .blur(radius: 35)
+                .offset(x: 40, y: -40)
 
-                Spacer()
-
-                HStack(spacing: 5) {
-                    Circle()
-                        .fill(DesignTokens.Colors.meshGold)
-                        .frame(width: 6, height: 6)
-                    Text(viewModel.status == .liveConnected ? "3 LIVE ACCOUNTS" : "3 PEERS SYNCED")
-                        .font(DesignTokens.Typography.labelNumericSm)
-                        .foregroundColor(DesignTokens.Colors.meshGold)
-                }
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
-                .background(Capsule().fill(DesignTokens.Colors.surfaceContainerHigh.opacity(0.8)))
-            }
-
-            // Aggregate Net Vault Hero
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 6) {
-                    Text("TOTAL MESH NET VAULT")
+            VStack(alignment: .leading, spacing: 14) {
+                HStack {
+                    Text("OFFLINE RESERVE")
                         .font(DesignTokens.Typography.labelCaps)
                         .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
                         .tracking(1.2)
 
-                    if viewModel.status == .liveConnected {
-                        HStack(spacing: 4) {
-                            Circle()
-                                .fill(DesignTokens.Colors.meshGold)
-                                .frame(width: 5, height: 5)
-                            Text("LIVE")
-                                .font(.system(size: 9, weight: .bold))
-                                .foregroundColor(DesignTokens.Colors.meshGold)
-                        }
-                        .padding(.horizontal, 5)
-                        .padding(.vertical, 2)
-                        .background(Capsule().fill(DesignTokens.Colors.meshGold.opacity(0.15)))
-                    }
+                    Spacer()
+
+                    Image(systemName: "wave.3.forward.circle.fill")
+                        .font(.system(size: 20))
+                        .foregroundColor(DesignTokens.Colors.primaryContainer)
                 }
 
-                HStack(alignment: .firstTextBaseline, spacing: 2) {
-                    let totalVal = viewModel.totalLiveBalance ?? 8000.0
-                    let parts = CurrencyFormatter.formatParts(amount: totalVal)
-                    Text(parts.whole)
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text("₹\(Int(reserveVal))")
                         .font(DesignTokens.Typography.displayHeroMobile)
-                        .fontWeight(.bold)
+                        .fontWeight(.heavy)
                         .foregroundColor(DesignTokens.Colors.onSurface)
+                        .tracking(-1.0)
 
-                    Text(parts.fraction)
-                        .font(DesignTokens.Typography.headlineSm)
-                        .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
+                    Spacer()
+
+                    HStack(spacing: 3) {
+                        Image(systemName: deltaVal >= 0 ? "arrow.up" : "arrow.down")
+                            .font(.system(size: 11, weight: .bold))
+                        Text("\(deltaVal >= 0 ? "+" : "")₹\(deltaVal)")
+                            .font(DesignTokens.Typography.telemetrySm)
+                            .fontWeight(.semibold)
+                    }
+                    .foregroundColor(DesignTokens.Colors.primaryContainer)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 4)
+                    .background(
+                        Capsule()
+                            .fill(DesignTokens.Colors.primaryContainer.opacity(0.15))
+                    )
                 }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.top, 4)
 
-            // Sub-Stats Bar
-            HStack(spacing: 8) {
-                HStack(spacing: 8) {
-                    Circle()
-                        .fill(DesignTokens.Colors.primary.opacity(0.15))
-                        .frame(width: 28, height: 28)
-                        .overlay(Image(systemName: "lock.shield.fill").font(.system(size: 13)).foregroundColor(DesignTokens.Colors.primary))
+                HStack(spacing: 12) {
+                    Button {
+                        showingAddFundsSheet = true
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "plus.circle.fill")
+                                .font(.system(size: 18))
+                            Text("Allocate")
+                                .font(DesignTokens.Typography.bodyLg)
+                                .fontWeight(.bold)
+                        }
+                        .foregroundColor(DesignTokens.Colors.onPrimary)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 48)
+                        .background(
+                            Capsule()
+                                .fill(DesignTokens.Colors.primaryContainer)
+                                .shadow(color: DesignTokens.Colors.primaryContainer.opacity(0.35), radius: 14, x: 0, y: 2)
+                        )
+                    }
+                    .buttonStyle(.plain)
 
-                    VStack(alignment: .leading, spacing: 1) {
-                        if viewModel.status == .liveConnected {
-                            Text(CurrencyFormatter.format(amount: viewModel.totalLiveBalance ?? 8000.0))
-                                .font(DesignTokens.Typography.labelNumericSm)
-                                .fontWeight(.medium)
+                    Button {
+                        Task {
+                            await viewModel.loadLiveAccounts()
+                            reloadActiveAllowance()
+                        }
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "arrow.triangle.2.circlepath")
+                                .font(.system(size: 16, weight: .bold))
+                                .foregroundColor(DesignTokens.Colors.primaryContainer)
+                            Text("Sync")
+                                .font(DesignTokens.Typography.bodyMd)
+                                .fontWeight(.semibold)
                                 .foregroundColor(DesignTokens.Colors.onSurface)
-                            Text("Settled on Ledger")
-                                .font(.system(size: 11))
-                                .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
-                        } else {
-                            Text("₹7,800.00")
-                                .font(DesignTokens.Typography.labelNumericSm)
-                                .fontWeight(.medium)
-                                .foregroundColor(DesignTokens.Colors.onSurface)
-                            Text("Local Available (Preview)")
-                                .font(.system(size: 11))
-                                .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
                         }
+                        .padding(.horizontal, 22)
+                        .frame(height: 48)
+                        .background(
+                            Capsule()
+                                .fill(DesignTokens.Colors.surfaceContainerHigh)
+                        )
                     }
+                    .buttonStyle(.plain)
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(8)
-                .background(RoundedRectangle(cornerRadius: 12).fill(DesignTokens.Colors.surfaceContainerLowest.opacity(0.5)))
-
-                HStack(spacing: 8) {
-                    Circle()
-                        .fill(DesignTokens.Colors.secondary.opacity(0.15))
-                        .frame(width: 28, height: 28)
-                        .overlay(Image(systemName: "arrow.triangle.swap").font(.system(size: 13)).foregroundColor(DesignTokens.Colors.secondary))
-
-                    VStack(alignment: .leading, spacing: 1) {
-                        if viewModel.status == .liveConnected {
-                            Text("v0 Current")
-                                .font(DesignTokens.Typography.labelNumericSm)
-                                .fontWeight(.medium)
-                                .foregroundColor(DesignTokens.Colors.secondary)
-                            Text("3 Accounts Active")
-                                .font(.system(size: 11))
-                                .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
-                        } else {
-                            Text("₹200.00")
-                                .font(DesignTokens.Typography.labelNumericSm)
-                                .fontWeight(.medium)
-                                .foregroundColor(DesignTokens.Colors.secondary)
-                            Text("In Mesh Transit (Preview)")
-                                .font(.system(size: 11))
-                                .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
-                        }
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(8)
-                .background(RoundedRectangle(cornerRadius: 12).fill(DesignTokens.Colors.surfaceContainerLowest.opacity(0.5)))
+                .padding(.top, 4)
             }
-            .padding(.top, 4)
-
-            // Top Action Buttons
-            HStack(spacing: 8) {
-                Button {
-                    triggerResetAll()
-                } label: {
-                    HStack(spacing: 6) {
-                        if isResetting {
-                            ProgressView().tint(DesignTokens.Colors.onSurface)
-                            Text("Resetting...")
-                        } else if resetSuccess {
-                            Image(systemName: "checkmark")
-                            Text("Synced!")
-                        } else {
-                            Image(systemName: "arrow.counterclockwise")
-                            Text("Reset All")
-                        }
-                    }
-                    .font(DesignTokens.Typography.labelCaps)
-                    .foregroundColor(DesignTokens.Colors.onSurface)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 44)
-                    .background(Capsule().fill(DesignTokens.Colors.surfaceContainerHighest.opacity(0.7)))
-                }
-                .buttonStyle(.plain)
-
-                Button {
-                    showingNewWalletAlert = true
-                } label: {
-                    HStack(spacing: 6) {
-                        Image(systemName: "plus.rectangle.fill.on.rectangle.fill")
-                        Text("+ New Demo Wallet")
-                    }
-                    .font(DesignTokens.Typography.labelCaps)
-                    .fontWeight(.bold)
-                    .foregroundColor(DesignTokens.Colors.onMeshGold)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 44)
-                    .background(Capsule().fill(DesignTokens.Colors.meshGold))
-                }
-                .buttonStyle(.plain)
-            }
-            .padding(.top, 4)
+            .padding(DesignTokens.Spacing.lg)
         }
-        .padding(DesignTokens.Spacing.md)
-        .liquidCard(strokeColor: DesignTokens.Colors.glassStrokeLight)
+        .background(
+            RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.card)
+                .fill(DesignTokens.Colors.surfaceContainerLowest)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.card)
+                .stroke(DesignTokens.Colors.glassStrokeLight, lineWidth: 1)
+        )
+        .shadow(color: DesignTokens.Colors.primaryContainer.opacity(0.14), radius: 24, x: 0, y: 4)
+    }
+
+    // MARK: - 3-Column Metrics Row
+    private var metricsRow: some View {
+        let latestPred = MeshPeerTransportService.shared.latestPrediction
+        let riskPercent = Int((latestPred?.robustOutageProbability ?? 0.10) * 100)
+        let autonomyHours = String(format: "%.1f", latestPred?.predictedDurationHours ?? 3.5)
+        let peerCount = max(MeshPeerTransportService.shared.connectedPeers.count, 4)
+
+        return HStack(spacing: 8) {
+            metricColumn(title: "RISK", value: "\(riskPercent)%", isAccent: false)
+            metricColumn(title: "AUTONOMY", value: "\(autonomyHours)h", isAccent: false)
+            metricColumn(title: "PEERS", value: "\(peerCount)", isAccent: true)
+        }
+        .padding(8)
+        .background(
+            RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.base)
+                .fill(DesignTokens.Colors.surfaceContainerLow)
+        )
+    }
+
+    private func metricColumn(title: String, value: String, isAccent: Bool) -> some View {
+        VStack(spacing: 4) {
+            Text(title)
+                .font(DesignTokens.Typography.labelCaps)
+                .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
+            Text(value)
+                .font(DesignTokens.Typography.headlineSm)
+                .fontWeight(.bold)
+                .foregroundColor(isAccent ? DesignTokens.Colors.primaryContainer : DesignTokens.Colors.onSurface)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 10)
+        .background(
+            RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.sm)
+                .fill(DesignTokens.Colors.surfaceContainer.opacity(0.6))
+        )
+    }
+
+    // MARK: - Linked Accounts & Cache
+    private var accountsSection: some View {
+        let bankBalance = viewModel.totalLiveBalance ?? 14850.0
+        let latestPred = MeshPeerTransportService.shared.latestPrediction
+        let cacheBalance = activeAllowance?.unspentAmount ?? Double(latestPred?.roundedRecommendedReserve ?? 52)
+
+        return VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
+            Text("ACCOUNTS")
+                .font(DesignTokens.Typography.labelCaps)
+                .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
+                .tracking(1.2)
+                .padding(.horizontal, 4)
+
+            // HDFC Bank Card
+            HStack(spacing: 12) {
+                Circle()
+                    .fill(DesignTokens.Colors.surfaceContainerHighest)
+                    .frame(width: 40, height: 40)
+                    .overlay(
+                        Image(systemName: "building.columns.fill")
+                            .font(.system(size: 18))
+                            .foregroundColor(DesignTokens.Colors.primaryContainer)
+                    )
+
+                Text("HDFC Bank")
+                    .font(DesignTokens.Typography.bodyMd)
+                    .fontWeight(.semibold)
+                    .foregroundColor(DesignTokens.Colors.onSurface)
+
+                Spacer()
+
+                Text(CurrencyFormatter.formatWhole(amount: bankBalance))
+                    .font(DesignTokens.Typography.headlineSm)
+                    .fontWeight(.bold)
+                    .foregroundColor(DesignTokens.Colors.onSurface)
+            }
+            .padding(DesignTokens.Spacing.lg)
+            .background(
+                RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.base)
+                    .fill(DesignTokens.Colors.surfaceContainer)
+            )
+
+            // Offline Cache Card
+            HStack(spacing: 12) {
+                Circle()
+                    .fill(DesignTokens.Colors.primaryContainer.opacity(0.15))
+                    .frame(width: 40, height: 40)
+                    .overlay(
+                        Image(systemName: "bolt.fill")
+                            .font(.system(size: 18))
+                            .foregroundColor(DesignTokens.Colors.primaryContainer)
+                    )
+
+                Text("Offline Cache")
+                    .font(DesignTokens.Typography.bodyMd)
+                    .fontWeight(.semibold)
+                    .foregroundColor(DesignTokens.Colors.onSurface)
+
+                Spacer()
+
+                Text(CurrencyFormatter.formatWhole(amount: cacheBalance))
+                    .font(DesignTokens.Typography.headlineSm)
+                    .fontWeight(.bold)
+                    .foregroundColor(DesignTokens.Colors.primaryContainer)
+            }
+            .padding(DesignTokens.Spacing.lg)
+            .background(
+                RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.base)
+                    .fill(DesignTokens.Colors.surfaceContainer)
+            )
+        }
     }
 
     // MARK: - Stacked Wallet Card

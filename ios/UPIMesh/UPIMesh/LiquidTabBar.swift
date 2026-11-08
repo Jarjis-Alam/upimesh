@@ -1,34 +1,35 @@
 import SwiftUI
 
-/// Floating Liquid Glass Pill Tab Bar
+/// Floating Liquid Glass Pill Tab Bar ("Obsidian Kinetic")
 ///
-/// Faithfully reproduces the detached floating dock architecture from `ios_ui/liquid_mesh_upi/DESIGN.md`:
-/// - 64-68pt height capsule detached 16pt above safe area bottom.
+/// Faithfully reproduces the detached floating dock architecture from `ios 2/obsidian_kinetic/` and screen prototypes:
+/// - Order: Wallets, Pay, Radar, Ledger.
+/// - 64pt height capsule detached 16pt above safe area bottom.
 /// - Frosted obsidian container with specular rim highlight.
-/// - Active animated pill highlight with chromatic glow.
+/// - Active kinetic amber pill highlight with intense glow.
 public enum MeshTab: String, CaseIterable, Identifiable {
-    case radar = "radar"
-    case pay = "pay"
-    case ledger = "ledger"
     case wallets = "wallets"
+    case pay = "pay"
+    case radar = "radar"
+    case ledger = "ledger"
 
     public var id: String { rawValue }
 
     public var title: String {
         switch self {
-        case .radar: return "Radar"
-        case .pay: return "Pay"
-        case .ledger: return "Ledger"
         case .wallets: return "Wallets"
+        case .pay: return "Pay"
+        case .radar: return "Radar"
+        case .ledger: return "Ledger"
         }
     }
 
     public var iconName: String {
         switch self {
-        case .radar: return "dot.radiowaves.left.and.right"
-        case .pay: return "indianrupeesign.circle.fill"
+        case .wallets: return "creditcard.fill"
+        case .pay: return "bolt.fill"
+        case .radar: return "antenna.radiowaves.left.and.right"
         case .ledger: return "doc.text.fill"
-        case .wallets: return "wallet.bifold.fill"
         }
     }
 }
@@ -57,21 +58,35 @@ public struct LiquidTabBar: View {
 
                         Text(tab.title)
                             .font(DesignTokens.Typography.labelCaps)
+                            .fontWeight(isSelected ? .bold : .medium)
                     }
                     .frame(maxWidth: .infinity)
-                    .frame(height: 50)
-                    .foregroundColor(isSelected ? DesignTokens.Colors.meshGold : DesignTokens.Colors.onSurfaceVariant)
+                    .frame(height: 48)
+                    .foregroundColor(isSelected ? DesignTokens.Colors.onMeshGold : DesignTokens.Colors.onSurfaceVariant)
                     .background(
                         ZStack {
                             if isSelected {
                                 Capsule()
-                                    .fill(DesignTokens.Colors.meshGold.opacity(0.14))
+                                    .fill(
+                                        LinearGradient(
+                                            colors: [Color(hex: "FDE047"), Color(hex: "FACC15"), Color(hex: "EAB308")],
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        )
+                                    )
                                     .matchedGeometryEffect(id: "activeTabPill", in: tabAnimation)
                                     .overlay(
                                         Capsule()
-                                            .stroke(DesignTokens.Colors.meshGold.opacity(0.35), lineWidth: 1)
+                                            .stroke(
+                                                LinearGradient(
+                                                    colors: [Color.white.opacity(0.6), Color.white.opacity(0.15)],
+                                                    startPoint: .top,
+                                                    endPoint: .bottom
+                                                ),
+                                                lineWidth: 1
+                                            )
                                     )
-                                    .shadow(color: DesignTokens.Colors.meshGold.opacity(0.3), radius: 10, x: 0, y: 2)
+                                    .shadow(color: DesignTokens.Colors.primaryContainer.opacity(0.65), radius: 14, x: 0, y: 2)
                             }
                         }
                     )
@@ -85,7 +100,7 @@ public struct LiquidTabBar: View {
         .frame(height: 64)
         .background(
             Capsule()
-                .fill(DesignTokens.Colors.surfaceContainerLowest.opacity(0.85))
+                .fill(DesignTokens.Colors.surfaceContainerHigh.opacity(0.65))
                 .background(
                     Capsule()
                         .fill(.ultraThinMaterial)
@@ -95,14 +110,15 @@ public struct LiquidTabBar: View {
             Capsule()
                 .stroke(
                     LinearGradient(
-                        colors: [DesignTokens.Colors.glassStrokeLight, DesignTokens.Colors.glassStrokeDim],
+                        colors: [Color.white.opacity(0.35), Color.white.opacity(0.08)],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     ),
                     lineWidth: 1
                 )
         )
-        .shadow(color: Color.black.opacity(0.55), radius: 24, x: 0, y: 12)
+        .shadow(color: Color.black.opacity(0.75), radius: 24, x: 0, y: 12)
+        .shadow(color: DesignTokens.Colors.primaryContainer.opacity(0.10), radius: 20, x: 0, y: 0)
         .padding(.horizontal, DesignTokens.Spacing.margin)
         .padding(.bottom, 6)
     }

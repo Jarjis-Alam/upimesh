@@ -24,6 +24,11 @@ public enum CurrencyFormatter {
         return "₹\(formatted)"
     }
 
+    /// Formats a monetary amount into integer Indian Rupee format without decimals, e.g. "₹14,850".
+    public static func formatWhole(amount: Double) -> String {
+        return formatParts(amount: amount).whole
+    }
+
     /// Splits an amount into currency whole part ("₹5,000") and 2-decimal fractional part (".00")
     /// preserving Stitch UI dual-typography layout.
     public static func formatParts(amount: Double) -> (whole: String, fraction: String) {

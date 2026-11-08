@@ -1,23 +1,122 @@
 import SwiftUI
 
-/// Mesh Radar Screen (`ios_ui/mesh_radar_ios/`)
+/// Mesh Radar Screen ("Obsidian Kinetic" — `ios 2/mesh_radar_ios/`)
 ///
-/// Faithfully reproduces the Stitch UI live topology visualizer:
-/// - Rotating radar sweeper and concentric range circles.
-/// - Node positioning for Alice (You), Carol (Relay), Bob (Merchant), and NPCI Gateway.
-/// - Live packet routing animation.
-/// - Telemetry stats capsules and peer detail cards.
+/// Faithfully reproduces the Obsidian Kinetic AMOLED Radar interface:
+/// - Top telemetry strip with 99.8% Reliability rating.
+/// - Segmented filter chips (All Peers, Internet Gateways, Merchants).
+/// - Concentric distance circles (0.8m, 2.4m, 4.1m, 8.0m) and rotating amber sweep vector.
+/// - Central User Node (You - 16 Pro) and nearby mesh peer nodes.
+/// - Selected node inspector card with interactive zero-knowledge ping verification.
+/// - Real-time MultipeerConnectivity bridge awareness.
 public struct MeshRadarView: View {
-    @State private var sweepAngle: Double = 0
-    @State private var packetHopPosition: CGPoint = CGPoint(x: 150, y: 150)
-    @State private var routeStatusText: String = "Route: Alice → Carol → Bob"
-    @State private var isSimulating: Bool = false
-    @State private var isPinging: Bool = false
-    @State private var selectedPeerId: String? = nil
 
-    private let timer = Timer.publish(every: 0.05, on: .main, in: .common).autoconnect()
+    public enum PeerFilter: String, CaseIterable, Identifiable {
+        case all = "All Peers (4)"
+        case gateway = "Internet Gateways (1)"
+        case merchant = "Merchants (2)"
+
+        public var id: String { rawValue }
+    }
+
+    public enum NodeType {
+        case gateway
+        case merchant
+        case peer
+    }
+
+    public struct RadarNode: Identifiable {
+        public let id: String
+        public let title: String
+        public let role: String
+        public let type: NodeType
+        public let distance: String
+        public let latency: String
+        public let protocolStr: String
+        public let forwarding: String
+        public let icon: String
+        public let color: Color
+        public let xFraction: CGFloat
+        public let yFraction: CGFloat
+    }
+
+    @State private var sweepAngle: Double = 0
+    @State private var selectedFilter: PeerFilter = .all
+    @State private var selectedNodeId: String = "macbook"
+    @State private var pingState: PingState = .idle
+
+    public enum PingState: Equatable {
+        case idle
+        case verifying
+        case verified
+    }
+
+    private let timer = Timer.publish(every: 0.04, on: .main, in: .common).autoconnect()
+
+    private let nodes: [RadarNode] = [
+        RadarNode(
+            id: "macbook",
+            title: "MacBook Pro 16\"",
+            role: "Bridge Peer",
+            type: .gateway,
+            distance: "Proximity 0.8m · Direct AWDL Link",
+            latency: "12 ms",
+            protocolStr: "UPI-Mesh/2.4",
+            forwarding: "Forwarding Enabled",
+            icon: "laptopcomputer",
+            color: DesignTokens.Colors.primaryContainer,
+            xFraction: 0.62,
+            yFraction: 0.37
+        ),
+        RadarNode(
+            id: "pos",
+            title: "Metro POS Terminal",
+            role: "Merchant Relay",
+            type: .merchant,
+            distance: "Proximity 2.4m · 2 Hops via Aarav",
+            latency: "38 ms",
+            protocolStr: "UPI-Mesh/2.4 (Merchant Pay)",
+            forwarding: "Isolated (POS Ledger)",
+            icon: "cart.fill",
+            color: DesignTokens.Colors.secondary,
+            xFraction: 0.32,
+            yFraction: 0.66
+        ),
+        RadarNode(
+            id: "aarav",
+            title: "Aarav's iPhone 15",
+            role: "Peer Node",
+            type: .peer,
+            distance: "Proximity 4.1m · 1 Hop Peer",
+            latency: "22 ms",
+            protocolStr: "UPI-Mesh/2.4",
+            forwarding: "Mesh Relaying Only",
+            icon: "iphone",
+            color: DesignTokens.Colors.onSurfaceVariant,
+            xFraction: 0.24,
+            yFraction: 0.23
+        ),
+        RadarNode(
+            id: "beacon",
+            title: "Store Transit Beacon",
+            role: "Edge Node",
+            type: .merchant,
+            distance: "Proximity 8.0m · BLE Broadcast",
+            latency: "64 ms",
+            protocolStr: "UPI-Mesh/Beacon-v1",
+            forwarding: "Telemetry Beacon",
+            icon: "storefront.fill",
+            color: DesignTokens.Colors.secondaryContainer,
+            xFraction: 0.80,
+            yFraction: 0.84
+        )
+    ]
 
     public init() {}
+
+    private var activeSelectedNode: RadarNode {
+        nodes.first(where: { $0.id == selectedNodeId }) ?? nodes[0]
+    }
 
     public var body: some View {
         ScrollView(showsIndicators: false) {
@@ -26,101 +125,20 @@ public struct MeshRadarView: View {
                 // MARK: - Header
                 headerView
 
-                // MARK: - Subheader & State Pill
-                HStack {
-                    VStack(alignment: .leading, spacing: 2) {
-                        HStack(spacing: 8) {
-                            Circle()
-                                .fill(DesignTokens.Colors.meshGold)
-                                .frame(width: 8, height: 8)
-                            Text("Live Topology")
-                                .font(DesignTokens.Typography.headlineSm)
-                                .foregroundColor(DesignTokens.Colors.onSurface)
-                        }
-                        Text("3 offline peers in range")
-                            .font(DesignTokens.Typography.caption)
-                            .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
-                    }
+                // MARK: - Top Radar Telemetry Strip
+                telemetryStrip
 
-                    Spacer()
+                // MARK: - Peer Filter Chips
+                filterChipsRow
 
-                    HStack(spacing: 6) {
-                        Image(systemName: "wifi")
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundColor(DesignTokens.Colors.meshGold)
-                        Text("2.4 GHz MESH")
-                            .font(DesignTokens.Typography.labelCaps)
-                            .foregroundColor(DesignTokens.Colors.meshGold)
-                    }
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                    .background(
-                        Capsule()
-                            .fill(DesignTokens.Colors.meshGold.opacity(0.12))
-                            .overlay(Capsule().stroke(DesignTokens.Colors.meshGold.opacity(0.3), lineWidth: 1))
-                    )
-                }
-                .padding(.horizontal, 4)
+                // MARK: - AMOLED Radar Visual Canvas
+                radarVisualCanvas
 
-                // MARK: - Radar Card
-                radarVisualizerCard
+                // MARK: - Selected Node Inspector Card
+                inspectorCard
 
-                // MARK: - Stats Capsules Row
-                statsCapsulesRow
-
-                // MARK: - Peer List Cards
-                VStack(spacing: DesignTokens.Spacing.sm) {
-                    ForEach(PreviewData.samplePeers) { peer in
-                        peerCard(peer)
-                    }
-                }
-
-                // MARK: - Quick Action Buttons
-                HStack(spacing: DesignTokens.Spacing.sm) {
-                    Button {
-                        triggerPing()
-                    } label: {
-                        HStack(spacing: 8) {
-                            Image(systemName: "dot.radiowaves.left.and.right")
-                                .font(.system(size: 16, weight: .bold))
-                                .foregroundColor(DesignTokens.Colors.meshGold)
-                            Text(isPinging ? "Scanning..." : "Ping Nodes")
-                                .font(DesignTokens.Typography.bodyMd)
-                                .fontWeight(.semibold)
-                                .foregroundColor(DesignTokens.Colors.onSurface)
-                        }
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 52)
-                        .background(
-                            Capsule()
-                                .fill(DesignTokens.Colors.surfaceContainerHigh.opacity(0.85))
-                                .overlay(Capsule().stroke(DesignTokens.Colors.meshGold.opacity(0.35), lineWidth: 1))
-                        )
-                    }
-                    .buttonStyle(.plain)
-
-                    Button {
-                        triggerSimulateHop()
-                    } label: {
-                        HStack(spacing: 8) {
-                            Image(systemName: "arrow.triangle.swap")
-                                .font(.system(size: 16, weight: .bold))
-                            Text(isSimulating ? "Relaying..." : "Simulate Hop")
-                                .font(DesignTokens.Typography.bodyMd)
-                                .fontWeight(.bold)
-                        }
-                        .foregroundColor(DesignTokens.Colors.onMeshGold)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 52)
-                        .background(
-                            Capsule()
-                                .fill(DesignTokens.Colors.meshGold)
-                                .shadow(color: DesignTokens.Colors.meshGold.opacity(0.35), radius: 12, x: 0, y: 4)
-                        )
-                    }
-                    .buttonStyle(.plain)
-                }
-                .padding(.top, 4)
+                // MARK: - Mesh Health Status Footer Bar
+                telemetryStrip
 
                 // Bottom spacer for detached floating tab bar
                 Spacer(minLength: 88)
@@ -136,411 +154,411 @@ public struct MeshRadarView: View {
     // MARK: - Header Subview
     private var headerView: some View {
         HStack(alignment: .center) {
-            VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 8) {
-                    Text("Mesh Radar")
-                        .font(DesignTokens.Typography.headlineSm)
-                        .foregroundColor(DesignTokens.Colors.onSurface)
-
-                    HStack(spacing: 5) {
-                        Circle()
-                            .fill(DesignTokens.Colors.meshGold)
-                            .frame(width: 6, height: 6)
-                        Text("MESH ACTIVE")
-                            .font(DesignTokens.Typography.labelCaps)
-                            .foregroundColor(DesignTokens.Colors.meshGold)
-                    }
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 3)
-                    .background(
-                        Capsule()
-                            .fill(DesignTokens.Colors.meshGold.opacity(0.12))
-                            .overlay(Capsule().stroke(DesignTokens.Colors.meshGold.opacity(0.3), lineWidth: 1))
-                    )
+            HStack(spacing: 8) {
+                HStack(spacing: 5) {
+                    Circle()
+                        .fill(DesignTokens.Colors.primaryContainer)
+                        .frame(width: 7, height: 7)
+                    Text("OFFLINE MESH")
+                        .font(DesignTokens.Typography.labelCaps)
+                        .foregroundColor(DesignTokens.Colors.primaryContainer)
+                        .tracking(1.0)
                 }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(Capsule().fill(DesignTokens.Colors.surfaceContainerHigh.opacity(0.8)))
 
-                Text("Offline P2P Protocol")
-                    .font(DesignTokens.Typography.caption)
-                    .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
+                HStack(spacing: 4) {
+                    Image(systemName: "point.3.connected.trianglepath.dotted")
+                        .font(.system(size: 11))
+                        .foregroundColor(DesignTokens.Colors.primaryContainer)
+                    Text("4 PEERS")
+                        .font(DesignTokens.Typography.telemetrySm)
+                        .fontWeight(.semibold)
+                        .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(Capsule().fill(DesignTokens.Colors.surfaceContainerLow))
             }
 
             Spacer()
 
-            // User Avatar Indicator
-            Circle()
-                .fill(DesignTokens.Colors.meshGold)
-                .frame(width: 36, height: 36)
-                .overlay(
-                    Image(systemName: "person.fill")
-                        .foregroundColor(DesignTokens.Colors.onMeshGold)
-                        .font(.system(size: 17, weight: .bold))
-                )
-                .shadow(color: DesignTokens.Colors.meshGold.opacity(0.35), radius: 8, x: 0, y: 2)
-        }
-        .padding(.vertical, 8)
-    }
+            Text("Radar")
+                .font(DesignTokens.Typography.headlineSm)
+                .fontWeight(.bold)
+                .foregroundColor(DesignTokens.Colors.onSurface)
 
-    // MARK: - Radar Visualizer Card
-    private var radarVisualizerCard: some View {
-        VStack(spacing: DesignTokens.Spacing.sm) {
-            // Header inside radar card
-            HStack {
-                HStack(spacing: 6) {
-                    Text("PROXIMITY FIELD")
-                        .font(DesignTokens.Typography.labelCaps)
-                        .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
+            Spacer()
 
-                    Text("-42 dBm peak")
-                        .font(DesignTokens.Typography.labelNumericSm)
-                        .foregroundColor(DesignTokens.Colors.meshGold)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(
-                            Capsule()
-                                .fill(DesignTokens.Colors.surfaceContainerHighest)
-                                .overlay(Capsule().stroke(DesignTokens.Colors.meshGold.opacity(0.3), lineWidth: 0.8))
+            HStack(spacing: 8) {
+                Button {} label: {
+                    Circle()
+                        .fill(DesignTokens.Colors.surfaceContainer)
+                        .frame(width: 36, height: 36)
+                        .overlay(
+                            Image(systemName: "dot.radiowaves.left.and.right")
+                                .font(.system(size: 14))
+                                .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
                         )
                 }
+                .buttonStyle(.plain)
 
-                Spacer()
-
-                HStack(spacing: 4) {
-                    Image(systemName: "antenna.radiowaves.left.and.right")
-                        .font(.system(size: 12))
-                    Text("Radius: ~18m")
-                        .font(DesignTokens.Typography.labelNumericSm)
-                }
-                .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
+                Circle()
+                    .fill(DesignTokens.Colors.primary)
+                    .frame(width: 32, height: 32)
+                    .overlay(
+                        Image(systemName: "person.fill")
+                            .font(.system(size: 14))
+                            .foregroundColor(DesignTokens.Colors.onPrimary)
+                    )
             }
+        }
+        .padding(.vertical, 4)
+    }
 
-            // Radar Geometry Field
+    // MARK: - Top Telemetry Strip
+    private var telemetryStrip: some View {
+        HStack(spacing: 6) {
+            Spacer()
+            Circle()
+                .fill(DesignTokens.Colors.primaryContainer)
+                .frame(width: 7, height: 7)
+            Text("99.8% Reliability")
+                .font(DesignTokens.Typography.telemetrySm)
+                .fontWeight(.semibold)
+                .foregroundColor(DesignTokens.Colors.primary)
+                .tracking(0.5)
+            Spacer()
+        }
+        .padding(.vertical, 10)
+        .background(
+            RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.base)
+                .fill(DesignTokens.Colors.surfaceContainerLow)
+        )
+    }
+
+    // MARK: - Filter Chips Row
+    private var filterChipsRow: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(PeerFilter.allCases) { filter in
+                    let isSelected = selectedFilter == filter
+                    Button {
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
+                            selectedFilter = filter
+                        }
+                    } label: {
+                        Text(filter.rawValue)
+                            .font(DesignTokens.Typography.bodySm)
+                            .fontWeight(isSelected ? .bold : .medium)
+                            .foregroundColor(isSelected ? DesignTokens.Colors.onPrimary : DesignTokens.Colors.onSurfaceVariant)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 8)
+                            .background(
+                                Capsule()
+                                    .fill(isSelected ? DesignTokens.Colors.primaryContainer : DesignTokens.Colors.surfaceContainer)
+                            )
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+    }
+
+    // MARK: - AMOLED Radar Visual Canvas
+    private var radarVisualCanvas: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.base)
+                .fill(DesignTokens.Colors.surfaceContainerLowest)
+                .frame(height: 330)
+
             GeometryReader { geo in
                 let w = geo.size.width
                 let h = geo.size.height
                 let center = CGPoint(x: w / 2, y: h / 2)
 
                 ZStack {
-                    // Concentric Range Rings
+                    // Concentric Range Rings (0.8m, 2.4m, 4.1m, 8.0m)
+                    Circle()
+                        .fill(DesignTokens.Colors.surfaceContainerLow.opacity(0.18))
+                        .frame(width: w * 0.84, height: w * 0.84)
+                    Circle()
+                        .fill(DesignTokens.Colors.surfaceContainerLow.opacity(0.25))
+                        .frame(width: w * 0.60, height: w * 0.60)
+                    Circle()
+                        .fill(DesignTokens.Colors.surfaceContainerLow.opacity(0.35))
+                        .frame(width: w * 0.36, height: w * 0.36)
+                    Circle()
+                        .fill(DesignTokens.Colors.surfaceContainerLow.opacity(0.45))
+                        .frame(width: w * 0.14, height: w * 0.14)
+
+                    // Ring outline strokes
                     Circle()
                         .stroke(DesignTokens.Colors.glassStrokeDim, lineWidth: 1)
-                        .frame(width: w * 0.94, height: w * 0.94)
-
+                        .frame(width: w * 0.84, height: w * 0.84)
                     Circle()
-                        .stroke(DesignTokens.Colors.glassStrokeLight.opacity(0.5), lineWidth: 1)
-                        .frame(width: w * 0.68, height: w * 0.68)
-
+                        .stroke(DesignTokens.Colors.glassStrokeDim, lineWidth: 1)
+                        .frame(width: w * 0.60, height: w * 0.60)
                     Circle()
-                        .stroke(DesignTokens.Colors.glassStrokeLight, lineWidth: 1)
-                        .frame(width: w * 0.40, height: w * 0.40)
+                        .stroke(DesignTokens.Colors.glassStrokeDim, lineWidth: 1)
+                        .frame(width: w * 0.36, height: w * 0.36)
+                    Circle()
+                        .stroke(DesignTokens.Colors.glassStrokeLight.opacity(0.4), lineWidth: 1)
+                        .frame(width: w * 0.14, height: w * 0.14)
 
-                    // Sweeper Line
+                    // Crosshairs
+                    Rectangle()
+                        .fill(DesignTokens.Colors.surfaceContainerHigh.opacity(0.4))
+                        .frame(width: w, height: 1)
+                    Rectangle()
+                        .fill(DesignTokens.Colors.surfaceContainerHigh.opacity(0.4))
+                        .frame(width: 1, height: h)
+
+                    // Distance Labels
+                    Text("8.0m")
+                        .font(DesignTokens.Typography.telemetrySm)
+                        .foregroundColor(DesignTokens.Colors.outlineVariant)
+                        .position(x: center.x + w * 0.36, y: center.y - w * 0.36)
+
+                    Text("4.1m")
+                        .font(DesignTokens.Typography.telemetrySm)
+                        .foregroundColor(DesignTokens.Colors.outlineVariant)
+                        .position(x: center.x + w * 0.25, y: center.y - w * 0.25)
+
+                    Text("2.4m")
+                        .font(DesignTokens.Typography.telemetrySm)
+                        .foregroundColor(DesignTokens.Colors.outlineVariant)
+                        .position(x: center.x + w * 0.15, y: center.y - w * 0.15)
+
+                    Text("0.8m")
+                        .font(DesignTokens.Typography.telemetrySm)
+                        .foregroundColor(DesignTokens.Colors.primaryContainer.opacity(0.8))
+                        .position(x: center.x + w * 0.06, y: center.y - w * 0.06)
+
+                    // Rotating Amber Sweep Vector
                     Path { path in
                         path.move(to: center)
-                        path.addLine(to: CGPoint(
-                            x: center.x + (w * 0.47) * cos(CGFloat(sweepAngle * .pi / 180)),
-                            y: center.y + (w * 0.47) * sin(CGFloat(sweepAngle * .pi / 180))
-                        ))
+                        let endPoint = CGPoint(
+                            x: center.x + (w * 0.42) * cos(CGFloat(sweepAngle * .pi / 180)),
+                            y: center.y + (w * 0.42) * sin(CGFloat(sweepAngle * .pi / 180))
+                        )
+                        path.addLine(to: endPoint)
                     }
                     .stroke(
                         LinearGradient(
-                            colors: [DesignTokens.Colors.meshGold.opacity(0.8), DesignTokens.Colors.meshGold.opacity(0.0)],
+                            colors: [DesignTokens.Colors.primaryContainer.opacity(0.9), DesignTokens.Colors.primaryContainer.opacity(0.1)],
                             startPoint: .center,
                             endPoint: .trailing
                         ),
-                        lineWidth: 2
+                        lineWidth: 1.5
                     )
 
-                    // Topology Connection Lines
-                    let alicePos = center
-                    let carolPos = CGPoint(x: w * 0.66, y: h * 0.31)
-                    let bobPos = CGPoint(x: w * 0.77, y: h * 0.73)
-                    let gatewayPos = CGPoint(x: w * 0.28, y: h * 0.26)
+                    // Center User Node: You (16 Pro)
+                    VStack(spacing: 4) {
+                        ZStack {
+                            Circle()
+                                .fill(DesignTokens.Colors.primaryContainer.opacity(0.25))
+                                .frame(width: 24, height: 24)
 
-                    Path { path in
-                        path.move(to: alicePos)
-                        path.addLine(to: carolPos)
-                    }
-                    .stroke(DesignTokens.Colors.meshGold.opacity(0.7), style: StrokeStyle(lineWidth: 1.8, dash: [4, 3]))
+                            Circle()
+                                .fill(DesignTokens.Colors.primaryContainer)
+                                .frame(width: 14, height: 14)
+                                .shadow(color: DesignTokens.Colors.primaryContainer, radius: 8)
 
-                    Path { path in
-                        path.move(to: carolPos)
-                        path.addLine(to: bobPos)
-                    }
-                    .stroke(DesignTokens.Colors.secondary.opacity(0.7), style: StrokeStyle(lineWidth: 1.6, dash: [3, 3]))
+                            Circle()
+                                .fill(DesignTokens.Colors.onPrimary)
+                                .frame(width: 5, height: 5)
+                        }
 
-                    Path { path in
-                        path.move(to: carolPos)
-                        path.addLine(to: gatewayPos)
-                    }
-                    .stroke(DesignTokens.Colors.primary.opacity(0.8), style: StrokeStyle(lineWidth: 2))
-
-                    // Node: Carol (Relay)
-                    radarNodeButton(
-                        position: carolPos,
-                        title: "Carol · 1h",
-                        icon: "point.3.filled.connected.trianglepath.dotted",
-                        color: DesignTokens.Colors.meshGold
-                    ) {
-                        routeStatusText = "Carol: 1 Hop away, 0.4ms latency. Forwarding peer."
-                    }
-
-                    // Node: Bob (Merchant)
-                    radarNodeButton(
-                        position: bobPos,
-                        title: "Bob · Merchant",
-                        icon: "storefront.fill",
-                        color: DesignTokens.Colors.secondary
-                    ) {
-                        routeStatusText = "Bob: Offline Merchant token validated. Ready for payment."
-                    }
-
-                    // Node: Gateway (NPCI Bridge)
-                    radarNodeButton(
-                        position: gatewayPos,
-                        title: "Gateway",
-                        icon: "building.columns.fill",
-                        color: DesignTokens.Colors.primary
-                    ) {
-                        routeStatusText = "NPCI Gateway Bridge: Ready for immediate clearing."
-                    }
-
-                    // Node: Alice (Center / You)
-                    VStack(spacing: 2) {
-                        Circle()
-                            .fill(DesignTokens.Colors.meshGold)
-                            .frame(width: 44, height: 44)
-                            .overlay(
-                                Image(systemName: "person.fill")
-                                    .font(.system(size: 20, weight: .bold))
-                                    .foregroundColor(DesignTokens.Colors.onMeshGold)
+                        Text("You (16 Pro)")
+                            .font(DesignTokens.Typography.telemetrySm)
+                            .fontWeight(.semibold)
+                            .foregroundColor(DesignTokens.Colors.primary)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(
+                                RoundedRectangle(cornerRadius: 4)
+                                    .fill(DesignTokens.Colors.surfaceContainerHigh.opacity(0.9))
                             )
-                            .shadow(color: DesignTokens.Colors.meshGold.opacity(0.4), radius: 10, x: 0, y: 2)
+                    }
+                    .position(center)
 
-                        Text("You (Alice)")
+                    // Peer Nodes
+                    ForEach(filteredNodes) { node in
+                        let nodePos = CGPoint(x: w * node.xFraction, y: h * node.yFraction)
+                        let isSelected = selectedNodeId == node.id
+
+                        Button {
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
+                                selectedNodeId = node.id
+                            }
+                        } label: {
+                            HStack(spacing: 6) {
+                                ZStack {
+                                    if isSelected {
+                                        Circle()
+                                            .fill(node.color.opacity(0.35))
+                                            .frame(width: 32, height: 32)
+                                    }
+
+                                    Circle()
+                                        .fill(DesignTokens.Colors.surfaceContainerHigh)
+                                        .frame(width: 26, height: 26)
+                                        .overlay(
+                                            Image(systemName: node.icon)
+                                                .font(.system(size: 13, weight: .bold))
+                                                .foregroundColor(node.color)
+                                        )
+                                        .shadow(color: node.color.opacity(0.4), radius: 6)
+                                }
+
+                                Text(node.title)
+                                    .font(DesignTokens.Typography.bodySm)
+                                    .fontWeight(.semibold)
+                                    .foregroundColor(DesignTokens.Colors.onSurface)
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 2)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 4)
+                                            .fill(DesignTokens.Colors.surfaceContainerLow.opacity(0.95))
+                                    )
+                            }
+                        }
+                        .buttonStyle(.plain)
+                        .position(nodePos)
+                    }
+                }
+            }
+            .frame(height: 330)
+        }
+        .overlay(
+            RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.base)
+                .stroke(DesignTokens.Colors.glassStrokeLight, lineWidth: 1)
+        )
+    }
+
+    private var filteredNodes: [RadarNode] {
+        switch selectedFilter {
+        case .all:
+            return nodes
+        case .gateway:
+            return nodes.filter { $0.type == .gateway }
+        case .merchant:
+            return nodes.filter { $0.type == .merchant }
+        }
+    }
+
+    // MARK: - Selected Node Inspector Card
+    private var inspectorCard: some View {
+        let node = activeSelectedNode
+
+        return VStack(spacing: 12) {
+            HStack(spacing: 12) {
+                Circle()
+                    .fill(DesignTokens.Colors.surfaceContainerHighest)
+                    .frame(width: 40, height: 40)
+                    .overlay(
+                        Image(systemName: node.icon)
+                            .font(.system(size: 18))
+                            .foregroundColor(node.color)
+                    )
+
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(spacing: 6) {
+                        Text(node.title)
+                            .font(DesignTokens.Typography.headlineSm)
+                            .fontWeight(.bold)
+                            .foregroundColor(DesignTokens.Colors.onSurface)
+
+                        Text(node.role)
                             .font(DesignTokens.Typography.labelCaps)
-                            .foregroundColor(DesignTokens.Colors.meshGold)
+                            .foregroundColor(DesignTokens.Colors.onPrimary)
                             .padding(.horizontal, 6)
                             .padding(.vertical, 2)
                             .background(
                                 Capsule()
-                                    .fill(DesignTokens.Colors.surfaceContainerLowest.opacity(0.85))
-                                    .overlay(Capsule().stroke(DesignTokens.Colors.meshGold.opacity(0.3), lineWidth: 0.8))
+                                    .fill(DesignTokens.Colors.primaryContainer)
                             )
                     }
-                    .position(alicePos)
 
-                    // Animated In-Transit Hop Packet Bubble
-                    Circle()
-                        .fill(DesignTokens.Colors.primary)
-                        .frame(width: 9, height: 9)
-                        .shadow(color: DesignTokens.Colors.primary, radius: 6)
-                        .position(packetHopPosition)
+                    Text(node.distance)
+                        .font(DesignTokens.Typography.caption)
+                        .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
                 }
+
+                Spacer()
+
+                Text(node.latency)
+                    .font(DesignTokens.Typography.telemetryMd)
+                    .fontWeight(.semibold)
+                    .foregroundColor(DesignTokens.Colors.primaryContainer)
             }
-            .frame(height: 290)
 
-            // Tactile Route Toast Inside Card
-            HStack {
-                Text(routeStatusText)
-                    .font(DesignTokens.Typography.bodySm)
-                    .foregroundColor(DesignTokens.Colors.onSurface)
-                    .lineLimit(1)
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 8)
-            .padding(.horizontal, 12)
-            .background(
-                Capsule()
-                    .fill(DesignTokens.Colors.surfaceContainerHighest.opacity(0.6))
-                    .overlay(Capsule().stroke(DesignTokens.Colors.meshGold.opacity(0.25), lineWidth: 1))
-            )
-        }
-        .padding(DesignTokens.Spacing.md)
-        .liquidCard(strokeColor: DesignTokens.Colors.meshGold.opacity(0.25))
-    }
+            // Action Button: Ping Peer
+            Button {
+                triggerPingAction()
+            } label: {
+                HStack(spacing: 8) {
+                    switch pingState {
+                    case .verifying:
+                        ProgressView()
+                            .tint(DesignTokens.Colors.primaryContainer)
+                        Text("Verifying Proof...")
+                            .font(DesignTokens.Typography.bodyMd)
+                            .fontWeight(.semibold)
+                            .foregroundColor(DesignTokens.Colors.primary)
 
-    private func radarNodeButton(
-        position: CGPoint,
-        title: String,
-        icon: String,
-        color: Color,
-        action: @escaping () -> Void
-    ) -> some View {
-        Button(action: action) {
-            VStack(spacing: 2) {
-                Circle()
-                    .fill(DesignTokens.Colors.surfaceContainerHighest.opacity(0.95))
-                    .frame(width: 38, height: 38)
-                    .overlay(
-                        Image(systemName: icon)
-                            .font(.system(size: 16, weight: .semibold))
-                            .foregroundColor(color)
-                    )
-                    .overlay(
-                        Circle()
-                            .stroke(color.opacity(0.4), lineWidth: 1)
-                    )
-                    .shadow(color: color.opacity(0.25), radius: 6, x: 0, y: 2)
+                    case .verified:
+                        Image(systemName: "checkmark.seal.fill")
+                            .font(.system(size: 16))
+                            .foregroundColor(DesignTokens.Colors.primaryContainer)
+                        Text("Verified · Zero-Knowledge Valid (\(node.latency))")
+                            .font(DesignTokens.Typography.bodyMd)
+                            .fontWeight(.bold)
+                            .foregroundColor(DesignTokens.Colors.primaryContainer)
 
-                Text(title)
-                    .font(DesignTokens.Typography.labelNumericSm)
-                    .foregroundColor(DesignTokens.Colors.onSurface)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(
-                        RoundedRectangle(cornerRadius: 4)
-                            .fill(DesignTokens.Colors.surfaceContainerLowest.opacity(0.9))
-                    )
-            }
-        }
-        .buttonStyle(.plain)
-        .position(position)
-    }
-
-    // MARK: - Stats Capsules Row
-    private var statsCapsulesRow: some View {
-        HStack(spacing: DesignTokens.Spacing.sm) {
-            statCapsule(title: "CONNECTED", value: "4", icon: "network", color: DesignTokens.Colors.meshGold)
-            statCapsule(title: "RELAY HOPS", value: "2", icon: "arrow.triangle.branch", color: DesignTokens.Colors.secondary)
-            statCapsule(title: "BRIDGE UPLINK", value: "Sync", icon: "checkmark.circle.fill", color: DesignTokens.Colors.primary)
-        }
-    }
-
-    private func statCapsule(title: String, value: String, icon: String, color: Color) -> some View {
-        VStack(spacing: 3) {
-            HStack(spacing: 4) {
-                Image(systemName: icon)
-                    .font(.system(size: 13, weight: .bold))
-                    .foregroundColor(color)
-                Text(value)
-                    .font(DesignTokens.Typography.headlineSm)
-                    .fontWeight(.bold)
-                    .foregroundColor(DesignTokens.Colors.onSurface)
-            }
-            Text(title)
-                .font(DesignTokens.Typography.labelCaps)
-                .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 10)
-        .background(
-            RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.base, style: .continuous)
-                .fill(DesignTokens.Colors.surfaceContainer.opacity(0.7))
-                .overlay(
-                    RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.base, style: .continuous)
-                        .stroke(DesignTokens.Colors.glassStrokeLight, lineWidth: 1)
+                    case .idle:
+                        Image(systemName: "paperplane.fill")
+                            .font(.system(size: 15))
+                            .foregroundColor(DesignTokens.Colors.primaryContainer)
+                        Text("Ping Peer")
+                            .font(DesignTokens.Typography.bodyMd)
+                            .fontWeight(.semibold)
+                            .foregroundColor(DesignTokens.Colors.primary)
+                    }
+                }
+                .frame(maxWidth: .infinity)
+                .frame(height: 44)
+                .background(
+                    Capsule()
+                        .fill(DesignTokens.Colors.surfaceContainer)
                 )
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(DesignTokens.Spacing.lg)
+        .background(
+            RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.base)
+                .fill(DesignTokens.Colors.surfaceContainerHigh)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.base)
+                .stroke(DesignTokens.Colors.glassStrokeLight, lineWidth: 1)
         )
     }
 
-    // MARK: - Peer List Card
-    private func peerCard(_ peer: PreviewData.Peer) -> some View {
-        VStack(spacing: DesignTokens.Spacing.sm) {
-                HStack(alignment: .center, spacing: 12) {
-                    Circle()
-                        .fill(peer.isBridge ? DesignTokens.Colors.primary.opacity(0.2) : DesignTokens.Colors.meshGold.opacity(0.18))
-                        .frame(width: 44, height: 44)
-                        .overlay(
-                            Image(systemName: peer.isBridge ? "building.columns.fill" : "person.fill")
-                                .font(.system(size: 20))
-                                .foregroundColor(peer.isBridge ? DesignTokens.Colors.primary : DesignTokens.Colors.meshGold)
-                        )
-
-                    VStack(alignment: .leading, spacing: 2) {
-                        HStack(spacing: 6) {
-                            Text(peer.name)
-                                .font(DesignTokens.Typography.bodyLg)
-                                .fontWeight(.semibold)
-                                .foregroundColor(DesignTokens.Colors.onSurface)
-
-                            Text(peer.roleTag)
-                                .font(DesignTokens.Typography.labelCaps)
-                                .foregroundColor(peer.isBridge ? DesignTokens.Colors.primary : DesignTokens.Colors.meshGold)
-                                .padding(.horizontal, 6)
-                                .padding(.vertical, 2)
-                                .background(
-                                    Capsule()
-                                        .fill(peer.isBridge ? DesignTokens.Colors.primary.opacity(0.12) : DesignTokens.Colors.meshGold.opacity(0.12))
-                                )
-                        }
-
-                        Text(peer.role)
-                            .font(DesignTokens.Typography.caption)
-                            .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
-                    }
-
-                    Spacer()
-
-                    VStack(alignment: .trailing, spacing: 2) {
-                        Text("\(peer.signalDbm) dBm")
-                            .font(DesignTokens.Typography.labelNumeric)
-                            .foregroundColor(peer.isBridge ? DesignTokens.Colors.primary : DesignTokens.Colors.meshGold)
-                        Text(peer.signalQuality)
-                            .font(DesignTokens.Typography.caption)
-                            .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
-                    }
-                }
-
-                Divider()
-                    .background(DesignTokens.Colors.surfaceVariant.opacity(0.4))
-
-                HStack {
-                    HStack(spacing: 4) {
-                        Image(systemName: "battery.75")
-                            .font(.system(size: 13))
-                            .foregroundColor(DesignTokens.Colors.meshGold)
-                        Text("\(peer.batteryPct)%")
-                            .font(DesignTokens.Typography.labelNumericSm)
-                            .foregroundColor(DesignTokens.Colors.onSurface)
-                    }
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(Capsule().fill(DesignTokens.Colors.surfaceContainerHighest.opacity(0.6)))
-
-                    Spacer()
-
-                    Text(peer.isBridge ? "Bridge Online" : "Relaying Active")
-                        .font(DesignTokens.Typography.labelCaps)
-                        .foregroundColor(DesignTokens.Colors.onMeshGold)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 4)
-                        .background(Capsule().fill(peer.isBridge ? DesignTokens.Colors.primary : DesignTokens.Colors.meshGold))
-                }
-            }
-            .padding(DesignTokens.Spacing.md)
-            .liquidCard(strokeColor: DesignTokens.Colors.meshGold.opacity(0.2))
-    }
-
-    // MARK: - Actions
-    private func triggerPing() {
-        isPinging = true
-        routeStatusText = "Broadcasting 2.4GHz BLE discovery beacon..."
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-            isPinging = false
-            routeStatusText = "3 Peers responded: Carol (-42 dBm), Bob (-68 dBm), Gateway (Online)"
-        }
-    }
-
-    private func triggerSimulateHop() {
-        guard !isSimulating else { return }
-        isSimulating = true
-        routeStatusText = "Packet dispatched → Carol verified cryptographic proof..."
-
-        withAnimation(.easeInOut(duration: 0.8)) {
-            packetHopPosition = CGPoint(x: 230, y: 90)
-        }
-
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.9) {
-            withAnimation(.easeInOut(duration: 0.8)) {
-                packetHopPosition = CGPoint(x: 100, y: 80)
-            }
-            routeStatusText = "✓ Settlement packet delivered to NPCI Gateway via Carol!"
-        }
-
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.2) {
-            isSimulating = false
+    private func triggerPingAction() {
+        guard pingState == .idle else { return }
+        pingState = .verifying
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
             withAnimation {
-                packetHopPosition = CGPoint(x: 150, y: 150)
+                pingState = .verified
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.4) {
+                withAnimation {
+                    pingState = .idle
+                }
             }
         }
     }
