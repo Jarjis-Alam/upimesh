@@ -27,6 +27,15 @@ public struct MeshWalletsView: View {
     @State private var allowanceActionMessage: String? = nil
     @State private var isAllowanceSuccess: Bool = true
 
+    // MARK: - Host Configuration State
+    @State private var showingHostConfigAlert: Bool = false
+    @State private var inputHostUrl: String = APIConfiguration.shared.baseURL.absoluteString
+
+    // MARK: - Interactive Action States
+    @State private var showingReceiveSheet: Bool = false
+    @State private var showingAddFundsSheet: Bool = false
+    @State private var showingNewWalletAlert: Bool = false
+
     public enum KeyRegistrationState: Equatable {
         case idle
         case submitting
@@ -58,6 +67,9 @@ public struct MeshWalletsView: View {
 
                 // MARK: - Device Cryptographic Identity & Bridge Registration Card
                 deviceKeyRegistrationCard
+
+                // MARK: - Predictive Provisioning Research Advisory Card
+                PredictiveAdvisoryCardView()
 
                 // MARK: - Offline Allowance Management Card (Phase 2B)
                 offlineAllowanceCard
@@ -116,6 +128,38 @@ public struct MeshWalletsView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .offlineAllowanceUpdated)) { _ in
             reloadActiveAllowance()
+        }
+        .alert("Configure Backend Host", isPresented: $showingHostConfigAlert) {
+            TextField("http://192.168.1.101:8080", text: $inputHostUrl)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled(true)
+            Button("Save & Reconnect") {
+                let trimmed = inputHostUrl.trimmingCharacters(in: .whitespacesAndNewlines)
+                let formatted = trimmed.hasPrefix("http") ? trimmed : "http://\(trimmed)"
+                if let url = URL(string: formatted) {
+                    APIConfiguration.shared.baseURL = url
+                    Task { await viewModel.loadLiveAccounts() }
+                }
+            }
+            Button("Reset Default", role: .destructive) {
+                APIConfiguration.shared.resetToDefault()
+                inputHostUrl = APIConfiguration.shared.baseURL.absoluteString
+                Task { await viewModel.loadLiveAccounts() }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Current Mac LAN IP is 192.168.1.101:8080. Enter the active backend URL.")
+        }
+        .sheet(isPresented: $showingReceiveSheet) {
+            receiveSheetView
+        }
+        .sheet(isPresented: $showingAddFundsSheet) {
+            addFundsSheetView
+        }
+        .alert("Demo Wallet Registry", isPresented: $showingNewWalletAlert) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("In this prototype, accounts (Alice, Bob, Carol) are pre-registered on the bank core ledger. Additional physical devices register automatically when discovered over AWDL.")
         }
     }
 
@@ -198,9 +242,19 @@ public struct MeshWalletsView: View {
 
                 Spacer()
 
-                Text(APIConfiguration.shared.hostDescription)
-                    .font(DesignTokens.Typography.labelNumericSm)
+                Button {
+                    inputHostUrl = APIConfiguration.shared.baseURL.absoluteString
+                    showingHostConfigAlert = true
+                } label: {
+                    HStack(spacing: 3) {
+                        Image(systemName: "network")
+                            .font(.system(size: 10))
+                        Text(APIConfiguration.shared.hostDescription)
+                            .font(DesignTokens.Typography.labelNumericSm)
+                    }
                     .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
+                }
+                .buttonStyle(.plain)
 
                 Button {
                     Task { await viewModel.loadLiveAccounts() }
@@ -234,6 +288,23 @@ public struct MeshWalletsView: View {
                 }
 
                 Spacer()
+
+                Button {
+                    inputHostUrl = APIConfiguration.shared.baseURL.absoluteString
+                    showingHostConfigAlert = true
+                } label: {
+                    HStack(spacing: 3) {
+                        Image(systemName: "pencil")
+                            .font(.system(size: 9))
+                        Text("IP")
+                    }
+                    .font(DesignTokens.Typography.labelCaps)
+                    .foregroundColor(DesignTokens.Colors.meshGold)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 6)
+                    .background(Capsule().fill(DesignTokens.Colors.surfaceContainerHighest))
+                }
+                .buttonStyle(.plain)
 
                 Button {
                     Task { await viewModel.loadLiveAccounts() }
@@ -414,7 +485,9 @@ public struct MeshWalletsView: View {
                 }
                 .buttonStyle(.plain)
 
-                Button {} label: {
+                Button {
+                    showingNewWalletAlert = true
+                } label: {
                     HStack(spacing: 6) {
                         Image(systemName: "plus.rectangle.fill.on.rectangle.fill")
                         Text("+ New Demo Wallet")
@@ -441,192 +514,214 @@ public struct MeshWalletsView: View {
         let isLive = (liveBal != nil)
         let displayBalance = liveBal ?? wallet.balance
 
-        return Button {
-            withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
-                expandedWalletId = isExpanded ? nil : wallet.id
-            }
-        } label: {
-            VStack(alignment: .leading, spacing: 12) {
-                // Top Row: Avatar & Role Tag
-                HStack {
-                    HStack(spacing: 10) {
-                        Circle()
-                            .fill(accentColorForWallet(wallet.id).opacity(0.2))
-                            .frame(width: 44, height: 44)
-                            .overlay(
-                                Image(systemName: iconForWallet(wallet.id))
-                                    .foregroundColor(accentColorForWallet(wallet.id))
-                                    .font(.system(size: 20))
-                            )
-
-                        VStack(alignment: .leading, spacing: 2) {
-                            HStack(spacing: 6) {
-                                Text(wallet.title)
-                                    .font(DesignTokens.Typography.headlineSm)
-                                    .fontWeight(.semibold)
-                                    .foregroundColor(DesignTokens.Colors.onSurface)
-                                Text("(\(wallet.subtitle))")
-                                    .font(DesignTokens.Typography.bodySm)
-                                    .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
-                            }
-                            Text(sublabelForWallet(wallet.id))
-                                .font(DesignTokens.Typography.caption)
-                                .foregroundColor(accentColorForWallet(wallet.id))
-                        }
-                    }
-
-                    Spacer()
-
-                    HStack(spacing: 4) {
-                        if isLive, let ver = viewModel.liveVersion(for: wallet.id) {
-                            Text("v\(ver) ·")
-                                .font(DesignTokens.Typography.labelCaps)
-                                .foregroundColor(accentColorForWallet(wallet.id).opacity(0.8))
-                        }
-                        Text(wallet.roleTag)
-                            .font(DesignTokens.Typography.labelCaps)
-                            .foregroundColor(accentColorForWallet(wallet.id))
-                    }
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 3)
-                    .background(Capsule().fill(accentColorForWallet(wallet.id).opacity(0.12)))
+        return VStack(alignment: .leading, spacing: 12) {
+            // Tappable Header & Balance to Expand/Collapse
+            Button {
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
+                    expandedWalletId = isExpanded ? nil : wallet.id
                 }
+            } label: {
+                VStack(alignment: .leading, spacing: 12) {
+                    // Top Row: Avatar & Role Tag
+                    HStack {
+                        HStack(spacing: 10) {
+                            Circle()
+                                .fill(accentColorForWallet(wallet.id).opacity(0.2))
+                                .frame(width: 44, height: 44)
+                                .overlay(
+                                    Image(systemName: iconForWallet(wallet.id))
+                                        .foregroundColor(accentColorForWallet(wallet.id))
+                                        .font(.system(size: 20))
+                                )
 
-                // Balance Hero
-                HStack(alignment: .bottom) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        HStack(spacing: 6) {
-                            Text(balanceTitleForWallet(wallet.id))
-                                .font(DesignTokens.Typography.caption)
-                                .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
-
-                            if isLive {
-                                HStack(spacing: 4) {
-                                    Circle()
-                                        .fill(DesignTokens.Colors.meshGold)
-                                        .frame(width: 5, height: 5)
-                                    Text("LIVE BACKEND")
-                                        .font(.system(size: 9, weight: .bold))
-                                        .foregroundColor(DesignTokens.Colors.meshGold)
-                                }
-                                .padding(.horizontal, 5)
-                                .padding(.vertical, 2)
-                                .background(Capsule().fill(DesignTokens.Colors.meshGold.opacity(0.15)))
-                            } else {
-                                HStack(spacing: 4) {
-                                    Circle()
-                                        .fill(DesignTokens.Colors.onSurfaceVariant.opacity(0.6))
-                                        .frame(width: 5, height: 5)
-                                    Text("PREVIEW DATA")
-                                        .font(.system(size: 9, weight: .semibold))
+                            VStack(alignment: .leading, spacing: 2) {
+                                HStack(spacing: 6) {
+                                    Text(wallet.title)
+                                        .font(DesignTokens.Typography.headlineSm)
+                                        .fontWeight(.semibold)
+                                        .foregroundColor(DesignTokens.Colors.onSurface)
+                                    Text("(\(wallet.subtitle))")
+                                        .font(DesignTokens.Typography.bodySm)
                                         .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
                                 }
-                                .padding(.horizontal, 5)
-                                .padding(.vertical, 2)
-                                .background(Capsule().fill(DesignTokens.Colors.surfaceContainerHighest.opacity(0.6)))
+                                Text(sublabelForWallet(wallet.id))
+                                    .font(DesignTokens.Typography.caption)
+                                    .foregroundColor(accentColorForWallet(wallet.id))
                             }
                         }
 
-                        HStack(alignment: .firstTextBaseline, spacing: 2) {
-                            let parts = CurrencyFormatter.formatParts(amount: displayBalance)
-                            Text(parts.whole)
-                                .font(DesignTokens.Typography.headlineLg)
-                                .fontWeight(.bold)
-                                .foregroundColor(DesignTokens.Colors.onSurface)
-                            Text(parts.fraction)
-                                .font(DesignTokens.Typography.bodyMd)
-                                .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
+                        Spacer()
+
+                        HStack(spacing: 4) {
+                            if isLive, let ver = viewModel.liveVersion(for: wallet.id) {
+                                Text("v\(ver) ·")
+                                    .font(DesignTokens.Typography.labelCaps)
+                                    .foregroundColor(accentColorForWallet(wallet.id).opacity(0.8))
+                            }
+                            Text(wallet.roleTag)
+                                .font(DesignTokens.Typography.labelCaps)
+                                .foregroundColor(accentColorForWallet(wallet.id))
                         }
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
+                        .background(Capsule().fill(accentColorForWallet(wallet.id).opacity(0.12)))
                     }
 
-                    Spacer()
+                    // Balance Hero
+                    HStack(alignment: .bottom) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            HStack(spacing: 6) {
+                                Text(balanceTitleForWallet(wallet.id))
+                                    .font(DesignTokens.Typography.caption)
+                                    .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
 
-                    if isLive {
-                        if let ver = viewModel.liveVersion(for: wallet.id) {
+                                if isLive {
+                                    HStack(spacing: 4) {
+                                        Circle()
+                                            .fill(DesignTokens.Colors.meshGold)
+                                            .frame(width: 5, height: 5)
+                                        Text("LIVE BACKEND")
+                                            .font(.system(size: 9, weight: .bold))
+                                            .foregroundColor(DesignTokens.Colors.meshGold)
+                                    }
+                                    .padding(.horizontal, 5)
+                                    .padding(.vertical, 2)
+                                    .background(Capsule().fill(DesignTokens.Colors.meshGold.opacity(0.15)))
+                                } else {
+                                    HStack(spacing: 4) {
+                                        Circle()
+                                            .fill(DesignTokens.Colors.onSurfaceVariant.opacity(0.6))
+                                            .frame(width: 5, height: 5)
+                                        Text("PREVIEW DATA")
+                                            .font(.system(size: 9, weight: .semibold))
+                                            .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
+                                    }
+                                    .padding(.horizontal, 5)
+                                    .padding(.vertical, 2)
+                                    .background(Capsule().fill(DesignTokens.Colors.surfaceContainerHighest.opacity(0.6)))
+                                }
+                            }
+
+                            HStack(alignment: .firstTextBaseline, spacing: 2) {
+                                let parts = CurrencyFormatter.formatParts(amount: displayBalance)
+                                Text(parts.whole)
+                                    .font(DesignTokens.Typography.headlineLg)
+                                    .fontWeight(.bold)
+                                    .foregroundColor(DesignTokens.Colors.onSurface)
+                                Text(parts.fraction)
+                                    .font(DesignTokens.Typography.bodyMd)
+                                    .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
+                            }
+                        }
+
+                        Spacer()
+
+                        if isLive {
+                            if let ver = viewModel.liveVersion(for: wallet.id) {
+                                VStack(alignment: .trailing, spacing: 1) {
+                                    HStack(spacing: 4) {
+                                        Circle()
+                                            .fill(accentColorForWallet(wallet.id))
+                                            .frame(width: 5, height: 5)
+                                        Text("v\(ver) Settled")
+                                            .font(DesignTokens.Typography.labelNumericSm)
+                                            .foregroundColor(accentColorForWallet(wallet.id))
+                                    }
+                                    Text("Authoritative State")
+                                        .font(.system(size: 11))
+                                        .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
+                                }
+                            }
+                        } else if let inTransit = wallet.inTransit {
                             VStack(alignment: .trailing, spacing: 1) {
                                 HStack(spacing: 4) {
-                                    Circle()
-                                        .fill(accentColorForWallet(wallet.id))
-                                        .frame(width: 5, height: 5)
-                                    Text("v\(ver) Settled")
-                                        .font(DesignTokens.Typography.labelNumericSm)
-                                        .foregroundColor(accentColorForWallet(wallet.id))
+                                    Image(systemName: "arrow.triangle.swap")
+                                        .font(.system(size: 11))
+                                    Text(CurrencyFormatter.format(amount: inTransit))
                                 }
-                                Text("Authoritative State")
+                                .font(DesignTokens.Typography.labelNumericSm)
+                                .foregroundColor(DesignTokens.Colors.secondary)
+
+                                Text("in transit (Preview)")
+                                    .font(.system(size: 11))
+                                    .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
+                            }
+                        } else if let received = wallet.receivedOffline {
+                            VStack(alignment: .trailing, spacing: 1) {
+                                Text("+" + CurrencyFormatter.format(amount: received))
+                                    .font(DesignTokens.Typography.labelNumericSm)
+                                    .foregroundColor(DesignTokens.Colors.meshGold)
+                                Text("Received (Preview)")
+                                    .font(.system(size: 11))
+                                    .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
+                            }
+                        } else if let hops = wallet.hops {
+                            VStack(alignment: .trailing, spacing: 1) {
+                                Text("\(hops) Hops")
+                                    .font(DesignTokens.Typography.labelNumericSm)
+                                    .foregroundColor(DesignTokens.Colors.onSurface)
+                                Text("Active Route")
                                     .font(.system(size: 11))
                                     .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
                             }
                         }
-                    } else if let inTransit = wallet.inTransit {
-                        VStack(alignment: .trailing, spacing: 1) {
-                            HStack(spacing: 4) {
-                                Image(systemName: "arrow.triangle.swap")
-                                    .font(.system(size: 11))
-                                Text(CurrencyFormatter.format(amount: inTransit))
-                            }
-                            .font(DesignTokens.Typography.labelNumericSm)
-                            .foregroundColor(DesignTokens.Colors.secondary)
-
-                            Text("in transit (Preview)")
-                                .font(.system(size: 11))
-                                .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
-                        }
-                    } else if let received = wallet.receivedOffline {
-                        VStack(alignment: .trailing, spacing: 1) {
-                            Text("+" + CurrencyFormatter.format(amount: received))
-                                .font(DesignTokens.Typography.labelNumericSm)
-                                .foregroundColor(DesignTokens.Colors.meshGold)
-                            Text("Received (Preview)")
-                                .font(.system(size: 11))
-                                .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
-                        }
-                    } else if let hops = wallet.hops {
-                        VStack(alignment: .trailing, spacing: 1) {
-                            Text("\(hops) Hops")
-                                .font(DesignTokens.Typography.labelNumericSm)
-                                .foregroundColor(DesignTokens.Colors.onSurface)
-                            Text("Active Route")
-                                .font(.system(size: 11))
-                                .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
-                        }
                     }
                 }
-
-                // Action Buttons inside Card
-                HStack(spacing: 8) {
-                    if wallet.id == "alice" {
-                        actionPillButton(title: "Send", icon: "arrow.up.right", isPrimary: true, color: DesignTokens.Colors.meshGold)
-                        actionPillButton(title: "Add Funds", icon: "plus", isPrimary: false, color: DesignTokens.Colors.surfaceContainerHighest)
-                    } else if wallet.id == "bob" {
-                        actionPillButton(title: "Receive", icon: "arrow.down.left", isPrimary: true, color: DesignTokens.Colors.secondary)
-                        actionPillButton(title: "Receipts", icon: "doc.text", isPrimary: false, color: DesignTokens.Colors.surfaceContainerHighest)
-                    } else {
-                        actionPillButton(title: "Relay Settings", icon: "slider.horizontal.3", isPrimary: false, color: DesignTokens.Colors.surfaceContainerHighest)
-                    }
-                }
-                .padding(.top, 2)
             }
-            .padding(DesignTokens.Spacing.md)
-            .liquidCard(
-                strokeColor: accentColorForWallet(wallet.id).opacity(isExpanded ? 0.35 : 0.18),
-                backgroundColor: DesignTokens.Colors.surfaceContainerHigh.opacity(0.85)
-            )
+            .buttonStyle(.plain)
+
+            // Action Buttons inside Card (Independent interactive buttons)
+            HStack(spacing: 8) {
+                if wallet.id == "alice" {
+                    actionPillButton(title: "Send", icon: "arrow.up.right", isPrimary: true, color: DesignTokens.Colors.meshGold) {
+                        NotificationCenter.default.post(name: .switchMeshTab, object: MeshTab.pay)
+                    }
+                    actionPillButton(title: "Add Funds", icon: "plus", isPrimary: false, color: DesignTokens.Colors.surfaceContainerHighest) {
+                        showingAddFundsSheet = true
+                    }
+                } else if wallet.id == "bob" {
+                    actionPillButton(title: "Receive", icon: "arrow.down.left", isPrimary: true, color: DesignTokens.Colors.secondary) {
+                        showingReceiveSheet = true
+                    }
+                    actionPillButton(title: "Receipts", icon: "doc.text", isPrimary: false, color: DesignTokens.Colors.surfaceContainerHighest) {
+                        NotificationCenter.default.post(name: .switchMeshTab, object: MeshTab.ledger)
+                    }
+                } else {
+                    actionPillButton(title: "Relay Settings", icon: "slider.horizontal.3", isPrimary: false, color: DesignTokens.Colors.surfaceContainerHighest) {
+                        NotificationCenter.default.post(name: .switchMeshTab, object: MeshTab.radar)
+                    }
+                }
+            }
+            .padding(.top, 2)
         }
-        .buttonStyle(.plain)
+        .padding(DesignTokens.Spacing.md)
+        .liquidCard(
+            strokeColor: accentColorForWallet(wallet.id).opacity(isExpanded ? 0.35 : 0.18),
+            backgroundColor: DesignTokens.Colors.surfaceContainerHigh.opacity(0.85)
+        )
     }
 
-    private func actionPillButton(title: String, icon: String, isPrimary: Bool, color: Color) -> some View {
-        HStack(spacing: 4) {
-            Image(systemName: icon)
-                .font(.system(size: 13, weight: .bold))
-            Text(title)
-                .font(DesignTokens.Typography.labelCaps)
-                .fontWeight(.bold)
+    private func actionPillButton(
+        title: String,
+        icon: String,
+        isPrimary: Bool,
+        color: Color,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            HStack(spacing: 4) {
+                Image(systemName: icon)
+                    .font(.system(size: 13, weight: .bold))
+                Text(title)
+                    .font(DesignTokens.Typography.labelCaps)
+                    .fontWeight(.bold)
+            }
+            .foregroundColor(isPrimary ? DesignTokens.Colors.onMeshGold : DesignTokens.Colors.onSurface)
+            .frame(maxWidth: .infinity)
+            .frame(height: 40)
+            .background(Capsule().fill(color))
         }
-        .foregroundColor(isPrimary ? DesignTokens.Colors.onMeshGold : DesignTokens.Colors.onSurface)
-        .frame(maxWidth: .infinity)
-        .frame(height: 40)
-        .background(Capsule().fill(color))
+        .buttonStyle(.plain)
     }
 
     // MARK: - Reconciliation Invariant Card
@@ -730,12 +825,14 @@ public struct MeshWalletsView: View {
 
     private func triggerResetAll() {
         isResetting = true
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+        Task {
+            await viewModel.loadLiveAccounts()
+            reloadActiveAllowance()
+            loadLocalDeviceIdentity()
             isResetting = false
             resetSuccess = true
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
-                resetSuccess = false
-            }
+            try? await Task.sleep(nanoseconds: 1_200_000_000)
+            resetSuccess = false
         }
     }
 
@@ -1486,6 +1583,301 @@ public struct MeshWalletsView: View {
         } catch {
             isAllowanceSuccess = false
             allowanceActionMessage = error.localizedDescription
+        }
+    }
+
+    // MARK: - Receive Sheet View (Bob Point of Sale Modal)
+    private var receiveSheetView: some View {
+        NavigationView {
+            ZStack {
+                SpatialCanvasBackground()
+
+                VStack(spacing: 20) {
+                    // Header Avatar & Name
+                    VStack(spacing: 8) {
+                        Circle()
+                            .fill(DesignTokens.Colors.secondary.opacity(0.2))
+                            .frame(width: 64, height: 64)
+                            .overlay(
+                                Image(systemName: "storefront.fill")
+                                    .foregroundColor(DesignTokens.Colors.secondary)
+                                    .font(.system(size: 28))
+                            )
+
+                        Text("Bob's Merchant Store")
+                            .font(DesignTokens.Typography.headlineMd)
+                            .fontWeight(.bold)
+                            .foregroundColor(DesignTokens.Colors.onSurface)
+
+                        Text("Point of Sale (POS) · Offline Mesh Node")
+                            .font(DesignTokens.Typography.caption)
+                            .foregroundColor(DesignTokens.Colors.secondary)
+                    }
+                    .padding(.top, 16)
+
+                    // POS Details Card
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack {
+                            Text("UPI VPA")
+                                .font(DesignTokens.Typography.caption)
+                                .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
+                            Spacer()
+                            Text("bob@upimesh")
+                                .font(DesignTokens.Typography.labelNumericSm)
+                                .fontWeight(.bold)
+                                .foregroundColor(DesignTokens.Colors.onSurface)
+                        }
+
+                        Divider().background(DesignTokens.Colors.glassStrokeDim)
+
+                        HStack {
+                            Text("Merchant Vault Balance")
+                                .font(DesignTokens.Typography.caption)
+                                .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
+                            Spacer()
+                            let bobBal = viewModel.liveBalance(for: "bob") ?? 1150.00
+                            Text(CurrencyFormatter.format(amount: bobBal))
+                                .font(DesignTokens.Typography.labelNumericSm)
+                                .fontWeight(.bold)
+                                .foregroundColor(DesignTokens.Colors.secondary)
+                        }
+
+                        Divider().background(DesignTokens.Colors.glassStrokeDim)
+
+                        HStack {
+                            Text("Mesh Protocol")
+                                .font(DesignTokens.Typography.caption)
+                                .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
+                            Spacer()
+                            Text("AWDL / BLE Store & Forward")
+                                .font(DesignTokens.Typography.caption)
+                                .foregroundColor(DesignTokens.Colors.onSurface)
+                        }
+                    }
+                    .padding(DesignTokens.Spacing.md)
+                    .liquidCard(strokeColor: DesignTokens.Colors.secondary.opacity(0.3))
+
+                    // QR Code visual
+                    VStack(spacing: 10) {
+                        Image(systemName: "qrcode")
+                            .font(.system(size: 130))
+                            .foregroundColor(DesignTokens.Colors.onSurface)
+                            .padding(16)
+                            .background(
+                                RoundedRectangle(cornerRadius: 16)
+                                    .fill(DesignTokens.Colors.surfaceContainerHigh)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 16)
+                                            .stroke(DesignTokens.Colors.secondary.opacity(0.4), lineWidth: 1)
+                                    )
+                            )
+
+                        Text("Ready to accept offline signed payments over Apple Wireless Direct Link & Bluetooth Low Energy")
+                            .font(DesignTokens.Typography.caption)
+                            .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 24)
+                    }
+
+                    Spacer()
+
+                    // Action buttons
+                    VStack(spacing: 10) {
+                        Button {
+                            showingReceiveSheet = false
+                            NotificationCenter.default.post(name: .switchMeshTab, object: MeshTab.pay)
+                        } label: {
+                            HStack(spacing: 6) {
+                                Image(systemName: "tray.full.fill")
+                                Text("Open Merchant Reconciliation Inbox")
+                            }
+                            .font(DesignTokens.Typography.labelCaps)
+                            .fontWeight(.bold)
+                            .foregroundColor(DesignTokens.Colors.onMeshGold)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 48)
+                            .background(Capsule().fill(DesignTokens.Colors.secondary))
+                        }
+                        .buttonStyle(.plain)
+
+                        Button {
+                            showingReceiveSheet = false
+                            NotificationCenter.default.post(name: .switchMeshTab, object: MeshTab.ledger)
+                        } label: {
+                            HStack(spacing: 6) {
+                                Image(systemName: "doc.text.magnifyingglass")
+                                Text("View Ledger Receipts")
+                            }
+                            .font(DesignTokens.Typography.labelCaps)
+                            .foregroundColor(DesignTokens.Colors.onSurface)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 44)
+                            .background(Capsule().fill(DesignTokens.Colors.surfaceContainerHighest))
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 24)
+                }
+                .padding(.horizontal, DesignTokens.Spacing.margin)
+            }
+            .navigationTitle("Receive Payment")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Done") {
+                        showingReceiveSheet = false
+                    }
+                    .foregroundColor(DesignTokens.Colors.meshGold)
+                }
+            }
+        }
+    }
+
+    // MARK: - Add Funds Sheet View (Allowance & Top-Up Modal)
+    private var addFundsSheetView: some View {
+        NavigationView {
+            ZStack {
+                SpatialCanvasBackground()
+
+                ScrollView {
+                    VStack(spacing: 16) {
+                        // Current Balance Display
+                        VStack(spacing: 6) {
+                            Text("CURRENT AVAILABLE BALANCE")
+                                .font(DesignTokens.Typography.labelCaps)
+                                .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
+                                .tracking(1.0)
+
+                            let aliceBal = viewModel.liveBalance(for: "alice") ?? 10000.00
+                            Text(CurrencyFormatter.format(amount: aliceBal))
+                                .font(DesignTokens.Typography.displayHeroMobile)
+                                .fontWeight(.bold)
+                                .foregroundColor(DesignTokens.Colors.meshGold)
+
+                            Text("Account: alice · Settled on Central Ledger")
+                                .font(DesignTokens.Typography.caption)
+                                .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
+                        }
+                        .padding(.vertical, 12)
+
+                        // Request Offline Allowance Voucher Section
+                        VStack(alignment: .leading, spacing: 12) {
+                            HStack(spacing: 6) {
+                                Image(systemName: "banknote.fill")
+                                    .foregroundColor(DesignTokens.Colors.meshGold)
+                                Text("Offline Allowance Issuance")
+                                    .font(DesignTokens.Typography.headlineSm)
+                                    .fontWeight(.semibold)
+                                    .foregroundColor(DesignTokens.Colors.onSurface)
+                            }
+
+                            Text("Lock escrow from your central account to create a zero-connectivity cryptographic spending voucher.")
+                                .font(DesignTokens.Typography.caption)
+                                .foregroundColor(DesignTokens.Colors.onSurfaceVariant)
+
+                            if let voucher = activeAllowance {
+                                VStack(alignment: .leading, spacing: 8) {
+                                    HStack {
+                                        Text("Active Voucher:")
+                                            .font(DesignTokens.Typography.bodySm)
+                                            .fontWeight(.medium)
+                                            .foregroundColor(DesignTokens.Colors.onSurface)
+                                        Spacer()
+                                        Text("₹\(voucher.remainingAmount) remaining")
+                                            .font(DesignTokens.Typography.labelNumericSm)
+                                            .fontWeight(.bold)
+                                            .foregroundColor(DesignTokens.Colors.meshGold)
+                                    }
+
+                                    Button {
+                                        Task {
+                                            await refundAllowanceAction(allowanceId: voucher.allowanceId)
+                                        }
+                                    } label: {
+                                        HStack(spacing: 6) {
+                                            Image(systemName: "arrow.uturn.backward")
+                                            Text("Refund Active Voucher to Central Balance")
+                                        }
+                                        .font(DesignTokens.Typography.labelCaps)
+                                        .foregroundColor(DesignTokens.Colors.error)
+                                        .frame(maxWidth: .infinity)
+                                        .frame(height: 38)
+                                        .background(RoundedRectangle(cornerRadius: 8).fill(DesignTokens.Colors.error.opacity(0.12)))
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                                .padding(12)
+                                .background(RoundedRectangle(cornerRadius: 10).fill(DesignTokens.Colors.surfaceContainerHigh))
+                            } else {
+                                HStack(spacing: 8) {
+                                    ForEach([100.0, 500.0, 1000.0, 2000.0], id: \.self) { amt in
+                                        Button {
+                                            allowanceRequestAmount = amt
+                                            Task {
+                                                await requestAllowanceAction()
+                                            }
+                                        } label: {
+                                            VStack(spacing: 4) {
+                                                Text(CurrencyFormatter.format(amount: amt))
+                                                    .font(DesignTokens.Typography.labelNumericSm)
+                                                    .fontWeight(.bold)
+                                                Text("Lock & Issue")
+                                                    .font(.system(size: 10))
+                                            }
+                                            .foregroundColor(DesignTokens.Colors.onMeshGold)
+                                            .frame(maxWidth: .infinity)
+                                            .frame(height: 52)
+                                            .background(RoundedRectangle(cornerRadius: 10).fill(DesignTokens.Colors.meshGold))
+                                        }
+                                        .disabled(isRequestingAllowance)
+                                        .buttonStyle(.plain)
+                                    }
+                                }
+                            }
+
+                            if let msg = allowanceActionMessage {
+                                Text(msg)
+                                    .font(DesignTokens.Typography.caption)
+                                    .foregroundColor(isAllowanceSuccess ? DesignTokens.Colors.secondary : DesignTokens.Colors.error)
+                                    .padding(.top, 4)
+                            }
+                        }
+                        .padding(DesignTokens.Spacing.md)
+                        .liquidCard(strokeColor: DesignTokens.Colors.meshGold.opacity(0.3))
+
+                        // Refresh / Sync Button
+                        Button {
+                            Task {
+                                await viewModel.loadLiveAccounts()
+                                reloadActiveAllowance()
+                            }
+                        } label: {
+                            HStack(spacing: 6) {
+                                Image(systemName: "arrow.clockwise")
+                                Text("Refresh Ledger Balances")
+                            }
+                            .font(DesignTokens.Typography.labelCaps)
+                            .foregroundColor(DesignTokens.Colors.onSurface)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 44)
+                            .background(Capsule().fill(DesignTokens.Colors.surfaceContainerHighest))
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .padding(DesignTokens.Spacing.margin)
+                }
+            }
+            .navigationTitle("Add Funds & Allowance")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Done") {
+                        showingAddFundsSheet = false
+                    }
+                    .foregroundColor(DesignTokens.Colors.meshGold)
+                }
+            }
         }
     }
 }

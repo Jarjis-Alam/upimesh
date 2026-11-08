@@ -1,0 +1,4 @@
+# Predictive Offline Payment Provisioning Research Module
+# Built entirely with standard library Python 3.8+ (math, random, statistics, dataclasses, csv, json, unittest).
+# No external dependencies or pip packages required.
+

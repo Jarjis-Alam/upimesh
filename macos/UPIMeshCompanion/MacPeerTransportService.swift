@@ -245,6 +245,21 @@ public final class MacPeerTransportService: NSObject, ObservableObject, @uncheck
         }
     }
 
+    // MARK: - Predictive Provisioning Research Transmission
+
+    /// Transmits an uncertainty-aware prediction advisory wire message to the connected iPhone over MultipeerConnectivity.
+    @MainActor
+    public func sendPredictionUpdate(_ message: PeerPredictionMessage, to targetPeer: MCPeerID? = nil) async throws {
+        let peer = targetPeer ?? connectedPeer
+        guard let peer = peer, session.connectedPeers.contains(peer) else {
+            throw PeerPredictionError.malformedPayload("Cannot send prediction: No connected iPhone peer.")
+        }
+
+        let data = try message.encode()
+        try session.send(data, toPeers: [peer], with: .reliable)
+        self.statusMessage = "Prediction advisory sent to \(peer.displayName): Reserve ₹\(Int(message.recommendedReserveInr)) (Seq #\(message.sequenceNumber)) ✓"
+    }
+
     // MARK: - Inbound Ingestion Pipeline
 
     private func processIncomingData(_ data: Data, from peer: MCPeerID) {
@@ -264,6 +279,12 @@ public final class MacPeerTransportService: NSObject, ObservableObject, @uncheck
             handleInboundDiagnosticPong(data, from: peer)
         case .paymentAck:
             handleInboundPaymentAck(data, from: peer)
+        case .predictionUpdate:
+            DispatchQueue.main.async {
+                self.statusMessage = "Received prediction update from \(peer.displayName)"
+            }
+        case .predictionAck:
+            handleInboundPredictionAck(data, from: peer)
         case .invalidDiagnostic(let type):
             DispatchQueue.main.async {
                 self.errorMessage = "Rejected invalid diagnostic message type '\(type)' from \(peer.displayName)"
@@ -482,6 +503,22 @@ public final class MacPeerTransportService: NSObject, ObservableObject, @uncheck
         } catch {
             DispatchQueue.main.async {
                 self.errorMessage = "Failed to process payment ACK from \(peer.displayName): \(error.localizedDescription)"
+            }
+        }
+    }
+
+    // MARK: - Inbound Prediction ACK Handler (Research Demo)
+
+    private func handleInboundPredictionAck(_ data: Data, from peer: MCPeerID) {
+        do {
+            let ack = try PeerPredictionAck.decodeAndValidate(from: data)
+            DispatchQueue.main.async {
+                self.statusMessage = "Prediction #\(ack.sequenceNumber) acknowledged by \(peer.displayName) ✓"
+                MacPredictionBridgeClient.shared.recordAcknowledgedReceipt(ack, from: peer.displayName)
+            }
+        } catch {
+            DispatchQueue.main.async {
+                self.errorMessage = "Failed to process prediction ACK from \(peer.displayName): \(error.localizedDescription)"
             }
         }
     }

@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 480" width="100%" height="100%">
+<rect width="860" height="480" fill="#0d1117" rx="12" />
+<text x="80" y="35" fill="#f0f6fc" font-family="system-ui, sans-serif" font-size="20" font-weight="700">Robustness to Heavy-Tailed Demand Distributions</text>
+<text x="80" y="55" fill="#8b949e" font-family="system-ui, sans-serif" font-size="12">Offline Success Rate (%) across Gaussian, Log-Normal, and Heavy-Tailed Pareto Spend</text>
+<line x1="80" y1="274.0" x2="820" y2="274.0" stroke="#21262d" stroke-dasharray="4,4" />
+<text x="68" y="278.0" fill="#8b949e" font-family="system-ui, sans-serif" font-size="11" text-anchor="end">40%</text>
+<line x1="80" y1="206.0" x2="820" y2="206.0" stroke="#21262d" stroke-dasharray="4,4" />
+<text x="68" y="210.0" fill="#8b949e" font-family="system-ui, sans-serif" font-size="11" text-anchor="end">60%</text>
+<line x1="80" y1="138.0" x2="820" y2="138.0" stroke="#21262d" stroke-dasharray="4,4" />
+<text x="68" y="142.0" fill="#8b949e" font-family="system-ui, sans-serif" font-size="11" text-anchor="end">80%</text>
+<line x1="80" y1="70.0" x2="820" y2="70.0" stroke="#21262d" stroke-dasharray="4,4" />
+<text x="68" y="74.0" fill="#8b949e" font-family="system-ui, sans-serif" font-size="11" text-anchor="end">100%</text>
+<text x="172.5" y="435" fill="#c9d1d9" font-family="system-ui, sans-serif" font-size="12" font-weight="600" text-anchor="middle">Fixed-₹500</text>
+<rect x="102.2" y="73.43400000000003" width="40.7" height="336.566" fill="#3b82f6" rx="3"><title>Fixed-₹500 (gaussian): 98.99%</title></rect>
+<text x="122.55000000000001" y="67.43400000000003" fill="#f0f6fc" font-family="system-ui, sans-serif" font-size="10" font-weight="600" text-anchor="middle">99.0%</text>
+<rect x="148.9" y="73.94399999999996" width="40.7" height="336.05600000000004" fill="#f59e0b" rx="3"><title>Fixed-₹500 (lognormal): 98.84%</title></rect>
+<text x="169.25" y="67.94399999999996" fill="#f0f6fc" font-family="system-ui, sans-serif" font-size="10" font-weight="600" text-anchor="middle">98.8%</text>
+<rect x="195.60000000000002" y="76.66399999999999" width="40.7" height="333.336" fill="#ef4444" rx="3"><title>Fixed-₹500 (pareto): 98.04%</title></rect>
+<text x="215.95000000000002" y="70.66399999999999" fill="#f0f6fc" font-family="system-ui, sans-serif" font-size="10" font-weight="600" text-anchor="middle">98.0%</text>
+<text x="357.5" y="435" fill="#c9d1d9" font-family="system-ui, sans-serif" font-size="12" font-weight="600" text-anchor="middle">Demand-Only</text>
+<rect x="287.2" y="70.0" width="40.7" height="340.0" fill="#3b82f6" rx="3"><title>Demand-Only (gaussian): 100.0%</title></rect>
+<text x="307.55" y="64.0" fill="#f0f6fc" font-family="system-ui, sans-serif" font-size="10" font-weight="600" text-anchor="middle">100.0%</text>
+<rect x="333.9" y="70.0" width="40.7" height="340.0" fill="#f59e0b" rx="3"><title>Demand-Only (lognormal): 100.0%</title></rect>
+<text x="354.25" y="64.0" fill="#f0f6fc" font-family="system-ui, sans-serif" font-size="10" font-weight="600" text-anchor="middle">100.0%</text>
+<rect x="380.6" y="70.78200000000004" width="40.7" height="339.21799999999996" fill="#ef4444" rx="3"><title>Demand-Only (pareto): 99.77%</title></rect>
+<text x="400.95000000000005" y="64.78200000000004" fill="#f0f6fc" font-family="system-ui, sans-serif" font-size="10" font-weight="600" text-anchor="middle">99.8%</text>
+<text x="542.5" y="435" fill="#c9d1d9" font-family="system-ui, sans-serif" font-size="12" font-weight="600" text-anchor="middle">Proposed-JointOpt</text>
+<rect x="472.2" y="107.12799999999999" width="40.7" height="302.872" fill="#3b82f6" rx="3"><title>Proposed-JointOpt (gaussian): 89.08%</title></rect>
+<text x="492.55" y="101.12799999999999" fill="#f0f6fc" font-family="system-ui, sans-serif" font-size="10" font-weight="600" text-anchor="middle">89.1%</text>
+<rect x="518.9" y="106.41399999999999" width="40.7" height="303.586" fill="#f59e0b" rx="3"><title>Proposed-JointOpt (lognormal): 89.29%</title></rect>
+<text x="539.25" y="100.41399999999999" fill="#f0f6fc" font-family="system-ui, sans-serif" font-size="10" font-weight="600" text-anchor="middle">89.3%</text>
+<rect x="565.6" y="86.35399999999998" width="40.7" height="323.646" fill="#ef4444" rx="3"><title>Proposed-JointOpt (pareto): 95.19%</title></rect>
+<text x="585.95" y="80.35399999999998" fill="#f0f6fc" font-family="system-ui, sans-serif" font-size="10" font-weight="600" text-anchor="middle">95.2%</text>
+<text x="727.5" y="435" fill="#c9d1d9" font-family="system-ui, sans-serif" font-size="12" font-weight="600" text-anchor="middle">Uncertainty-Aware</text>
+<rect x="657.2" y="94.82" width="40.7" height="315.18" fill="#3b82f6" rx="3"><title>Uncertainty-Aware (gaussian): 92.7%</title></rect>
+<text x="677.5500000000001" y="88.82" fill="#f0f6fc" font-family="system-ui, sans-serif" font-size="10" font-weight="600" text-anchor="middle">92.7%</text>
+<rect x="703.9000000000001" y="95.5" width="40.7" height="314.5" fill="#f59e0b" rx="3"><title>Uncertainty-Aware (lognormal): 92.5%</title></rect>
+<text x="724.2500000000001" y="89.5" fill="#f0f6fc" font-family="system-ui, sans-serif" font-size="10" font-weight="600" text-anchor="middle">92.5%</text>
+<rect x="750.6" y="85.87799999999999" width="40.7" height="324.122" fill="#ef4444" rx="3"><title>Uncertainty-Aware (pareto): 95.33%</title></rect>
+<text x="770.95" y="79.87799999999999" fill="#f0f6fc" font-family="system-ui, sans-serif" font-size="10" font-weight="600" text-anchor="middle">95.3%</text>
+<rect x="540" y="45" width="12" height="12" fill="#3b82f6" rx="2" />
+<text x="558" y="55" fill="#c9d1d9" font-family="system-ui, sans-serif" font-size="11">Gaussian</text>
+<rect x="635" y="45" width="12" height="12" fill="#f59e0b" rx="2" />
+<text x="653" y="55" fill="#c9d1d9" font-family="system-ui, sans-serif" font-size="11">Lognormal</text>
+<rect x="730" y="45" width="12" height="12" fill="#ef4444" rx="2" />
+<text x="748" y="55" fill="#c9d1d9" font-family="system-ui, sans-serif" font-size="11">Pareto</text>
+</svg>

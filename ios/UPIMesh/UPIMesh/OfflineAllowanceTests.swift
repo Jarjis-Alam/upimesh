@@ -283,7 +283,7 @@ public final class OfflineAllowanceTests {
             currency: "INR",
             allocatedAmount: Decimal(1000.00),
             issuedAt: "2026-10-15T10:00:00Z",
-            expiresAt: "2026-10-30T10:00:00Z",
+            expiresAt: "2029-12-31T23:59:59Z",
             protocolVersion: 1
         )
         let bankSig = try signBytes(privateKey: bankPriv, data: canonicalVoucher)
@@ -298,7 +298,7 @@ public final class OfflineAllowanceTests {
             spentAmount: Decimal.zero,
             lastSequenceNumber: 0,
             issuedAt: "2026-10-15T10:00:00Z",
-            expiresAt: "2026-10-30T10:00:00Z",
+            expiresAt: "2029-12-31T23:59:59Z",
             protocolVersion: 1,
             status: "ACTIVE",
             voucherSignature: bankSig,
@@ -374,7 +374,7 @@ public final class OfflineAllowanceTests {
             spentAmount: Decimal(80.00),
             lastSequenceNumber: 2,
             issuedAt: "2026-10-15T10:00:00Z",
-            expiresAt: "2026-10-30T10:00:00Z",
+            expiresAt: "2029-12-31T23:59:59Z",
             protocolVersion: 1,
             status: "ACTIVE",
             voucherSignature: "mock-sig"

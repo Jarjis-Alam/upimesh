@@ -179,6 +179,8 @@ public struct InboundTransportProbe: Decodable {
         case diagnosticPing
         case diagnosticPong
         case paymentAck
+        case predictionUpdate
+        case predictionAck
         case invalidDiagnostic(String)
         case paymentTransfer
         case unknown
@@ -197,6 +199,10 @@ public struct InboundTransportProbe: Decodable {
                 return .diagnosticPong
             case "PAYMENT_ACK":
                 return .paymentAck
+            case "PREDICTION_UPDATE":
+                return .predictionUpdate
+            case "PREDICTION_ACK":
+                return .predictionAck
             default:
                 return .invalidDiagnostic(type)
             }

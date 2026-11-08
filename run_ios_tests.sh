@@ -16,6 +16,7 @@ swiftc -framework Foundation -framework Security -framework CryptoKit \
   ios/UPIMesh/UPIMesh/ReceivedPacketStore.swift \
   ios/UPIMesh/UPIMesh/PeerTransferMessage.swift \
   ios/UPIMesh/UPIMesh/PeerDiagnosticMessage.swift \
+  ios/UPIMesh/UPIMesh/PeerPredictionMessage.swift \
   ios/UPIMesh/UPIMesh/PeerTransportTests.swift \
   ios/UPIMesh/UPIMesh/APIConfiguration.swift \
   ios/UPIMesh/UPIMesh/UPIMeshAPIClient.swift \
@@ -42,6 +43,7 @@ swiftc -framework Foundation -framework Security -framework CryptoKit \
   ios/UPIMesh/UPIMesh/OfflinePaymentPacket.swift \
   ios/UPIMesh/UPIMesh/PeerTransferMessage.swift \
   ios/UPIMesh/UPIMesh/PeerDiagnosticMessage.swift \
+  macos/UPIMeshCompanion/PeerPredictionMessage.swift \
   macos/UPIMeshCompanion/MacDeviceIdentityManager.swift \
   macos/UPIMeshCompanion/MacReceivedPacketStore.swift \
   macos/UPIMeshCompanion/MacBridgeClient.swift \

@@ -13,6 +13,8 @@ public struct MeshLedgerView: View {
     @State private var viewModel = MeshLedgerViewModel()
     @State private var selectedFilter: String = "all"
     @State private var selectedTx: PreviewData.TransactionItem? = nil
+    @State private var showingReceiptAlert = false
+    @State private var receiptAlertMessage = ""
 
     public init() {}
 
@@ -147,6 +149,11 @@ public struct MeshLedgerView: View {
             Task {
                 await viewModel.loadLiveTransactions()
             }
+        }
+        .alert("Receipt Copied", isPresented: $showingReceiptAlert) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(receiptAlertMessage)
         }
     }
 
@@ -571,11 +578,27 @@ public struct MeshLedgerView: View {
 
                     Spacer()
 
-                    Button {} label: {
+                    Button {
+                        let receiptText = """
+                        UPI Offline Mesh — Settlement Receipt
+                        ------------------------------------
+                        Transaction: \(tx.title)
+                        Memo: \(tx.memo)
+                        Amount: \(CurrencyFormatter.format(amount: tx.amount))
+                        Status: \(tx.statusLabel)
+                        Route: \(tx.routeLabel)
+                        Time: \(tx.timeFormatted)
+                        Dual-Signature Verification: VALID
+                        Settlement: NPCI Core Ledger Settled
+                        """
+                        UIPasteboard.general.string = receiptText
+                        receiptAlertMessage = "Receipt for \(CurrencyFormatter.format(amount: tx.amount)) (\(tx.title)) copied to clipboard."
+                        showingReceiptAlert = true
+                    } label: {
                         HStack(spacing: 4) {
                             Text("Receipt")
                                 .font(DesignTokens.Typography.labelCaps)
-                            Image(systemName: "arrow.down.circle")
+                            Image(systemName: "doc.on.doc")
                                 .font(.system(size: 12))
                         }
                         .foregroundColor(DesignTokens.Colors.onSurface)

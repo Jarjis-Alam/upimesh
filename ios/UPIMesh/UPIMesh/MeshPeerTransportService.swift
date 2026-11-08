@@ -21,6 +21,7 @@ public enum PacketSendStatus: Sendable, Equatable {
 public extension Notification.Name {
     static let offlinePacketReceived = Notification.Name("com.upimesh.offlinePacketReceived")
     static let offlinePacketSent = Notification.Name("com.upimesh.offlinePacketSent")
+    static let predictionUpdated = Notification.Name("com.upimesh.predictionUpdated")
 }
 
 /// Service managing direct phone-to-phone discovery and reliable offline packet transfer via Multipeer Connectivity.
@@ -62,6 +63,12 @@ public final class MeshPeerTransportService: NSObject, ObservableObject, @unchec
     @Published public private(set) var pingStatus: PingStatus = .idle
     @Published public private(set) var lastPingLatencyMs: Int? = nil
     @Published public private(set) var lastDiagnosticPingAnswered: String? = nil
+
+    // MARK: - Predictive Provisioning Advisory State (Research Feature)
+    @Published public private(set) var latestPrediction: PeerPredictionMessage? = nil
+    @Published public private(set) var lastPredictionReceivedAt: Date? = nil
+    @Published public private(set) var isPredictionStale: Bool = false
+    private var lastPredictionSequenceNumber: UInt64 = 0
 
     private var pendingPingId: String? = nil
     private var pendingPingStartTime: Date? = nil
@@ -312,6 +319,10 @@ public final class MeshPeerTransportService: NSObject, ObservableObject, @unchec
             handleInboundDiagnosticPong(data, from: peer)
         case .paymentAck:
             handleInboundPaymentAck(data, from: peer)
+        case .predictionUpdate:
+            handleInboundPredictionMessage(data, from: peer)
+        case .predictionAck:
+            break
         case .invalidDiagnostic(let type):
             DispatchQueue.main.async {
                 self.errorMessage = "Rejected invalid diagnostic message type '\(type)' from \(peer.displayName)"
@@ -549,6 +560,57 @@ public final class MeshPeerTransportService: NSObject, ObservableObject, @unchec
         } catch {
             DispatchQueue.main.async {
                 self.errorMessage = "Failed to process payment ACK from \(peer.displayName): \(error.localizedDescription)"
+            }
+        }
+    }
+
+    // MARK: - Inbound Predictive Provisioning Advisory Handler (Research Feature)
+
+    private func handleInboundPredictionMessage(_ data: Data, from peer: MCPeerID) {
+        do {
+            let msg = try PeerPredictionMessage.decodeAndValidate(from: data)
+
+            // 1. Verify sequence monotonicity (discard out-of-order or duplicate updates)
+            stateLock.lock()
+            if msg.sequenceNumber <= self.lastPredictionSequenceNumber {
+                let current = self.lastPredictionSequenceNumber
+                stateLock.unlock()
+                print("[MeshPeerTransportService] Discarded duplicate/stale prediction sequence #\(msg.sequenceNumber) <= current #\(current)")
+                return
+            }
+            self.lastPredictionSequenceNumber = msg.sequenceNumber
+            stateLock.unlock()
+
+            // 2. Check update freshness (flag as stale if older than 120s)
+            let isStale: Bool
+            if let parsedDate = ISO8601DateFormatter().date(from: msg.timestamp) {
+                isStale = abs(Date().timeIntervalSince(parsedDate)) > 120.0
+            } else {
+                isStale = false
+            }
+
+            DispatchQueue.main.async {
+                self.latestPrediction = msg
+                self.lastPredictionReceivedAt = Date()
+                self.isPredictionStale = isStale
+                self.statusMessage = "Prediction advisory updated from \(peer.displayName): Recommended Reserve ₹\(Int(msg.recommendedReserveInr))"
+                NotificationCenter.default.post(name: .predictionUpdated, object: msg)
+            }
+
+            // 3. Return explicit receipt acknowledgement to the Mac research station
+            let deviceId = (try? DeviceIdentityManager.shared.getOrCreateIdentity().deviceId) ?? "ios-client"
+            let ack = PeerPredictionAck(
+                predictionId: msg.predictionId,
+                sequenceNumber: msg.sequenceNumber,
+                receiverDeviceId: deviceId,
+                timestamp: ISO8601DateFormatter().string(from: Date())
+            )
+            if let ackData = try? ack.encode() {
+                try? self.session.send(ackData, toPeers: [peer], with: .reliable)
+            }
+        } catch {
+            DispatchQueue.main.async {
+                self.errorMessage = "Rejected invalid prediction message from \(peer.displayName): \(error.localizedDescription)"
             }
         }
     }

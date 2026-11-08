@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 480" width="860" height="480" style="background-color: #0d1117; font-family: -apple-system, BlinkMacSystemFont, sans-serif;">
+<rect width="860" height="480" fill="#0d1117" />
+<text x="80" y="32" fill="#c9d1d9" font-size="18" font-weight="bold">Offline Payment Success Rate vs Locked Funds by Scenario</text>
+<text x="80" y="52" fill="#8b949e" font-size="12">Comparison of Proposed Joint Optimization against Fixed and Demand-Only Baselines</text>
+<line x1="80" y1="380.0" x2="820" y2="380.0" stroke="#21262d" stroke-width="1" />
+<text x="70" y="384.0" fill="#8b949e" font-size="11" text-anchor="end">0%</text>
+<line x1="80" y1="302.5" x2="820" y2="302.5" stroke="#21262d" stroke-width="1" />
+<text x="70" y="306.5" fill="#8b949e" font-size="11" text-anchor="end">25%</text>
+<line x1="80" y1="225.0" x2="820" y2="225.0" stroke="#21262d" stroke-width="1" />
+<text x="70" y="229.0" fill="#8b949e" font-size="11" text-anchor="end">50%</text>
+<line x1="80" y1="147.5" x2="820" y2="147.5" stroke="#21262d" stroke-width="1" />
+<text x="70" y="151.5" fill="#8b949e" font-size="11" text-anchor="end">75%</text>
+<line x1="80" y1="70.0" x2="820" y2="70.0" stroke="#21262d" stroke-width="1" />
+<text x="70" y="74.0" fill="#8b949e" font-size="11" text-anchor="end">100%</text>
+<text x="139.2" y="404" fill="#c9d1d9" font-size="11" text-anchor="middle" font-weight="500">Adversarial Grid Shock</text>
+<rect x="102.2" y="70.0" width="21.9" height="310.0" rx="3" fill="#ef4444" opacity="0.9"><title>Demand-Only: 100.0% success, ₹800 locked</title></rect>
+<text x="113.15" y="64.0" fill="#ef4444" font-size="9" text-anchor="middle" font-weight="bold">100%</text>
+<rect x="128.1" y="72.48000000000002" width="21.9" height="307.52" rx="3" fill="#f59e0b" opacity="0.9"><title>Fixed-₹500: 99.2% success, ₹500 locked</title></rect>
+<text x="139.04999999999998" y="66.48000000000002" fill="#f59e0b" font-size="9" text-anchor="middle" font-weight="bold">99%</text>
+<rect x="154.0" y="141.982" width="21.9" height="238.018" rx="3" fill="#3b82f6" opacity="0.9"><title>Proposed-JointOpt: 76.8% success, ₹207 locked</title></rect>
+<text x="164.95" y="135.982" fill="#3b82f6" font-size="9" text-anchor="middle" font-weight="bold">77%</text>
+<rect x="179.89999999999998" y="106.983" width="21.9" height="273.017" rx="3" fill="#10b981" opacity="0.9"><title>Uncertainty-Aware: 88.1% success, ₹298 locked</title></rect>
+<text x="190.84999999999997" y="100.983" fill="#10b981" font-size="9" text-anchor="middle" font-weight="bold">88%</text>
+<text x="287.2" y="404" fill="#c9d1d9" font-size="11" text-anchor="middle" font-weight="500">Non-Stationary</text>
+<rect x="250.2" y="70.0" width="21.9" height="310.0" rx="3" fill="#ef4444" opacity="0.9"><title>Demand-Only: 100.0% success, ₹803 locked</title></rect>
+<text x="261.15" y="64.0" fill="#ef4444" font-size="9" text-anchor="middle" font-weight="bold">100%</text>
+<rect x="276.09999999999997" y="71.89100000000002" width="21.9" height="308.109" rx="3" fill="#f59e0b" opacity="0.9"><title>Fixed-₹500: 99.4% success, ₹500 locked</title></rect>
+<text x="287.04999999999995" y="65.89100000000002" fill="#f59e0b" font-size="9" text-anchor="middle" font-weight="bold">99%</text>
+<rect x="302.0" y="132.434" width="21.9" height="247.566" rx="3" fill="#3b82f6" opacity="0.9"><title>Proposed-JointOpt: 79.9% success, ₹167 locked</title></rect>
+<text x="312.95" y="126.434" fill="#3b82f6" font-size="9" text-anchor="middle" font-weight="bold">80%</text>
+<rect x="327.9" y="107.572" width="21.9" height="272.428" rx="3" fill="#10b981" opacity="0.9"><title>Uncertainty-Aware: 87.9% success, ₹203 locked</title></rect>
+<text x="338.84999999999997" y="101.572" fill="#10b981" font-size="9" text-anchor="middle" font-weight="bold">88%</text>
+<text x="435.2" y="404" fill="#c9d1d9" font-size="11" text-anchor="middle" font-weight="500">Reliable Urban 5G</text>
+<rect x="398.2" y="70.0" width="21.9" height="310.0" rx="3" fill="#ef4444" opacity="0.9"><title>Demand-Only: 100.0% success, ₹807 locked</title></rect>
+<text x="409.15" y="64.0" fill="#ef4444" font-size="9" text-anchor="middle" font-weight="bold">100%</text>
+<rect x="424.09999999999997" y="70.0" width="21.9" height="310.0" rx="3" fill="#f59e0b" opacity="0.9"><title>Fixed-₹500: 100.0% success, ₹500 locked</title></rect>
+<text x="435.04999999999995" y="64.0" fill="#f59e0b" font-size="9" text-anchor="middle" font-weight="bold">100%</text>
+<rect x="450.0" y="190.621" width="21.9" height="189.379" rx="3" fill="#3b82f6" opacity="0.9"><title>Proposed-JointOpt: 61.1% success, ₹46 locked</title></rect>
+<text x="460.95" y="184.621" fill="#3b82f6" font-size="9" text-anchor="middle" font-weight="bold">61%</text>
+<rect x="475.9" y="174.873" width="21.9" height="205.127" rx="3" fill="#10b981" opacity="0.9"><title>Uncertainty-Aware: 66.2% success, ₹54 locked</title></rect>
+<text x="486.84999999999997" y="168.873" fill="#10b981" font-size="9" text-anchor="middle" font-weight="bold">66%</text>
+<text x="583.2" y="404" fill="#c9d1d9" font-size="11" text-anchor="middle" font-weight="500">Rural</text>
+<rect x="546.2" y="70.0" width="21.9" height="310.0" rx="3" fill="#ef4444" opacity="0.9"><title>Demand-Only: 100.0% success, ₹796 locked</title></rect>
+<text x="557.1500000000001" y="64.0" fill="#ef4444" font-size="9" text-anchor="middle" font-weight="bold">100%</text>
+<rect x="572.1" y="73.844" width="21.9" height="306.156" rx="3" fill="#f59e0b" opacity="0.9"><title>Fixed-₹500: 98.8% success, ₹500 locked</title></rect>
+<text x="583.0500000000001" y="67.844" fill="#f59e0b" font-size="9" text-anchor="middle" font-weight="bold">99%</text>
+<rect x="598.0" y="103.51099999999997" width="21.9" height="276.48900000000003" rx="3" fill="#3b82f6" opacity="0.9"><title>Proposed-JointOpt: 89.2% success, ₹335 locked</title></rect>
+<text x="608.95" y="97.51099999999997" fill="#3b82f6" font-size="9" text-anchor="middle" font-weight="bold">89%</text>
+<rect x="623.9000000000001" y="89.56100000000004" width="21.9" height="290.43899999999996" rx="3" fill="#10b981" opacity="0.9"><title>Uncertainty-Aware: 93.7% success, ₹385 locked</title></rect>
+<text x="634.8500000000001" y="83.56100000000004" fill="#10b981" font-size="9" text-anchor="middle" font-weight="bold">94%</text>
+<text x="731.2" y="404" fill="#c9d1d9" font-size="11" text-anchor="middle" font-weight="500">Urban Metro</text>
+<rect x="694.2" y="70.0" width="21.9" height="310.0" rx="3" fill="#ef4444" opacity="0.9"><title>Demand-Only: 100.0% success, ₹760 locked</title></rect>
+<text x="705.1500000000001" y="64.0" fill="#ef4444" font-size="9" text-anchor="middle" font-weight="bold">100%</text>
+<rect x="720.1" y="73.78199999999998" width="21.9" height="306.218" rx="3" fill="#f59e0b" opacity="0.9"><title>Fixed-₹500: 98.8% success, ₹500 locked</title></rect>
+<text x="731.0500000000001" y="67.78199999999998" fill="#f59e0b" font-size="9" text-anchor="middle" font-weight="bold">99%</text>
+<rect x="746.0" y="172.424" width="21.9" height="207.576" rx="3" fill="#3b82f6" opacity="0.9"><title>Proposed-JointOpt: 67.0% success, ₹122 locked</title></rect>
+<text x="756.95" y="166.424" fill="#3b82f6" font-size="9" text-anchor="middle" font-weight="bold">67%</text>
+<rect x="771.9000000000001" y="145.48499999999999" width="21.9" height="234.51500000000001" rx="3" fill="#10b981" opacity="0.9"><title>Uncertainty-Aware: 75.7% success, ₹192 locked</title></rect>
+<text x="782.8500000000001" y="139.48499999999999" fill="#10b981" font-size="9" text-anchor="middle" font-weight="bold">76%</text>
+<rect x="90" y="445" width="14" height="14" rx="3" fill="#f59e0b" />
+<text x="108" y="456" fill="#c9d1d9" font-size="11">Fixed-₹500</text>
+<rect x="265" y="445" width="14" height="14" rx="3" fill="#ef4444" />
+<text x="283" y="456" fill="#c9d1d9" font-size="11">Demand-Only</text>
+<rect x="440" y="445" width="14" height="14" rx="3" fill="#3b82f6" />
+<text x="458" y="456" fill="#c9d1d9" font-size="11">Proposed-JointOpt</text>
+<rect x="615" y="445" width="14" height="14" rx="3" fill="#10b981" />
+<text x="633" y="456" fill="#c9d1d9" font-size="11">Uncertainty-Aware</text>
+</svg>

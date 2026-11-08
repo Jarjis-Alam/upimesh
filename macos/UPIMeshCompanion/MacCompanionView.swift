@@ -5,8 +5,17 @@ import MultipeerConnectivity
 public struct MacCompanionView: View {
 
     @ObservedObject private var transport = MacPeerTransportService.shared
+    @ObservedObject private var bridgeClient = MacPredictionBridgeClient.shared
     @State private var receivedPackets: [MacReceivedPacketRecord] = []
     @State private var macIdentity: MacDeviceIdentity? = nil
+    @State private var selectedCompanionTab: CompanionTab = .demoMode
+
+    public enum CompanionTab: String, CaseIterable, Identifiable {
+        case demoMode = "DEMO MODE (Research Station)"
+        case packetInbox = "PAYMENT PACKET INBOX"
+
+        public var id: String { self.rawValue }
+    }
 
     // MARK: - Bridge Registration State
     @State private var bridgeRegistrationState: BridgeRegistrationState = .unregistered
@@ -41,11 +50,16 @@ public struct MacCompanionView: View {
             HSplitView {
                 // Left Panel: Transport & Connection Controls
                 leftTransportPanel
-                    .frame(minWidth: 340, idealWidth: 380, maxWidth: 450)
+                    .frame(minWidth: 320, idealWidth: 360, maxWidth: 420)
 
-                // Right Panel: Received Packets Inbox
-                rightInboxPanel
-                    .frame(minWidth: 450, idealWidth: 550)
+                // Right Panel: Demo Mode Station OR Received Packets Inbox
+                if selectedCompanionTab == .demoMode {
+                    demoStationPanel
+                        .frame(minWidth: 500, idealWidth: 620)
+                } else {
+                    rightInboxPanel
+                        .frame(minWidth: 450, idealWidth: 550)
+                }
             }
 
             // Bottom Alert / Status Bar
@@ -55,9 +69,13 @@ public struct MacCompanionView: View {
         .onAppear {
             reloadIdentity()
             reloadPackets()
+            bridgeClient.startPolling()
             if !transport.isDiscovering {
                 transport.startDiscovery()
             }
+        }
+        .onDisappear {
+            bridgeClient.stopPolling()
         }
         .onReceive(NotificationCenter.default.publisher(for: .macPacketReceived)) { _ in
             reloadPackets()
@@ -86,6 +104,44 @@ public struct MacCompanionView: View {
 
             Spacer()
 
+            // Prominent View Mode Switcher
+            HStack(spacing: 0) {
+                Button {
+                    selectedCompanionTab = .demoMode
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "gauge.with.needle.fill")
+                        Text("DEMO MODE")
+                    }
+                    .font(.system(size: 11, weight: .bold))
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 6)
+                    .background(selectedCompanionTab == .demoMode ? Color.cyan.opacity(0.3) : Color.clear)
+                    .foregroundColor(selectedCompanionTab == .demoMode ? Color.cyan : textMuted)
+                }
+                .buttonStyle(.plain)
+
+                Button {
+                    selectedCompanionTab = .packetInbox
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "tray.fill")
+                        Text("PACKET INBOX (\(receivedPackets.count))")
+                    }
+                    .font(.system(size: 11, weight: .bold))
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 6)
+                    .background(selectedCompanionTab == .packetInbox ? meshGold.opacity(0.25) : Color.clear)
+                    .foregroundColor(selectedCompanionTab == .packetInbox ? meshGold : textMuted)
+                }
+                .buttonStyle(.plain)
+            }
+            .background(Color.white.opacity(0.06))
+            .cornerRadius(6)
+            .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.white.opacity(0.15), lineWidth: 1))
+
+            Spacer()
+
             // Discovery State Indicator
             HStack(spacing: 6) {
                 Circle()
@@ -111,6 +167,9 @@ public struct MacCompanionView: View {
     private var leftTransportPanel: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
+                // Predictive Provisioning Research Bridge Card
+                predictiveResearchBridgeCard
+
                 // Bridge Registration Card
                 bridgeRegistrationCard
 
@@ -888,5 +947,793 @@ public struct MacCompanionView: View {
 
     private func reloadIdentity() {
         self.macIdentity = try? MacDeviceIdentityManager.shared.getOrCreateIdentity()
+    }
+
+    // MARK: - Demo Mode Station Panel (Judge-Ready Presentation)
+
+    private var demoStationPanel: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 14) {
+                // Top Demo Header & Quick Controls
+                demoTopHeaderBar
+
+                // 1. Guided Scenario Selector (5 Scenarios)
+                guidedScenariosCard
+
+                // 2. Live Telemetry Matrix & Strategy Allocations
+                liveTelemetryMatrixCard
+
+                // 3. Presentation Timeline Event Log
+                presentationTimelineCard
+
+                // 4. Judge-Facing Explanation
+                judgeExplanationCard
+            }
+            .padding(16)
+        }
+        .background(Color(red: 0.06, green: 0.07, blue: 0.09))
+    }
+
+    // MARK: - Demo Top Header Bar
+
+    private var demoTopHeaderBar: some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 8) {
+                    Image(systemName: "gauge.with.needle.fill")
+                        .foregroundColor(Color.cyan)
+                    Text("RESEARCH STATION — DEMO MODE")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundColor(textPrimary)
+
+                    Text("HACKATHON JUDGE STATION")
+                        .font(.system(size: 9, weight: .heavy))
+                        .foregroundColor(Color.cyan)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Capsule().fill(Color.cyan.opacity(0.15)))
+                }
+
+                Text("Simulates changing cellular conditions and streams predictive offline reserves to iPhone via Bluetooth/AWDL.")
+                    .font(.system(size: 11))
+                    .foregroundColor(textSecondary)
+            }
+
+            Spacer()
+
+            // Quick Actions: Shock & Reset
+            HStack(spacing: 8) {
+                Button {
+                    Task {
+                        await bridgeClient.injectGridShock()
+                    }
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "bolt.fill")
+                        Text("Inject Grid Shock")
+                    }
+                    .font(.system(size: 11, weight: .bold))
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(Color.red.opacity(0.85))
+
+                Button {
+                    Task {
+                        await bridgeClient.resetDemo()
+                    }
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "arrow.counterclockwise")
+                        Text("Reset Demo")
+                    }
+                    .font(.system(size: 11, weight: .bold))
+                }
+                .buttonStyle(.bordered)
+                .tint(Color.cyan)
+            }
+        }
+        .padding(12)
+        .background(cardBg)
+        .cornerRadius(8)
+        .overlay(RoundedRectangle(cornerRadius: 8).stroke(cardBorder, lineWidth: 1))
+    }
+
+    // MARK: - 1. Guided Scenario Selector (5 Scenarios)
+
+    private var guidedScenariosCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text("GUIDED DEMONSTRATION SCENARIOS (5 PHASES)")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundColor(textMuted)
+                    .tracking(0.8)
+
+                Spacer()
+
+                Text("Tap any scenario to trigger live prediction")
+                    .font(.system(size: 10))
+                    .foregroundColor(Color.cyan.opacity(0.8))
+            }
+
+            // 5 Scenario Cards Grid
+            HStack(spacing: 8) {
+                scenarioButton(
+                    id: 1,
+                    title: "1. Normal 5G",
+                    subtitle: "Dense Urban",
+                    risk: "6% Risk · 0.35h",
+                    reserve: "₹54",
+                    tint: Color.green
+                )
+
+                scenarioButton(
+                    id: 2,
+                    title: "2. Deteriorating",
+                    subtitle: "Transit Corridor",
+                    risk: "45% Risk · 1.25h",
+                    reserve: "₹178",
+                    tint: Color.yellow
+                )
+
+                scenarioButton(
+                    id: 3,
+                    title: "3. Grid Shock",
+                    subtitle: "Tunnel Blackout",
+                    risk: "88% Risk · 4.5h",
+                    reserve: "₹388",
+                    tint: Color.red
+                )
+
+                scenarioButton(
+                    id: 4,
+                    title: "4. Fully Offline",
+                    subtitle: "0 Internet P2P",
+                    risk: "95% Risk · 5.0h",
+                    reserve: "₹410",
+                    tint: Color.purple
+                )
+
+                scenarioButton(
+                    id: 5,
+                    title: "5. Recovery",
+                    subtitle: "Restored to 5G",
+                    risk: "5% Risk · 0.30h",
+                    reserve: "₹50",
+                    tint: Color.cyan
+                )
+            }
+        }
+        .padding(12)
+        .background(cardBg)
+        .cornerRadius(8)
+        .overlay(RoundedRectangle(cornerRadius: 8).stroke(cardBorder, lineWidth: 1))
+    }
+
+    private func scenarioButton(id: Int, title: String, subtitle: String, risk: String, reserve: String, tint: Color) -> some View {
+        let isActive = bridgeClient.activeScenarioId == id
+        return Button {
+            Task {
+                await bridgeClient.triggerScenario(id)
+            }
+        } label: {
+            VStack(alignment: .leading, spacing: 3) {
+                HStack {
+                    Text(title)
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundColor(isActive ? tint : textPrimary)
+                    Spacer()
+                    if isActive {
+                        Circle().fill(tint).frame(width: 5, height: 5)
+                    }
+                }
+
+                Text(subtitle)
+                    .font(.system(size: 9))
+                    .foregroundColor(textSecondary)
+
+                Spacer(minLength: 2)
+
+                Text(risk)
+                    .font(.system(size: 8, design: .monospaced))
+                    .foregroundColor(textMuted)
+
+                HStack {
+                    Text("Reserve:")
+                        .font(.system(size: 8))
+                        .foregroundColor(textMuted)
+                    Text(reserve)
+                        .font(.system(size: 11, weight: .bold, design: .rounded))
+                        .foregroundColor(isActive ? tint : textPrimary)
+                }
+            }
+            .padding(8)
+            .frame(maxWidth: .infinity, minHeight: 76, alignment: .topLeading)
+            .background(isActive ? tint.opacity(0.12) : Color.white.opacity(0.02))
+            .cornerRadius(6)
+            .overlay(
+                RoundedRectangle(cornerRadius: 6)
+                    .stroke(isActive ? tint : Color.white.opacity(0.06), lineWidth: isActive ? 1.5 : 1)
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
+    // MARK: - 2. Live Telemetry Matrix & Strategy Allocations
+
+    private var liveTelemetryMatrixCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text("ACTIVE PREDICTIVE ALLOCATION & RISK TELEMETRY")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundColor(textMuted)
+                    .tracking(0.8)
+
+                Spacer()
+
+                if let msg = bridgeClient.lastTransmittedMessage {
+                    HStack(spacing: 4) {
+                        Circle().fill(Color.green).frame(width: 5, height: 5)
+                        Text("Seq #\(msg.sequenceNumber) · Broadcast at \(bridgeClient.lastTransmittedAt ?? Date(), style: .time)")
+                            .font(.system(size: 9, design: .monospaced))
+                            .foregroundColor(textMuted)
+                    }
+                }
+            }
+
+            if let msg = bridgeClient.lastTransmittedMessage {
+                VStack(spacing: 8) {
+                    // Hero Row: Recommended Reserve M2 vs Baseline
+                    HStack(alignment: .center) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("RECOMMENDED OFFLINE RESERVE (UNCERTAINTY-AWARE M2)")
+                                .font(.system(size: 9, weight: .bold))
+                                .foregroundColor(Color.cyan)
+
+                            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                                Text("₹\(Int(msg.recommendedReserveInr))")
+                                    .font(.system(size: 26, weight: .bold, design: .rounded))
+                                    .foregroundColor(Color.green)
+
+                                HStack(spacing: 3) {
+                                    if msg.deltaReserveInr > 0 {
+                                        Image(systemName: "arrow.up.right")
+                                        Text("+₹\(Int(msg.deltaReserveInr))")
+                                    } else if msg.deltaReserveInr < 0 {
+                                        Image(systemName: "arrow.down.right")
+                                        Text("-₹\(Int(abs(msg.deltaReserveInr)))")
+                                    } else {
+                                        Text("Baseline")
+                                    }
+                                }
+                                .font(.system(size: 11, weight: .bold, design: .monospaced))
+                                .foregroundColor(msg.deltaReserveInr > 0 ? Color.orange : (msg.deltaReserveInr < 0 ? Color.cyan : textMuted))
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(Capsule().fill(Color.white.opacity(0.06)))
+                            }
+                        }
+
+                        Spacer()
+
+                        VStack(alignment: .trailing, spacing: 2) {
+                            Text("PREVIOUS RESERVE")
+                                .font(.system(size: 9, weight: .bold))
+                                .foregroundColor(textMuted)
+                            Text("₹\(Int(msg.previousReserveInr))")
+                                .font(.system(size: 16, weight: .semibold, design: .rounded))
+                                .foregroundColor(textSecondary)
+                        }
+                    }
+                    .padding(10)
+                    .background(Color.white.opacity(0.02))
+                    .cornerRadius(6)
+
+                    // 4 Telemetry Metrics
+                    HStack(spacing: 8) {
+                        metricBox(
+                            title: "OUTAGE PROBABILITY",
+                            value: "\(Int(msg.robustOutageProbability * 100))%",
+                            sub: "Point: \(Int(msg.outageProbability * 100))% · \(msg.signalDbm) dBm",
+                            tint: msg.robustOutageProbability >= 0.70 ? Color.red : (msg.robustOutageProbability >= 0.30 ? Color.orange : Color.green)
+                        )
+
+                        metricBox(
+                            title: "PREDICTED DURATION",
+                            value: String(format: "%.1fh", msg.predictedDurationHours),
+                            sub: String(format: "±%.1fh duration variance", msg.durationStdHours),
+                            tint: Color.cyan
+                        )
+
+                        metricBox(
+                            title: "PREDICTED DEMAND",
+                            value: "₹\(Int(msg.predictedDemandInr))",
+                            sub: "σ = ₹\(Int(msg.compoundDemandStdInr)) compound",
+                            tint: Color.blue
+                        )
+
+                        metricBox(
+                            title: "UNCERTAINTY MARGIN",
+                            value: "+₹\(Int(msg.uncertaintyMarginInr))",
+                            sub: "Floor: ₹\(Int(msg.safetyFloorInr)) · Conf: \(Int(msg.confidenceLevel * 100))%",
+                            tint: Color.yellow
+                        )
+                    }
+
+                    // Strategy Benchmark Allocations Strip
+                    HStack(spacing: 8) {
+                        Text("STRATEGIES:")
+                            .font(.system(size: 8, weight: .bold))
+                            .foregroundColor(textMuted)
+
+                        strategyBadge("Fixed ₹500", amount: msg.strategySnapshot.fixedAllowanceInr, isActive: false)
+                        strategyBadge("Demand-Only", amount: msg.strategySnapshot.demandOnlyInr, isActive: false)
+                        strategyBadge("Proposed M1", amount: msg.strategySnapshot.proposedM1Inr, isActive: false)
+                        strategyBadge("Uncertainty M2", amount: msg.strategySnapshot.uncertaintyM2Inr, isActive: true)
+
+                        Spacer()
+                    }
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 4)
+                    .background(Color.black.opacity(0.2))
+                    .cornerRadius(4)
+
+                    // Narrative explanation
+                    HStack(alignment: .top, spacing: 6) {
+                        Image(systemName: "quote.opening")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundColor(Color.cyan)
+                        Text(msg.recommendationNarrative)
+                            .font(.system(size: 10))
+                            .foregroundColor(textSecondary)
+                    }
+                    .padding(8)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color.white.opacity(0.02))
+                    .cornerRadius(6)
+                }
+            } else {
+                HStack(spacing: 8) {
+                    ProgressView().controlSize(.small)
+                    Text("Connecting to local Python simulator on 127.0.0.1:8050 to pull initial telemetry...")
+                        .font(.system(size: 11))
+                        .foregroundColor(textMuted)
+                }
+                .padding(14)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color.white.opacity(0.02))
+                .cornerRadius(6)
+            }
+        }
+        .padding(12)
+        .background(cardBg)
+        .cornerRadius(8)
+        .overlay(RoundedRectangle(cornerRadius: 8).stroke(cardBorder, lineWidth: 1))
+    }
+
+    private func metricBox(title: String, value: String, sub: String, tint: Color) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(title)
+                .font(.system(size: 8, weight: .bold))
+                .foregroundColor(textMuted)
+            Text(value)
+                .font(.system(size: 14, weight: .bold, design: .rounded))
+                .foregroundColor(tint)
+            Text(sub)
+                .font(.system(size: 8))
+                .foregroundColor(textSecondary)
+                .lineLimit(1)
+        }
+        .padding(6)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.white.opacity(0.02))
+        .cornerRadius(6)
+    }
+
+    private func strategyBadge(_ name: String, amount: Double, isActive: Bool) -> some View {
+        HStack(spacing: 4) {
+            Text(name)
+                .font(.system(size: 8, weight: isActive ? .bold : .medium))
+                .foregroundColor(isActive ? Color.green : textMuted)
+            Text("₹\(Int(amount))")
+                .font(.system(size: 9, weight: .bold, design: .monospaced))
+                .foregroundColor(isActive ? Color.green : textSecondary)
+        }
+        .padding(.horizontal, 6)
+        .padding(.vertical, 2)
+        .background(Capsule().fill(isActive ? Color.green.opacity(0.15) : Color.white.opacity(0.04)))
+    }
+
+    // MARK: - 3. Presentation Timeline Event Log
+
+    private var presentationTimelineCard: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                HStack(spacing: 6) {
+                    Image(systemName: "list.bullet.indent")
+                        .foregroundColor(Color.cyan)
+                    Text("PRESENTATION TIMELINE (REAL-TIME AUDIT LOG)")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundColor(textMuted)
+                        .tracking(0.8)
+                }
+
+                Spacer()
+
+                if let ack = bridgeClient.lastAckReceived {
+                    HStack(spacing: 4) {
+                        Image(systemName: "checkmark.seal.fill")
+                            .foregroundColor(Color.green)
+                            .font(.system(size: 10))
+                        Text("Confirmed Receipt: Seq #\(ack.sequenceNumber)")
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundColor(Color.green)
+                    }
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(Capsule().fill(Color.green.opacity(0.12)))
+                }
+            }
+
+            if bridgeClient.timelineEvents.isEmpty {
+                VStack(spacing: 4) {
+                    Text("No scenario events recorded yet.")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundColor(textSecondary)
+                    Text("Trigger any of the 5 scenarios above or tap 'Inject Grid Shock' to generate verified presentation timeline events.")
+                        .font(.system(size: 10))
+                        .foregroundColor(textMuted)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 16)
+                .background(Color.white.opacity(0.01))
+                .cornerRadius(6)
+            } else {
+                VStack(spacing: 6) {
+                    ForEach(bridgeClient.timelineEvents) { item in
+                        timelineRow(item)
+                    }
+                }
+            }
+        }
+        .padding(12)
+        .background(cardBg)
+        .cornerRadius(8)
+        .overlay(RoundedRectangle(cornerRadius: 8).stroke(cardBorder, lineWidth: 1))
+    }
+
+    private func timelineRow(_ item: DemoTimelineItem) -> some View {
+        HStack(alignment: .top, spacing: 8) {
+            // Timestamp
+            Text(item.timestamp, style: .time)
+                .font(.system(size: 9, design: .monospaced))
+                .foregroundColor(textMuted)
+                .frame(width: 58, alignment: .leading)
+
+            // Category badge
+            Text(item.type.rawValue)
+                .font(.system(size: 8, weight: .black))
+                .foregroundColor(badgeColor(for: item.type))
+                .padding(.horizontal, 5)
+                .padding(.vertical, 2)
+                .background(Capsule().fill(badgeColor(for: item.type).opacity(0.15)))
+                .frame(width: 82, alignment: .leading)
+
+            // Content
+            VStack(alignment: .leading, spacing: 1) {
+                HStack(spacing: 4) {
+                    Text(item.title)
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundColor(textPrimary)
+
+                    if item.type == .acknowledged {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundColor(Color.green)
+                            .font(.system(size: 9))
+                    }
+                }
+
+                Text(item.details)
+                    .font(.system(size: 9))
+                    .foregroundColor(textSecondary)
+            }
+
+            Spacer()
+        }
+        .padding(6)
+        .background(Color.white.opacity(0.02))
+        .cornerRadius(4)
+    }
+
+    private func badgeColor(for type: DemoTimelineItem.EventType) -> Color {
+        switch type {
+        case .scenarioStarted: return Color.cyan
+        case .conditionChanged: return Color.yellow
+        case .shockInjected: return Color.red
+        case .recalculated: return Color.blue
+        case .sent: return Color.purple
+        case .acknowledged: return Color.green
+        case .restored: return Color.mint
+        }
+    }
+
+    // MARK: - 4. Judge-Facing Explanation
+
+    private var judgeExplanationCard: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 6) {
+                Image(systemName: "lightbulb.fill")
+                    .foregroundColor(Color.yellow)
+                    .font(.system(size: 11))
+                Text("WHAT MAKES THIS DEMONSTRATION INTERESTING?")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundColor(textMuted)
+                    .tracking(0.8)
+            }
+
+            VStack(alignment: .leading, spacing: 6) {
+                bulletPoint(
+                    number: "1",
+                    title: "Advance Capital Preparation",
+                    desc: "Offline payment systems must lock reserves BEFORE connectivity drops. Once disconnected, no bank or server can approve an increase."
+                )
+
+                bulletPoint(
+                    number: "2",
+                    title: "Opportunity Cost of Fixed Reserves",
+                    desc: "A static reserve (e.g., ₹500) unnecessarily locks liquid funds during reliable 5G coverage, while risking failure during prolonged transit outages."
+                )
+
+                bulletPoint(
+                    number: "3",
+                    title: "Joint Risk & Demand Modeling",
+                    desc: "Predictive provisioning estimates disruption probability, predicted outage duration, and expected payment demand simultaneously."
+                )
+
+                bulletPoint(
+                    number: "4",
+                    title: "Uncertainty-Aware Safety Margin",
+                    desc: "When predictions have high variance or during grid shocks, the model compounds duration uncertainty and activates an emergency safety floor."
+                )
+
+                bulletPoint(
+                    number: "5",
+                    title: "Zero-Internet Delivery Over P2P Transport",
+                    desc: "Advisories reach the user's iPhone over direct Apple AWDL/BLE peer transport. The iPhone requires zero Wi-Fi router or cellular data."
+                )
+            }
+
+            Divider().background(cardBorder)
+
+            HStack(spacing: 4) {
+                Image(systemName: "info.circle")
+                    .font(.system(size: 9))
+                    .foregroundColor(textMuted)
+                Text("Research Prototype with Simulated Telemetry. Production payment settlement, cryptographic verification, and local enclaves remain strictly isolated.")
+                    .font(.system(size: 9))
+                    .foregroundColor(textMuted)
+            }
+        }
+        .padding(12)
+        .background(cardBg)
+        .cornerRadius(8)
+        .overlay(RoundedRectangle(cornerRadius: 8).stroke(cardBorder, lineWidth: 1))
+    }
+
+    private func bulletPoint(number: String, title: String, desc: String) -> some View {
+        HStack(alignment: .top, spacing: 6) {
+            Text(number)
+                .font(.system(size: 9, weight: .bold, design: .monospaced))
+                .foregroundColor(Color.cyan)
+                .frame(width: 12, alignment: .leading)
+
+            VStack(alignment: .leading, spacing: 1) {
+                Text(title)
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundColor(textPrimary)
+                Text(desc)
+                    .font(.system(size: 9))
+                    .foregroundColor(textSecondary)
+            }
+        }
+    }
+
+    // MARK: - Predictive Provisioning Research Bridge Card (Left Panel)
+
+    private var predictiveResearchBridgeCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                HStack(spacing: 6) {
+                    Image(systemName: "chart.line.uptrend.xyaxis")
+                        .foregroundColor(Color.cyan)
+                    Text("RESEARCH STATION BRIDGE")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundColor(textMuted)
+                }
+                Spacer()
+                HStack(spacing: 4) {
+                    Circle()
+                        .fill(bridgeClient.isConnectedToSimulator ? Color.green : Color.orange)
+                        .frame(width: 6, height: 6)
+                    Text(bridgeClient.isConnectedToSimulator ? "SIMULATOR ONLINE" : "SIMULATOR OFFLINE")
+                        .font(.system(size: 9, weight: .bold, design: .monospaced))
+                        .foregroundColor(bridgeClient.isConnectedToSimulator ? Color.green : Color.orange)
+                }
+                .padding(.horizontal, 6)
+                .padding(.vertical, 2)
+                .background(Capsule().fill(bridgeClient.isConnectedToSimulator ? Color.green.opacity(0.12) : Color.orange.opacity(0.12)))
+            }
+
+            Text("Connects local Python simulation engine (127.0.0.1:8050) to the iPhone via Bluetooth/AWDL Multipeer session.")
+                .font(.system(size: 10))
+                .foregroundColor(textMuted)
+
+            Divider().background(cardBorder)
+
+            // Controls
+            HStack {
+                Toggle(isOn: $bridgeClient.autoSyncEnabled) {
+                    Text("Auto-Broadcast on Change")
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundColor(textPrimary)
+                }
+                .toggleStyle(.checkbox)
+
+                Spacer()
+
+                Button {
+                    Task {
+                        await bridgeClient.manualSyncNow()
+                    }
+                } label: {
+                    HStack(spacing: 3) {
+                        Image(systemName: "arrow.triangle.2.circlepath")
+                        Text("Sync")
+                    }
+                    .font(.system(size: 10, weight: .bold))
+                }
+                .buttonStyle(.bordered)
+                .tint(Color.cyan)
+                .disabled(!bridgeClient.isConnectedToSimulator || transport.connectedPeer == nil)
+            }
+
+            // 5 Guided Scenarios Quick Trigger List
+            VStack(alignment: .leading, spacing: 5) {
+                HStack {
+                    Text("DEMO SCENARIOS (5 PHASES)")
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundColor(Color.cyan)
+                    Spacer()
+                    Text("TAP TO RUN")
+                        .font(.system(size: 8, weight: .bold))
+                        .foregroundColor(textMuted)
+                }
+
+                VStack(spacing: 4) {
+                    leftScenarioRow(id: 1, name: "1. Normal 5G", reserve: "₹54", tint: .green)
+                    leftScenarioRow(id: 2, name: "2. Deteriorating", reserve: "₹178", tint: .yellow)
+                    leftScenarioRow(id: 3, name: "3. Grid Shock", reserve: "₹388", tint: .red)
+                    leftScenarioRow(id: 4, name: "4. Fully Offline", reserve: "₹410", tint: .purple)
+                    leftScenarioRow(id: 5, name: "5. Recovery", reserve: "₹50", tint: .cyan)
+                }
+            }
+            .padding(6)
+            .background(Color.black.opacity(0.2))
+            .cornerRadius(6)
+
+            // Quick Shock & Reset on Left Panel
+            HStack(spacing: 6) {
+                Button {
+                    Task {
+                        await bridgeClient.injectGridShock()
+                    }
+                } label: {
+                    HStack(spacing: 3) {
+                        Image(systemName: "bolt.fill")
+                        Text("Grid Shock")
+                    }
+                    .font(.system(size: 9, weight: .bold))
+                    .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(Color.red.opacity(0.85))
+
+                Button {
+                    Task {
+                        await bridgeClient.resetDemo()
+                    }
+                } label: {
+                    HStack(spacing: 3) {
+                        Image(systemName: "arrow.counterclockwise")
+                        Text("Reset Demo")
+                    }
+                    .font(.system(size: 9, weight: .bold))
+                    .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+                .tint(Color.cyan)
+            }
+
+            // Switch to full Demo Mode if in Packet Inbox
+            if selectedCompanionTab != .demoMode {
+                Button {
+                    selectedCompanionTab = .demoMode
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "gauge.with.needle.fill")
+                        Text("Open Full Judge Demo Dashboard")
+                    }
+                    .font(.system(size: 10, weight: .bold))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 4)
+                }
+                .buttonStyle(.bordered)
+                .tint(Color.cyan)
+            }
+
+            // Latest Broadcast Status
+            if let msg = bridgeClient.lastTransmittedMessage {
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack {
+                        Text("LAST BROADCAST (Seq #\(msg.sequenceNumber))")
+                            .font(.system(size: 8, weight: .bold))
+                            .foregroundColor(Color.cyan)
+                        Spacer()
+                        if let sentAt = bridgeClient.lastTransmittedAt {
+                            Text(sentAt, style: .time)
+                                .font(.system(size: 8, design: .monospaced))
+                                .foregroundColor(textMuted)
+                        }
+                    }
+
+                    HStack(spacing: 8) {
+                        Text("₹\(Int(msg.recommendedReserveInr))")
+                            .font(.system(size: 14, weight: .bold, design: .rounded))
+                            .foregroundColor(Color.green)
+
+                        Text(msg.deltaReserveInr >= 0 ? "+₹\(Int(msg.deltaReserveInr))" : "-₹\(Int(abs(msg.deltaReserveInr)))")
+                            .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                            .foregroundColor(msg.deltaReserveInr > 0 ? Color.orange : (msg.deltaReserveInr < 0 ? Color.cyan : textMuted))
+
+                        Spacer()
+
+                        Text("\(Int(msg.robustOutageProbability * 100))% · \(String(format: "%.1f", msg.predictedDurationHours))h")
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundColor(msg.robustOutageProbability > 0.4 ? Color.red : Color.yellow)
+                    }
+                }
+                .padding(8)
+                .background(Color.white.opacity(0.03))
+                .cornerRadius(6)
+            }
+        }
+        .padding(12)
+        .background(cardBg)
+        .cornerRadius(8)
+        .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.cyan.opacity(0.3), lineWidth: 1))
+    }
+
+    private func leftScenarioRow(id: Int, name: String, reserve: String, tint: Color) -> some View {
+        let isActive = bridgeClient.activeScenarioId == id
+        return Button {
+            Task {
+                await bridgeClient.triggerScenario(id)
+            }
+        } label: {
+            HStack(spacing: 6) {
+                Circle().fill(isActive ? tint : textMuted).frame(width: 5, height: 5)
+                Text(name)
+                    .font(.system(size: 9, weight: isActive ? .bold : .medium))
+                    .foregroundColor(isActive ? tint : textPrimary)
+                Spacer()
+                Text(reserve)
+                    .font(.system(size: 9, weight: .bold, design: .monospaced))
+                    .foregroundColor(isActive ? tint : textSecondary)
+            }
+            .padding(.horizontal, 6)
+            .padding(.vertical, 3)
+            .background(isActive ? tint.opacity(0.15) : Color.white.opacity(0.02))
+            .cornerRadius(4)
+        }
+        .buttonStyle(.plain)
     }
 }

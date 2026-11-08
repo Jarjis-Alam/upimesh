@@ -106,18 +106,6 @@ public struct OfflinePayView: View {
             reloadReceivedPackets()
             reloadActiveAllowance()
         }
-        .onReceive(transportService.$connectionState) { state in
-            if state == .connected, let peer = transportService.connectedPeer {
-                Task {
-                    if queuedPackets.first(where: { $0.allowanceSpend?.allowanceId == activeAllowance?.allowanceId }) == nil {
-                        await createOfflinePacketAction()
-                    }
-                    if let pkt = selectedPacketForTransfer ?? queuedPackets.last {
-                        try? await transportService.sendPacket(pkt, to: peer)
-                    }
-                }
-            }
-        }
         .onReceive(NotificationCenter.default.publisher(for: .meshAccountsUpdated)) { _ in
             Task {
                 await loadSenderBalance()

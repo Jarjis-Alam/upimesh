@@ -36,7 +36,15 @@ public final class PeerTransportTests {
         try testConnectionStateRecoveryOnHandshakeFailure()
         try testDeterministicTieBreakerAvoidsCrossInvitationCollision()
         try testSessionRecreationClearsStaleSocketState()
-        print("=== PeerTransportTests: All 25 passed cleanly! ===")
+        // Stage 6.5 Predictive Adaptive Provisioning Protocol Tests
+        try testPredictionMessageSerializationAndValidation()
+        try testPredictionPayloadLimitEnforcement()
+        try testPredictionForbiddenPaymentKeysRejection()
+        try testInboundTransportProbePredictionRouting()
+        try testPredictionMessageInvariants()
+        try testPredictionAckSerializationAndProbeRouting()
+        try testPredictionAckForbiddenPaymentKeysRejection()
+        print("=== PeerTransportTests: All 32 passed cleanly! ===")
     }
 
     private static func assert(_ condition: Bool, _ message: String) throws {
@@ -912,6 +920,306 @@ public final class PeerTransportTests {
         try assert(reconnectState == "Connected", "Recreated session reconnects cleanly")
 
         print("  ✓ PASS: testSessionRecreationClearsStaleSocketState")
+    }
+
+    // MARK: - Stage 6.5 Predictive Adaptive Provisioning Tests
+
+    public static func testPredictionMessageSerializationAndValidation() throws {
+        let snapshot = StrategyRecommendationSnapshot(
+            fixedAllowanceInr: 500.0,
+            demandOnlyInr: 790.0,
+            proposedM1Inr: 110.0,
+            uncertaintyM2Inr: 1250.0
+        )
+        let msg = PeerPredictionMessage(
+            sequenceNumber: 42,
+            timestamp: "2026-11-08T18:00:00Z",
+            senderDeviceId: "mac-companion-station-1",
+            isSimulated: true,
+            networkStatus: "Deteriorating",
+            signalDbm: -108,
+            outageProbability: 0.65,
+            robustOutageProbability: 0.72,
+            predictedDurationHours: 3.5,
+            durationStdHours: 0.8,
+            predictedDemandInr: 850.0,
+            compoundDemandStdInr: 180.0,
+            uncertaintyMarginInr: 400.0,
+            safetyFloorInr: 200.0,
+            confidenceLevel: 0.85,
+            recommendedReserveInr: 1250.0,
+            previousReserveInr: 500.0,
+            deltaReserveInr: 750.0,
+            recommendationNarrative: "Signal deteriorating to -108 dBm; increased reserve by ₹750 to hedge against 3.5h expected outage.",
+            strategySnapshot: snapshot
+        )
+
+        let data = try msg.encode()
+        try assert(!data.isEmpty, "Serialized prediction data must not be empty")
+
+        let decoded = try PeerPredictionMessage.decodeAndValidate(from: data)
+        try decoded.validate()
+
+        try assert(decoded.sequenceNumber == 42, "Sequence number must match")
+        try assert(decoded.isSimulated == true, "Must have isSimulated flag true")
+        try assert(decoded.senderDeviceId == "mac-companion-station-1", "Sender device ID must match")
+        try assert(decoded.recommendedReserveInr == 1250.0, "Recommended reserve must match")
+        try assert(decoded.deltaReserveInr == 750.0, "Delta reserve must match")
+        try assert(decoded.strategySnapshot.uncertaintyM2Inr == 1250.0, "Strategy snapshot must match")
+
+        print("  ✓ PASS: testPredictionMessageSerializationAndValidation")
+    }
+
+    public static func testPredictionPayloadLimitEnforcement() throws {
+        let bigDict: [String: Any] = [
+            "messageType": "PREDICTION_UPDATE",
+            "protocolVersion": 1,
+            "predictionId": UUID().uuidString,
+            "sequenceNumber": 1,
+            "timestamp": "2026-11-08T18:00:00Z",
+            "senderDeviceId": "mac-station",
+            "isSimulated": true,
+            "networkStatus": "Stable",
+            "signalDbm": -65,
+            "outageProbability": 0.05,
+            "robustOutageProbability": 0.08,
+            "predictedDurationHours": 0.5,
+            "durationStdHours": 0.1,
+            "predictedDemandInr": 200.0,
+            "compoundDemandStdInr": 30.0,
+            "uncertaintyMarginInr": 50.0,
+            "safetyFloorInr": 0.0,
+            "confidenceLevel": 0.95,
+            "recommendedReserveInr": 250.0,
+            "previousReserveInr": 250.0,
+            "deltaReserveInr": 0.0,
+            "recommendationNarrative": String(repeating: "A", count: 20000), // exceeds 16KB limit
+            "strategySnapshot": [
+                "fixedAllowanceInr": 500.0,
+                "demandOnlyInr": 200.0,
+                "proposedM1Inr": 250.0,
+                "uncertaintyM2Inr": 250.0
+            ]
+        ]
+        let oversizedData = try JSONSerialization.data(withJSONObject: bigDict)
+        try assert(oversizedData.count > PeerPredictionMessage.maxPayloadBytes, "Test payload must exceed 16KB")
+
+        var didThrow = false
+        do {
+            _ = try PeerPredictionMessage.decodeAndValidate(from: oversizedData)
+        } catch let err as PeerPredictionError {
+            if case .payloadTooLarge = err {
+                didThrow = true
+            }
+        }
+        try assert(didThrow, "Oversized prediction update must be rejected with payloadTooLarge")
+        print("  ✓ PASS: testPredictionPayloadLimitEnforcement")
+    }
+
+    public static func testPredictionForbiddenPaymentKeysRejection() throws {
+        // Construct valid prediction JSON but inject a forbidden payment key
+        let payloadWithPaymentKey = """
+        {
+            "messageType": "PREDICTION_UPDATE",
+            "protocolVersion": 1,
+            "predictionId": "pred-12345",
+            "sequenceNumber": 1,
+            "timestamp": "2026-11-08T18:00:00Z",
+            "senderDeviceId": "mac-station",
+            "isSimulated": true,
+            "networkStatus": "Stable",
+            "signalDbm": -65,
+            "outageProbability": 0.05,
+            "robustOutageProbability": 0.08,
+            "predictedDurationHours": 0.5,
+            "durationStdHours": 0.1,
+            "predictedDemandInr": 200.0,
+            "compoundDemandStdInr": 30.0,
+            "uncertaintyMarginInr": 50.0,
+            "safetyFloorInr": 0.0,
+            "confidenceLevel": 0.95,
+            "recommendedReserveInr": 250.0,
+            "previousReserveInr": 250.0,
+            "deltaReserveInr": 0.0,
+            "recommendationNarrative": "All good.",
+            "strategySnapshot": {
+                "fixedAllowanceInr": 500.0,
+                "demandOnlyInr": 200.0,
+                "proposedM1Inr": 250.0,
+                "uncertaintyM2Inr": 250.0
+            },
+            "amount": 500.00
+        }
+        """.data(using: .utf8)!
+
+        var didThrow = false
+        do {
+            _ = try PeerPredictionMessage.decodeAndValidate(from: payloadWithPaymentKey)
+        } catch let err as PeerPredictionError {
+            if case .paymentFieldsForbidden = err {
+                didThrow = true
+            }
+        }
+        try assert(didThrow, "Payload containing forbidden payment key must be rejected")
+        print("  ✓ PASS: testPredictionForbiddenPaymentKeysRejection")
+    }
+
+    public static func testInboundTransportProbePredictionRouting() throws {
+        let msg = PeerPredictionMessage(
+            sequenceNumber: 1,
+            timestamp: "2026-11-08T18:00:00Z",
+            senderDeviceId: "mac-station",
+            isSimulated: true,
+            networkStatus: "Stable",
+            signalDbm: -65,
+            outageProbability: 0.1,
+            robustOutageProbability: 0.12,
+            predictedDurationHours: 1.0,
+            durationStdHours: 0.2,
+            predictedDemandInr: 100.0,
+            compoundDemandStdInr: 20.0,
+            uncertaintyMarginInr: 30.0,
+            safetyFloorInr: 0.0,
+            confidenceLevel: 0.9,
+            recommendedReserveInr: 130.0,
+            previousReserveInr: 130.0,
+            deltaReserveInr: 0.0,
+            recommendationNarrative: "Normal operation",
+            strategySnapshot: StrategyRecommendationSnapshot(
+                fixedAllowanceInr: 500, demandOnlyInr: 100, proposedM1Inr: 130, uncertaintyM2Inr: 130
+            )
+        )
+        let data = try msg.encode()
+        let route = InboundTransportProbe.probe(data: data)
+        try assert(route == .predictionUpdate, "Inbound probe must route PREDICTION_UPDATE to .predictionUpdate")
+        print("  ✓ PASS: testInboundTransportProbePredictionRouting")
+    }
+
+    public static func testPredictionMessageInvariants() throws {
+        // Invalid probability > 1.0
+        let invalidProbMsg = PeerPredictionMessage(
+            sequenceNumber: 1,
+            timestamp: "2026-11-08T18:00:00Z",
+            senderDeviceId: "mac-station",
+            isSimulated: true,
+            networkStatus: "Stable",
+            signalDbm: -65,
+            outageProbability: 1.5, // INVALID
+            robustOutageProbability: 0.1,
+            predictedDurationHours: 1.0,
+            durationStdHours: 0.1,
+            predictedDemandInr: 100.0,
+            compoundDemandStdInr: 10.0,
+            uncertaintyMarginInr: 20.0,
+            safetyFloorInr: 0.0,
+            confidenceLevel: 0.9,
+            recommendedReserveInr: 120.0,
+            previousReserveInr: 120.0,
+            deltaReserveInr: 0.0,
+            recommendationNarrative: "Invalid test",
+            strategySnapshot: StrategyRecommendationSnapshot(
+                fixedAllowanceInr: 500, demandOnlyInr: 100, proposedM1Inr: 120, uncertaintyM2Inr: 120
+            )
+        )
+
+        var didThrow = false
+        do {
+            try invalidProbMsg.validate()
+        } catch let err as PeerPredictionError {
+            if case .malformedPayload = err {
+                didThrow = true
+            }
+        }
+        try assert(didThrow, "Probability > 1.0 must fail validation")
+
+        // Invalid isSimulated = false
+        let notSimulatedMsg = PeerPredictionMessage(
+            sequenceNumber: 2,
+            timestamp: "2026-11-08T18:00:00Z",
+            senderDeviceId: "mac-station",
+            isSimulated: false, // INVALID - must be true
+            networkStatus: "Stable",
+            signalDbm: -65,
+            outageProbability: 0.1,
+            robustOutageProbability: 0.1,
+            predictedDurationHours: 1.0,
+            durationStdHours: 0.1,
+            predictedDemandInr: 100.0,
+            compoundDemandStdInr: 10.0,
+            uncertaintyMarginInr: 20.0,
+            safetyFloorInr: 0.0,
+            confidenceLevel: 0.9,
+            recommendedReserveInr: 120.0,
+            previousReserveInr: 120.0,
+            deltaReserveInr: 0.0,
+            recommendationNarrative: "Invalid simulation test",
+            strategySnapshot: StrategyRecommendationSnapshot(
+                fixedAllowanceInr: 500, demandOnlyInr: 100, proposedM1Inr: 120, uncertaintyM2Inr: 120
+            )
+        )
+
+        didThrow = false
+        do {
+            try notSimulatedMsg.validate()
+        } catch let err as PeerPredictionError {
+            if case .malformedPayload = err {
+                didThrow = true
+            }
+        }
+        try assert(didThrow, "isSimulated == false must fail validation")
+
+        print("  ✓ PASS: testPredictionMessageInvariants")
+    }
+
+    public static func testPredictionAckSerializationAndProbeRouting() throws {
+        let ack = PeerPredictionAck(
+            predictionId: "test-pred-12345",
+            sequenceNumber: 7,
+            receiverDeviceId: "ios-peer-iphone15",
+            timestamp: "2026-11-08T18:30:00Z",
+            isSimulated: true
+        )
+
+        let data = try ack.encode()
+        try assert(!data.isEmpty, "Serialized ACK data must not be empty")
+
+        let route = InboundTransportProbe.probe(data: data)
+        try assert(route == .predictionAck, "Inbound probe must route PREDICTION_ACK to .predictionAck")
+
+        let decoded = try PeerPredictionAck.decodeAndValidate(from: data)
+        try decoded.validate()
+
+        try assert(decoded.sequenceNumber == 7, "ACK sequence number must match")
+        try assert(decoded.predictionId == "test-pred-12345", "ACK predictionId must match")
+        try assert(decoded.receiverDeviceId == "ios-peer-iphone15", "ACK receiverDeviceId must match")
+
+        print("  ✓ PASS: testPredictionAckSerializationAndProbeRouting")
+    }
+
+    public static func testPredictionAckForbiddenPaymentKeysRejection() throws {
+        let payloadWithPaymentKey = """
+        {
+            "messageType": "PREDICTION_ACK",
+            "protocolVersion": 1,
+            "predictionId": "pred-ack-test",
+            "sequenceNumber": 7,
+            "receiverDeviceId": "ios-client",
+            "timestamp": "2026-11-08T18:30:00Z",
+            "isSimulated": true,
+            "amount": 100.00
+        }
+        """.data(using: .utf8)!
+
+        var didThrow = false
+        do {
+            _ = try PeerPredictionAck.decodeAndValidate(from: payloadWithPaymentKey)
+        } catch let err as PeerPredictionError {
+            if case .paymentFieldsForbidden = err {
+                didThrow = true
+            }
+        }
+        try assert(didThrow, "Payload containing forbidden payment key must be rejected by ACK decoder")
+        print("  ✓ PASS: testPredictionAckForbiddenPaymentKeysRejection")
     }
 }
 

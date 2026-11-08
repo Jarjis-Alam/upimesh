@@ -270,6 +270,7 @@ extension Notification.Name {
     public static let meshAccountsUpdated = Notification.Name("UPIMeshAccountsUpdated")
     public static let deviceKeyRegistered = Notification.Name("UPIMeshDeviceKeyRegistered")
     public static let deviceAuthorized = Notification.Name("UPIMeshDeviceAuthorized")
+    public static let switchMeshTab = Notification.Name("UPIMeshSwitchTab")
 }
 
 // MARK: - API Errors

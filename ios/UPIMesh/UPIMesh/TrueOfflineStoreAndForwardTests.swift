@@ -114,7 +114,7 @@ public struct TrueOfflineStoreAndForwardTests {
             currency: "INR",
             allocatedAmount: Decimal(500.00),
             issuedAt: "2026-10-18T10:00:00Z",
-            expiresAt: "2026-10-30T10:00:00Z",
+            expiresAt: "2029-12-31T23:59:59Z",
             protocolVersion: 1
         )
         let bankSig = try signBytes(privateKey: bankPriv, data: voucherCanonicalBytes)
@@ -129,7 +129,7 @@ public struct TrueOfflineStoreAndForwardTests {
             spentAmount: Decimal.zero,
             lastSequenceNumber: 0,
             issuedAt: "2026-10-18T10:00:00Z",
-            expiresAt: "2026-10-30T10:00:00Z",
+            expiresAt: "2029-12-31T23:59:59Z",
             protocolVersion: 1,
             status: "ACTIVE",
             voucherSignature: bankSig,
@@ -754,7 +754,7 @@ public struct TrueOfflineStoreAndForwardTests {
             spentAmount: Decimal.zero,
             lastSequenceNumber: 0,
             issuedAt: "2026-10-18T10:00:00Z",
-            expiresAt: "2026-10-30T10:00:00Z",
+            expiresAt: "2029-12-31T23:59:59Z",
             protocolVersion: 1,
             status: "ACTIVE",
             voucherSignature: "TAMPERED_BANK_SIGNATURE_BASE64",
@@ -793,7 +793,7 @@ public struct TrueOfflineStoreAndForwardTests {
             spentAmount: Decimal(100.00), // Remaining = 0
             lastSequenceNumber: 1,
             issuedAt: "2026-10-18T10:00:00Z",
-            expiresAt: "2026-10-30T10:00:00Z",
+            expiresAt: "2029-12-31T23:59:59Z",
             protocolVersion: 1,
             status: "ACTIVE",
             voucherSignature: "sig",
@@ -813,7 +813,7 @@ public struct TrueOfflineStoreAndForwardTests {
             spentAmount: Decimal.zero,
             lastSequenceNumber: 0,
             issuedAt: "2026-10-18T10:00:00Z",
-            expiresAt: "2026-10-30T10:00:00Z",
+            expiresAt: "2029-12-31T23:59:59Z",
             protocolVersion: 1,
             status: "ACTIVE",
             voucherSignature: "sig",

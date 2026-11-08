@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 520" width="100%" height="100%">
+<rect width="900" height="520" fill="#0d1117" rx="12" />
+<text x="80" y="35" fill="#f0f6fc" font-family="system-ui, sans-serif" font-size="20" font-weight="700">Pareto Frontier: Payment Availability vs. Locked Funds</text>
+<text x="80" y="55" fill="#8b949e" font-family="system-ui, sans-serif" font-size="12">Rural Weak Signal &amp; Adversarial Scenarios (30-Seed Monte Carlo Envelope)</text>
+<line x1="80" y1="375.4901960784314" x2="850" y2="375.4901960784314" stroke="#21262d" stroke-dasharray="4,4" />
+<text x="68" y="379.4901960784314" fill="#8b949e" font-family="system-ui, sans-serif" font-size="11" text-anchor="end">60%</text>
+<line x1="80" y1="300.98039215686276" x2="850" y2="300.98039215686276" stroke="#21262d" stroke-dasharray="4,4" />
+<text x="68" y="304.98039215686276" fill="#8b949e" font-family="system-ui, sans-serif" font-size="11" text-anchor="end">70%</text>
+<line x1="80" y1="226.47058823529412" x2="850" y2="226.47058823529412" stroke="#21262d" stroke-dasharray="4,4" />
+<text x="68" y="230.47058823529412" fill="#8b949e" font-family="system-ui, sans-serif" font-size="11" text-anchor="end">80%</text>
+<line x1="80" y1="151.96078431372547" x2="850" y2="151.96078431372547" stroke="#21262d" stroke-dasharray="4,4" />
+<text x="68" y="155.96078431372547" fill="#8b949e" font-family="system-ui, sans-serif" font-size="11" text-anchor="end">90%</text>
+<line x1="80" y1="77.45098039215685" x2="850" y2="77.45098039215685" stroke="#21262d" stroke-dasharray="4,4" />
+<text x="68" y="81.45098039215685" fill="#8b949e" font-family="system-ui, sans-serif" font-size="11" text-anchor="end">100%</text>
+<line x1="80.0" y1="70" x2="80.0" y2="450" stroke="#21262d" stroke-dasharray="4,4" />
+<text x="80.0" y="470" fill="#8b949e" font-family="system-ui, sans-serif" font-size="11" text-anchor="middle">₹0</text>
+<line x1="234.0" y1="70" x2="234.0" y2="450" stroke="#21262d" stroke-dasharray="4,4" />
+<text x="234.0" y="470" fill="#8b949e" font-family="system-ui, sans-serif" font-size="11" text-anchor="middle">₹200</text>
+<line x1="388.0" y1="70" x2="388.0" y2="450" stroke="#21262d" stroke-dasharray="4,4" />
+<text x="388.0" y="470" fill="#8b949e" font-family="system-ui, sans-serif" font-size="11" text-anchor="middle">₹400</text>
+<line x1="542.0" y1="70" x2="542.0" y2="450" stroke="#21262d" stroke-dasharray="4,4" />
+<text x="542.0" y="470" fill="#8b949e" font-family="system-ui, sans-serif" font-size="11" text-anchor="middle">₹600</text>
+<line x1="696.0" y1="70" x2="696.0" y2="450" stroke="#21262d" stroke-dasharray="4,4" />
+<text x="696.0" y="470" fill="#8b949e" font-family="system-ui, sans-serif" font-size="11" text-anchor="middle">₹800</text>
+<line x1="850.0" y1="70" x2="850.0" y2="450" stroke="#21262d" stroke-dasharray="4,4" />
+<text x="850.0" y="470" fill="#8b949e" font-family="system-ui, sans-serif" font-size="11" text-anchor="middle">₹1000</text>
+<text x="450.0" y="500" fill="#c9d1d9" font-family="system-ui, sans-serif" font-size="13" font-weight="600" text-anchor="middle">Average Locked Funds (INR)</text>
+<text transform="rotate(-90)" x="-260.0" y="25" fill="#c9d1d9" font-family="system-ui, sans-serif" font-size="13" font-weight="600" text-anchor="middle">Payment Availability / Offline Success Rate (%)</text>
+<circle cx="157.0" cy="450.0" r="7" fill="#f59e0b" fill-opacity="0.85" stroke="#ffffff" stroke-width="2"><title>Fixed-₹100: ₹100.0 -> 39.89%</title></circle>
+<circle cx="234.0" cy="309.9960784313725" r="7" fill="#f59e0b" fill-opacity="0.85" stroke="#ffffff" stroke-width="2"><title>Fixed-₹200: ₹200.0 -> 68.79%</title></circle>
+<circle cx="349.5" cy="138.02745098039213" r="7" fill="#f59e0b" fill-opacity="0.85" stroke="#ffffff" stroke-width="2"><title>Fixed-₹350: ₹350.0 -> 91.87%</title></circle>
+<circle cx="465.0" cy="84.97647058823532" r="7" fill="#f59e0b" fill-opacity="0.85" stroke="#ffffff" stroke-width="2"><title>Fixed-₹500: ₹500.0 -> 98.99%</title></circle>
+<circle cx="657.5" cy="77.52549019607847" r="7" fill="#f59e0b" fill-opacity="0.85" stroke="#ffffff" stroke-width="2"><title>Fixed-₹750: ₹750.0 -> 99.99%</title></circle>
+<circle cx="850.0" cy="77.45098039215685" r="5" fill="#f59e0b" fill-opacity="0.85" stroke="none" stroke-width="0"><title>Fixed-₹1000: ₹1000.0 -> 100.0%</title></circle>
+<circle cx="230.8507" cy="317.07450980392156" r="7" fill="#ef4444" fill-opacity="0.85" stroke="#ffffff" stroke-width="2"><title>DemandOnly-sf0.25: ₹195.91 -> 67.84%</title></circle>
+<circle cx="381.7014" cy="115.0039215686275" r="7" fill="#ef4444" fill-opacity="0.85" stroke="#ffffff" stroke-width="2"><title>DemandOnly-sf0.5: ₹391.82 -> 94.96%</title></circle>
+<circle cx="532.5521" cy="79.68627450980387" r="7" fill="#ef4444" fill-opacity="0.85" stroke="#ffffff" stroke-width="2"><title>DemandOnly-sf0.75: ₹587.73 -> 99.7%</title></circle>
+<circle cx="683.4028" cy="77.45098039215685" r="7" fill="#ef4444" fill-opacity="0.85" stroke="#ffffff" stroke-width="2"><title>DemandOnly-sf1.0: ₹783.64 -> 100.0%</title></circle>
+<circle cx="834.2534999999999" cy="77.45098039215685" r="5" fill="#ef4444" fill-opacity="0.85" stroke="none" stroke-width="0"><title>DemandOnly-sf1.25: ₹979.55 -> 100.0%</title></circle>
+<circle cx="299.22669999999994" cy="195.69803921568632" r="7" fill="#3b82f6" fill-opacity="0.85" stroke="#ffffff" stroke-width="2"><title>M1-cs0.5: ₹284.71 -> 84.13%</title></circle>
+<circle cx="315.7586" cy="174.68627450980387" r="7" fill="#3b82f6" fill-opacity="0.85" stroke="#ffffff" stroke-width="2"><title>M1-cs1.0: ₹306.18 -> 86.95%</title></circle>
+<circle cx="330.7505" cy="158.8156862745098" r="7" fill="#3b82f6" fill-opacity="0.85" stroke="#ffffff" stroke-width="2"><title>M1-cs2.0: ₹325.65 -> 89.08%</title></circle>
+<circle cx="341.9694" cy="148.08627450980396" r="7" fill="#3b82f6" fill-opacity="0.85" stroke="#ffffff" stroke-width="2"><title>M1-cs3.5: ₹340.22 -> 90.52%</title></circle>
+<circle cx="352.1642" cy="139.29411764705878" r="5" fill="#3b82f6" fill-opacity="0.85" stroke="none" stroke-width="0"><title>M1-cs6.0: ₹353.46 -> 91.7%</title></circle>
+<circle cx="346.651" cy="147.78823529411767" r="7" fill="#10b981" fill-opacity="0.85" stroke="#ffffff" stroke-width="2"><title>M2-cs1.5-k60: ₹346.3 -> 90.56%</title></circle>
+<circle cx="350.86289999999997" cy="143.98823529411771" r="5" fill="#10b981" fill-opacity="0.85" stroke="none" stroke-width="0"><title>M2-cs1.5-k75: ₹351.77 -> 91.07%</title></circle>
+<circle cx="358.80159999999995" cy="137.35686274509806" r="7" fill="#10b981" fill-opacity="0.85" stroke="#ffffff" stroke-width="2"><title>M2-cs1.5-k85: ₹362.08 -> 91.96%</title></circle>
+<circle cx="362.59" cy="134.3764705882353" r="7" fill="#10b981" fill-opacity="0.85" stroke="#ffffff" stroke-width="2"><title>M2-cs1.5-k92: ₹367.0 -> 92.36%</title></circle>
+<circle cx="368.04929999999996" cy="130.35294117647055" r="7" fill="#10b981" fill-opacity="0.85" stroke="#ffffff" stroke-width="2"><title>M2-cs1.5-k98: ₹374.09 -> 92.9%</title></circle>
+<circle cx="353.7966" cy="141.67843137254903" r="5" fill="#10b981" fill-opacity="0.85" stroke="none" stroke-width="0"><title>M2-cs2.0-k60: ₹355.58 -> 91.38%</title></circle>
+<circle cx="358.01619999999997" cy="138.10196078431375" r="5" fill="#10b981" fill-opacity="0.85" stroke="none" stroke-width="0"><title>M2-cs2.0-k75: ₹361.06 -> 91.86%</title></circle>
+<circle cx="365.9626" cy="131.84313725490193" r="7" fill="#10b981" fill-opacity="0.85" stroke="#ffffff" stroke-width="2"><title>M2-cs2.0-k85: ₹371.38 -> 92.7%</title></circle>
+<circle cx="369.7741" cy="129.16078431372546" r="7" fill="#10b981" fill-opacity="0.85" stroke="#ffffff" stroke-width="2"><title>M2-cs2.0-k92: ₹376.33 -> 93.06%</title></circle>
+<circle cx="375.2488" cy="125.43529411764706" r="7" fill="#10b981" fill-opacity="0.85" stroke="#ffffff" stroke-width="2"><title>M2-cs2.0-k98: ₹383.44 -> 93.56%</title></circle>
+<circle cx="363.46779999999995" cy="134.00392156862745" r="7" fill="#10b981" fill-opacity="0.85" stroke="#ffffff" stroke-width="2"><title>M2-cs3.0-k60: ₹368.14 -> 92.41%</title></circle>
+<circle cx="367.71049999999997" cy="130.72549019607845" r="7" fill="#10b981" fill-opacity="0.85" stroke="#ffffff" stroke-width="2"><title>M2-cs3.0-k75: ₹373.65 -> 92.85%</title></circle>
+<circle cx="375.6877" cy="125.21176470588233" r="7" fill="#10b981" fill-opacity="0.85" stroke="#ffffff" stroke-width="2"><title>M2-cs3.0-k85: ₹384.01 -> 93.59%</title></circle>
+<circle cx="379.4915" cy="122.82745098039214" r="7" fill="#10b981" fill-opacity="0.85" stroke="#ffffff" stroke-width="2"><title>M2-cs3.0-k92: ₹388.95 -> 93.91%</title></circle>
+<circle cx="384.997" cy="119.32549019607848" r="5" fill="#10b981" fill-opacity="0.85" stroke="none" stroke-width="0"><title>M2-cs3.0-k98: ₹396.1 -> 94.38%</title></circle>
+<rect x="650" y="80" width="190" height="120" fill="#161b22" stroke="#30363d" rx="6" />
+<circle cx="668" cy="102" r="6" fill="#f59e0b" />
+<text x="684" y="106" fill="#c9d1d9" font-family="system-ui, sans-serif" font-size="12">Fixed</text>
+<circle cx="668" cy="126" r="6" fill="#ef4444" />
+<text x="684" y="130" fill="#c9d1d9" font-family="system-ui, sans-serif" font-size="12">Demand-Only</text>
+<circle cx="668" cy="150" r="6" fill="#3b82f6" />
+<text x="684" y="154" fill="#c9d1d9" font-family="system-ui, sans-serif" font-size="12">Proposed-JointOpt</text>
+<circle cx="668" cy="174" r="6" fill="#10b981" />
+<text x="684" y="178" fill="#c9d1d9" font-family="system-ui, sans-serif" font-size="12">Uncertainty-Aware</text>
+</svg>

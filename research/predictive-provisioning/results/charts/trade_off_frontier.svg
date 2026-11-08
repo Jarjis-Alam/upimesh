@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 460" width="720" height="460" style="background-color: #0d1117; font-family: -apple-system, BlinkMacSystemFont, sans-serif;">
+<rect width="720" height="460" fill="#0d1117" />
+<text x="80" y="32" fill="#c9d1d9" font-size="18" font-weight="bold">Efficiency Frontier: Locked Funds vs Offline Success Rate</text>
+<text x="80" y="52" fill="#8b949e" font-size="12">Top-left indicates optimal trade-off (high offline success with minimal idle locked escrow)</text>
+<line x1="80" y1="326.0" x2="670" y2="326.0" stroke="#21262d" stroke-width="1" />
+<text x="70" y="330.0" fill="#8b949e" font-size="11" text-anchor="end">20%</text>
+<line x1="80" y1="262.0" x2="670" y2="262.0" stroke="#21262d" stroke-width="1" />
+<text x="70" y="266.0" fill="#8b949e" font-size="11" text-anchor="end">40%</text>
+<line x1="80" y1="198.0" x2="670" y2="198.0" stroke="#21262d" stroke-width="1" />
+<text x="70" y="202.0" fill="#8b949e" font-size="11" text-anchor="end">60%</text>
+<line x1="80" y1="134.0" x2="670" y2="134.0" stroke="#21262d" stroke-width="1" />
+<text x="70" y="138.0" fill="#8b949e" font-size="11" text-anchor="end">80%</text>
+<line x1="80" y1="70.0" x2="670" y2="70.0" stroke="#21262d" stroke-width="1" />
+<text x="70" y="74.0" fill="#8b949e" font-size="11" text-anchor="end">100%</text>
+<line x1="80.0" y1="70" x2="80.0" y2="390" stroke="#21262d" stroke-width="1" />
+<text x="80.0" y="410" fill="#8b949e" font-size="11" text-anchor="middle">₹0</text>
+<line x1="175.3789697454675" y1="70" x2="175.3789697454675" y2="390" stroke="#21262d" stroke-width="1" />
+<text x="175.3789697454675" y="410" fill="#8b949e" font-size="11" text-anchor="middle">₹150</text>
+<line x1="270.757939490935" y1="70" x2="270.757939490935" y2="390" stroke="#21262d" stroke-width="1" />
+<text x="270.757939490935" y="410" fill="#8b949e" font-size="11" text-anchor="middle">₹300</text>
+<line x1="366.13690923640246" y1="70" x2="366.13690923640246" y2="390" stroke="#21262d" stroke-width="1" />
+<text x="366.13690923640246" y="410" fill="#8b949e" font-size="11" text-anchor="middle">₹450</text>
+<line x1="461.51587898186995" y1="70" x2="461.51587898186995" y2="390" stroke="#21262d" stroke-width="1" />
+<text x="461.51587898186995" y="410" fill="#8b949e" font-size="11" text-anchor="middle">₹600</text>
+<line x1="556.8948487273374" y1="70" x2="556.8948487273374" y2="390" stroke="#21262d" stroke-width="1" />
+<text x="556.8948487273374" y="410" fill="#8b949e" font-size="11" text-anchor="middle">₹750</text>
+<line x1="652.2738184728049" y1="70" x2="652.2738184728049" y2="390" stroke="#21262d" stroke-width="1" />
+<text x="652.2738184728049" y="410" fill="#8b949e" font-size="11" text-anchor="middle">₹900</text>
+<text x="375.0" y="440" fill="#8b949e" font-size="12" text-anchor="middle">Average Locked Reserve in Escrow (INR)</text>
+<text x="20" y="230.0" fill="#8b949e" font-size="12" text-anchor="middle" transform="rotate(-90 20 230.0)">Offline Success Rate (%)</text>
+<circle cx="397.9298991515583" cy="73.904" r="7" fill="#f59e0b" stroke="#ffffff" stroke-width="1.5" opacity="0.85"><title>Fixed-₹500 (Urban Metro Commute): 98.8% success, ₹500 locked</title></circle>
+<circle cx="562.9482340071831" cy="70.0" r="7" fill="#ef4444" stroke="#ffffff" stroke-width="1.5" opacity="0.85"><title>Demand-Only (Urban Metro Commute): 100.0% success, ₹760 locked</title></circle>
+<circle cx="157.86739090019967" cy="175.728" r="7" fill="#3b82f6" stroke="#ffffff" stroke-width="1.5" opacity="0.85"><title>Proposed-JointOpt (Urban Metro Commute): 67.0% success, ₹122 locked</title></circle>
+<circle cx="202.008778098402" cy="147.92" r="7" fill="#10b981" stroke="#ffffff" stroke-width="1.5" opacity="0.85"><title>Uncertainty-Aware (Urban Metro Commute): 75.7% success, ₹192 locked</title></circle>
+<circle cx="397.9298991515583" cy="73.96799999999996" r="7" fill="#f59e0b" stroke="#ffffff" stroke-width="1.5" opacity="0.85"><title>Fixed-₹500 (Rural Weak Signal): 98.8% success, ₹500 locked</title></circle>
+<circle cx="585.9154899218915" cy="70.0" r="7" fill="#ef4444" stroke="#ffffff" stroke-width="1.5" opacity="0.85"><title>Demand-Only (Rural Weak Signal): 100.0% success, ₹796 locked</title></circle>
+<circle cx="292.7078197283586" cy="104.59199999999998" r="7" fill="#3b82f6" stroke="#ffffff" stroke-width="1.5" opacity="0.85"><title>Proposed-JointOpt (Rural Weak Signal): 89.2% success, ₹335 locked</title></circle>
+<circle cx="324.5707542213277" cy="90.19200000000001" r="7" fill="#10b981" stroke="#ffffff" stroke-width="1.5" opacity="0.85"><title>Uncertainty-Aware (Rural Weak Signal): 93.7% success, ₹385 locked</title></circle>
+<circle cx="397.9298991515583" cy="70.0" r="7" fill="#f59e0b" stroke="#ffffff" stroke-width="1.5" opacity="0.85"><title>Fixed-₹500 (Reliable Urban 5G): 100.0% success, ₹500 locked</title></circle>
+<circle cx="593.0434782608696" cy="70.0" r="7" fill="#ef4444" stroke="#ffffff" stroke-width="1.5" opacity="0.85"><title>Demand-Only (Reliable Urban 5G): 100.0% success, ₹807 locked</title></circle>
+<circle cx="109.05879278245243" cy="194.512" r="7" fill="#3b82f6" stroke="#ffffff" stroke-width="1.5" opacity="0.85"><title>Proposed-JointOpt (Reliable Urban 5G): 61.1% success, ₹46 locked</title></circle>
+<circle cx="114.63528321357076" cy="178.25599999999997" r="7" fill="#10b981" stroke="#ffffff" stroke-width="1.5" opacity="0.85"><title>Uncertainty-Aware (Reliable Urban 5G): 66.2% success, ₹54 locked</title></circle>
+<circle cx="397.9298991515583" cy="71.952" r="7" fill="#f59e0b" stroke="#ffffff" stroke-width="1.5" opacity="0.85"><title>Fixed-₹500 (Non-Stationary Travel Shift): 99.4% success, ₹500 locked</title></circle>
+<circle cx="590.8243275647917" cy="70.0" r="7" fill="#ef4444" stroke="#ffffff" stroke-width="1.5" opacity="0.85"><title>Demand-Only (Non-Stationary Travel Shift): 100.0% success, ₹803 locked</title></circle>
+<circle cx="186.09956594485803" cy="134.448" r="7" fill="#3b82f6" stroke="#ffffff" stroke-width="1.5" opacity="0.85"><title>Proposed-JointOpt (Non-Stationary Travel Shift): 79.9% success, ₹167 locked</title></circle>
+<circle cx="209.05410466360055" cy="108.78400000000005" r="7" fill="#10b981" stroke="#ffffff" stroke-width="1.5" opacity="0.85"><title>Uncertainty-Aware (Non-Stationary Travel Shift): 87.9% success, ₹203 locked</title></circle>
+<circle cx="397.9298991515583" cy="72.56" r="7" fill="#f59e0b" stroke="#ffffff" stroke-width="1.5" opacity="0.85"><title>Fixed-₹500 (Adversarial Grid Shock): 99.2% success, ₹500 locked</title></circle>
+<circle cx="588.9103895718993" cy="70.0" r="7" fill="#ef4444" stroke="#ffffff" stroke-width="1.5" opacity="0.85"><title>Demand-Only (Adversarial Grid Shock): 100.0% success, ₹800 locked</title></circle>
+<circle cx="211.54031647496572" cy="144.30399999999997" r="7" fill="#3b82f6" stroke="#ffffff" stroke-width="1.5" opacity="0.85"><title>Proposed-JointOpt (Adversarial Grid Shock): 76.8% success, ₹207 locked</title></circle>
+<circle cx="269.3717651306342" cy="108.17600000000004" r="7" fill="#10b981" stroke="#ffffff" stroke-width="1.5" opacity="0.85"><title>Uncertainty-Aware (Adversarial Grid Shock): 88.1% success, ₹298 locked</title></circle>
+<circle cx="110" cy="90" r="5" fill="#f59e0b" />
+<text x="122" y="94" fill="#c9d1d9" font-size="11">Fixed-₹500</text>
+<circle cx="270" cy="90" r="5" fill="#ef4444" />
+<text x="282" y="94" fill="#c9d1d9" font-size="11">Demand-Only</text>
+<circle cx="430" cy="90" r="5" fill="#3b82f6" />
+<text x="442" y="94" fill="#c9d1d9" font-size="11">Proposed-JointOpt</text>
+<circle cx="590" cy="90" r="5" fill="#10b981" />
+<text x="602" y="94" fill="#c9d1d9" font-size="11">Uncertainty-Aware</text>
+</svg>

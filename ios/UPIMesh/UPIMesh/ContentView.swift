@@ -35,6 +35,13 @@ public struct ContentView: View {
             // Floating Detached Liquid Glass Pill Tab Bar
             LiquidTabBar(selectedTab: $selectedTab)
         }
+        .onReceive(NotificationCenter.default.publisher(for: .switchMeshTab)) { note in
+            if let tab = note.object as? MeshTab {
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                    selectedTab = tab
+                }
+            }
+        }
         .preferredColorScheme(.dark)
     }
 }

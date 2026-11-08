@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 480" width="100%" height="100%">
+<rect width="860" height="480" fill="#0d1117" rx="12" />
+<text x="80" y="35" fill="#f0f6fc" font-family="system-ui, sans-serif" font-size="20" font-weight="700">Cold-Start Convergence: Availability vs. Historical Epochs</text>
+<text x="80" y="55" fill="#8b949e" font-family="system-ui, sans-serif" font-size="12">Rural Weak Signal: Warmup Epochs 0 to 10 (Epistemic UCB Protection)</text>
+<line x1="80" y1="274.0" x2="820" y2="274.0" stroke="#21262d" stroke-dasharray="4,4" />
+<text x="68" y="278.0" fill="#8b949e" font-family="system-ui, sans-serif" font-size="11" text-anchor="end">40%</text>
+<line x1="80" y1="206.0" x2="820" y2="206.0" stroke="#21262d" stroke-dasharray="4,4" />
+<text x="68" y="210.0" fill="#8b949e" font-family="system-ui, sans-serif" font-size="11" text-anchor="end">60%</text>
+<line x1="80" y1="138.0" x2="820" y2="138.0" stroke="#21262d" stroke-dasharray="4,4" />
+<text x="68" y="142.0" fill="#8b949e" font-family="system-ui, sans-serif" font-size="11" text-anchor="end">80%</text>
+<line x1="80" y1="70.0" x2="820" y2="70.0" stroke="#21262d" stroke-dasharray="4,4" />
+<text x="68" y="74.0" fill="#8b949e" font-family="system-ui, sans-serif" font-size="11" text-anchor="end">100%</text>
+<line x1="80.0" y1="70" x2="80.0" y2="410" stroke="#21262d" stroke-dasharray="2,2" />
+<text x="80.0" y="430" fill="#8b949e" font-family="system-ui, sans-serif" font-size="11" text-anchor="middle">0 ep</text>
+<line x1="154.0" y1="70" x2="154.0" y2="410" stroke="#21262d" stroke-dasharray="2,2" />
+<text x="154.0" y="430" fill="#8b949e" font-family="system-ui, sans-serif" font-size="11" text-anchor="middle">1 ep</text>
+<line x1="228.0" y1="70" x2="228.0" y2="410" stroke="#21262d" stroke-dasharray="2,2" />
+<text x="228.0" y="430" fill="#8b949e" font-family="system-ui, sans-serif" font-size="11" text-anchor="middle">2 ep</text>
+<line x1="302.0" y1="70" x2="302.0" y2="410" stroke="#21262d" stroke-dasharray="2,2" />
+<text x="302.0" y="430" fill="#8b949e" font-family="system-ui, sans-serif" font-size="11" text-anchor="middle">3 ep</text>
+<line x1="450.0" y1="70" x2="450.0" y2="410" stroke="#21262d" stroke-dasharray="2,2" />
+<text x="450.0" y="430" fill="#8b949e" font-family="system-ui, sans-serif" font-size="11" text-anchor="middle">5 ep</text>
+<line x1="820.0" y1="70" x2="820.0" y2="410" stroke="#21262d" stroke-dasharray="2,2" />
+<text x="820.0" y="430" fill="#8b949e" font-family="system-ui, sans-serif" font-size="11" text-anchor="middle">10 ep</text>
+<text x="430.0" y="460" fill="#c9d1d9" font-family="system-ui, sans-serif" font-size="13" font-weight="600" text-anchor="middle">Warmup / Prior Historical Epochs Available</text>
+<polyline points="80.0,71.97200000000004 154.0,71.97200000000004 228.0,71.97200000000004 302.0,71.97200000000004 450.0,71.97200000000004 820.0,71.97200000000004" fill="none" stroke="#f59e0b" stroke-width="3" stroke-linecap="round" />
+<circle cx="80.0" cy="71.97200000000004" r="5" fill="#f59e0b" stroke="#ffffff" stroke-width="1.5"><title>Fixed-₹500 (99.4%)</title></circle>
+<circle cx="154.0" cy="71.97200000000004" r="5" fill="#f59e0b" stroke="#ffffff" stroke-width="1.5"><title>Fixed-₹500 (99.4%)</title></circle>
+<circle cx="228.0" cy="71.97200000000004" r="5" fill="#f59e0b" stroke="#ffffff" stroke-width="1.5"><title>Fixed-₹500 (99.4%)</title></circle>
+<circle cx="302.0" cy="71.97200000000004" r="5" fill="#f59e0b" stroke="#ffffff" stroke-width="1.5"><title>Fixed-₹500 (99.4%)</title></circle>
+<circle cx="450.0" cy="71.97200000000004" r="5" fill="#f59e0b" stroke="#ffffff" stroke-width="1.5"><title>Fixed-₹500 (99.4%)</title></circle>
+<circle cx="820.0" cy="71.97200000000004" r="5" fill="#f59e0b" stroke="#ffffff" stroke-width="1.5"><title>Fixed-₹500 (99.4%)</title></circle>
+<polyline points="80.0,70.476 154.0,70.476 228.0,70.0 302.0,70.0 450.0,70.0 820.0,70.0" fill="none" stroke="#ef4444" stroke-width="3" stroke-linecap="round" />
+<circle cx="80.0" cy="70.476" r="5" fill="#ef4444" stroke="#ffffff" stroke-width="1.5"><title>Demand-Only (99.9%)</title></circle>
+<circle cx="154.0" cy="70.476" r="5" fill="#ef4444" stroke="#ffffff" stroke-width="1.5"><title>Demand-Only (99.9%)</title></circle>
+<circle cx="228.0" cy="70.0" r="5" fill="#ef4444" stroke="#ffffff" stroke-width="1.5"><title>Demand-Only (100.0%)</title></circle>
+<circle cx="302.0" cy="70.0" r="5" fill="#ef4444" stroke="#ffffff" stroke-width="1.5"><title>Demand-Only (100.0%)</title></circle>
+<circle cx="450.0" cy="70.0" r="5" fill="#ef4444" stroke="#ffffff" stroke-width="1.5"><title>Demand-Only (100.0%)</title></circle>
+<circle cx="820.0" cy="70.0" r="5" fill="#ef4444" stroke="#ffffff" stroke-width="1.5"><title>Demand-Only (100.0%)</title></circle>
+<polyline points="80.0,115.28800000000001 154.0,109.26999999999998 228.0,105.76799999999997 302.0,105.156 450.0,104.30599999999998 820.0,104.74799999999999" fill="none" stroke="#3b82f6" stroke-width="3" stroke-linecap="round" />
+<circle cx="80.0" cy="115.28800000000001" r="5" fill="#3b82f6" stroke="#ffffff" stroke-width="1.5"><title>Proposed-JointOpt (86.7%)</title></circle>
+<circle cx="154.0" cy="109.26999999999998" r="5" fill="#3b82f6" stroke="#ffffff" stroke-width="1.5"><title>Proposed-JointOpt (88.5%)</title></circle>
+<circle cx="228.0" cy="105.76799999999997" r="5" fill="#3b82f6" stroke="#ffffff" stroke-width="1.5"><title>Proposed-JointOpt (89.5%)</title></circle>
+<circle cx="302.0" cy="105.156" r="5" fill="#3b82f6" stroke="#ffffff" stroke-width="1.5"><title>Proposed-JointOpt (89.7%)</title></circle>
+<circle cx="450.0" cy="104.30599999999998" r="5" fill="#3b82f6" stroke="#ffffff" stroke-width="1.5"><title>Proposed-JointOpt (89.9%)</title></circle>
+<circle cx="820.0" cy="104.74799999999999" r="5" fill="#3b82f6" stroke="#ffffff" stroke-width="1.5"><title>Proposed-JointOpt (89.8%)</title></circle>
+<polyline points="80.0,101.44999999999999 154.0,98.118 228.0,93.73200000000003 302.0,93.42599999999999 450.0,91.69200000000001 820.0,92.61000000000001" fill="none" stroke="#10b981" stroke-width="3" stroke-linecap="round" />
+<circle cx="80.0" cy="101.44999999999999" r="5" fill="#10b981" stroke="#ffffff" stroke-width="1.5"><title>Uncertainty-Aware (90.8%)</title></circle>
+<circle cx="154.0" cy="98.118" r="5" fill="#10b981" stroke="#ffffff" stroke-width="1.5"><title>Uncertainty-Aware (91.7%)</title></circle>
+<circle cx="228.0" cy="93.73200000000003" r="5" fill="#10b981" stroke="#ffffff" stroke-width="1.5"><title>Uncertainty-Aware (93.0%)</title></circle>
+<circle cx="302.0" cy="93.42599999999999" r="5" fill="#10b981" stroke="#ffffff" stroke-width="1.5"><title>Uncertainty-Aware (93.1%)</title></circle>
+<circle cx="450.0" cy="91.69200000000001" r="5" fill="#10b981" stroke="#ffffff" stroke-width="1.5"><title>Uncertainty-Aware (93.6%)</title></circle>
+<circle cx="820.0" cy="92.61000000000001" r="5" fill="#10b981" stroke="#ffffff" stroke-width="1.5"><title>Uncertainty-Aware (93.3%)</title></circle>
+<line x1="370" y1="51" x2="386" y2="51" stroke="#f59e0b" stroke-width="3" />
+<text x="392" y="55" fill="#c9d1d9" font-family="system-ui, sans-serif" font-size="11">Fixed-₹500</text>
+<line x1="485" y1="51" x2="501" y2="51" stroke="#ef4444" stroke-width="3" />
+<text x="507" y="55" fill="#c9d1d9" font-family="system-ui, sans-serif" font-size="11">Demand-Only</text>
+<line x1="600" y1="51" x2="616" y2="51" stroke="#3b82f6" stroke-width="3" />
+<text x="622" y="55" fill="#c9d1d9" font-family="system-ui, sans-serif" font-size="11">Proposed-JointOpt</text>
+<line x1="715" y1="51" x2="731" y2="51" stroke="#10b981" stroke-width="3" />
+<text x="737" y="55" fill="#c9d1d9" font-family="system-ui, sans-serif" font-size="11">Uncertainty-Aware</text>
+</svg>

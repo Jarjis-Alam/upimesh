@@ -82,3 +82,15 @@ brag-output-*/
 .agents/skills/*
 !.agents/skills/unslop/
 skills-lock.json
+
+### Python & Virtual Environments ###
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+.pytest_cache/
+

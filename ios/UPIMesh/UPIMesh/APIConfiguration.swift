@@ -12,7 +12,7 @@ public final class APIConfiguration: @unchecked Sendable {
 
     /// The default base URL pointing to the Mac's host IP.
     /// Notice: localhost is NOT used because on physical devices it points to the device itself.
-    public static let defaultBaseURL = URL(string: "http://192.168.1.100:8080")!
+    public static let defaultBaseURL = URL(string: "http://192.168.1.101:8080")!
 
     private init() {}
 
@@ -47,11 +47,16 @@ public final class APIConfiguration: @unchecked Sendable {
 
     private let authTokenKey = "com.upimesh.api.authToken"
 
+    /// Default administrative/demo token matching UPI_MESH_ADMIN_TOKEN in backend
+    public static let defaultAuthToken = "admin-secret-token-demo"
+
     /// The active authentication token for financial read endpoints (e.g. Bearer token).
-    /// Requires explicitly configured credentials; no hardcoded default token.
     public var authToken: String? {
         get {
-            return UserDefaults.standard.string(forKey: authTokenKey)
+            if let saved = UserDefaults.standard.string(forKey: authTokenKey), !saved.isEmpty {
+                return saved
+            }
+            return Self.defaultAuthToken
         }
         set {
             if let val = newValue?.trimmingCharacters(in: .whitespacesAndNewlines), !val.isEmpty {

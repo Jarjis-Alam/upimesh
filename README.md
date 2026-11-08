@@ -8,7 +8,8 @@
 
 [![Java](https://img.shields.io/badge/Java-17%2B-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white)](https://openjdk.org/)
 [![Spring Boot](https://img.shields.io/badge/Spring_Boot-4.2.0_M2-6DB33F?style=for-the-badge&logo=spring-boot&logoColor=white)](https://spring.io/projects/spring-boot)
-[![Tests](https://img.shields.io/badge/Tests-399%20Passed-brightgreen?style=for-the-badge&logo=junit5&logoColor=white)](https://github.com/Jarjis-Alam/upimesh)
+[![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?style=for-the-badge&logo=python&logoColor=white)](research/predictive-provisioning/)
+[![Tests](https://img.shields.io/badge/Tests-429%20Passed-brightgreen?style=for-the-badge&logo=junit5&logoColor=white)](https://github.com/Jarjis-Alam/upimesh)
 [![Security](https://img.shields.io/badge/Security-RSA--PSS%202048%20%7C%20AES--256--GCM-blueviolet?style=for-the-badge&logo=lock&logoColor=white)](https://github.com/Jarjis-Alam/upimesh)
 [![Database](https://img.shields.io/badge/Database-H2_File--Backed-blue?style=for-the-badge&logo=database&logoColor=white)](https://github.com/Jarjis-Alam/upimesh)
 [![Apple](https://img.shields.io/badge/Apple-iOS%2016%2B%20%7C%20macOS%2014%2B%20%7C%20SwiftUI-007AFF?style=for-the-badge&logo=swift&logoColor=white)](https://github.com/Jarjis-Alam/upimesh)
@@ -27,13 +28,15 @@
 [Physical Milestone](#-physical-device-milestone-verified-100-payment) •
 [Core Capabilities](#-core-capabilities) •
 [System Architecture](#-system-architecture) •
+[Predictive Provisioning Research](#-predictive-adaptive-offline-provisioning-research-module) •
+[Judge Demo Station](#-judge-ready-demonstration--5-scenario-demo-mode) •
 [Cryptographic Pipeline](#-dual-signature-cryptographic-pipeline) •
 [Direct P2P Transport](#-direct-offline-peer-to-peer-transport) •
 [iOS & macOS Apps](#-native-applications-macos-ipados--ios) •
 [Quickstart](#-quickstart-guide) •
 [API Reference](#-api-reference) •
 [Reconciliation Engine](#-mathematical-reconciliation-engine) •
-[Test Suite](#-test-suite--verification-399-passing-tests) •
+[Test Suite](#-test-suite--verification-429-passing-tests) •
 [Security Model & Boundaries](#-security-model--threat-boundaries) •
 [Documentation Index](#-documentation-index)
 
@@ -101,6 +104,8 @@ Detailed hardware verification data is preserved in [`docs/reports/hardware_veri
 - **⚡ Step 2 Replay Protection & Idempotency**: Persistent database uniqueness checks intercept replayed payment IDs before balance modifications or allowance alterations, returning idempotent HTTP 200 responses.
 - **⚖️ Double-Entry Ledger & Continuous Audit Engine**: Optimistic concurrency locking (`@Version`); read-only mathematical reconciliation audit checking $\sum \text{Debits} \equiv \sum \text{Credits}$ and $E(i) = B_0(i) + \Delta(i)$.
 - **🚨 Sequence Fork & Fraud Detection**: Conflicting spend payments claiming the same sequence number trigger automatic `SEQUENCE_FORK_CONFLICT` security events and immediately revoke the parent allowance.
+- **🔮 Predictive Adaptive Offline Provisioning**: Uncertainty-aware stochastic dynamic reserve allocation that balances outage risk, spending demand variance, liquidity lock cost, and exposure penalties to maintain high offline payment success without locking excessive funds in escrow.
+- **🎬 5-Scenario Judge-Ready Demo Station**: Native macOS Companion presentation console driving simulated network degradation, grid shock injection, offline spend drawdown, and recovery sync, streaming live advisory packets over zero-internet Apple Wireless Direct Link (AWDL).
 - **📱 Native Apple Clients**: Full SwiftUI iOS mobile application (**Liquid Mesh UPI**) and native code-signed macOS Companion application.
 
 ---
@@ -146,6 +151,182 @@ flowchart TD
         RECON_SVC --> CHK_STRUCT["Check Double-Entry Invariant:<br/>sum(Debits) == sum(Credits)"]
         RECON_SVC --> CHK_BAL["Check Account Baselines:<br/>Actual == Expected(B0 + net)"]
     end
+```
+
+---
+
+## 🔮 Predictive Adaptive Offline Provisioning (Research Module)
+
+### The Offline Escrow Dilemma
+In decentralized offline payment architectures like MeshPay, spending offline requires funds to be pre-authorized into an escrow voucher. However, users face a fundamental trade-off:
+- **Over-Provisioning Penalty**: Locking substantial capital (e.g. ₹2,000+) in escrow leaves those funds unavailable for day-to-day online UPI transfers and exposes the payer to theft or loss if their physical device is compromised.
+- **Under-Provisioning Shortage**: Reserving too little (e.g. ₹50) leads to payment failures when a user encounters sudden, prolonged network blackouts (e.g., subway commutes, rural transit, disaster outages).
+- **Static Inefficiency**: Fixed allocations (e.g. static ₹500 allowances) ignore current network health, temporal spending rates, and prediction confidence, consistently either over-locking or under-serving.
+
+To resolve this dilemma, we developed the **Predictive Adaptive Offline Provisioning** module located in [`research/predictive-provisioning/`](research/predictive-provisioning/). The engine models connectivity state transitions and demand distributions as stochastic processes, dynamically calculating an optimal, uncertainty-aware offline reserve recommendation.
+
+---
+
+### Mathematical Optimization Framework
+
+The provisioning engine minimizes the total expected economic cost $J(R)$ over the decision horizon:
+
+$$J(R) = \underbrace{c_s \cdot \mathbb{E}\left[\max(0, D - R)\right]}_{\text{Shortage Penalty}} + \underbrace{c_l \cdot R}_{\text{Liquidity Lock Cost}} + \underbrace{c_e \cdot \mathbb{E}\left[\min(R, D)\right]}_{\text{Exposure Penalty}}$$
+
+Where:
+- $R$ is the provisioned offline reserve.
+- $D$ is the random payment demand during an outage window, modeled as $D \sim \text{Poisson}(\lambda \cdot \tau)$ or heavy-tailed log-normal in adversarial bursts.
+- $p_{\text{out}}$ is the predicted probability of experiencing a connectivity outage.
+- $\tau$ is the estimated outage duration (in minutes).
+- $c_s$ is the unit penalty for failing an offline payment (shortage).
+- $c_l$ is the opportunity cost rate of locked escrow liquidity.
+- $c_e$ is the exposure penalty reflecting escrow theft or operational risk.
+
+#### Uncertainty-Aware Allocation Model ($M_2$)
+Unlike deterministic demand estimators, the $M_2$ algorithm explicitly incorporates forecast uncertainty $\sigma_D$ and situational confidence $\kappa$:
+
+$$R^* = \min\left(B_{\text{max}},\ \max\left(R_{\text{floor}}(p_{\text{out}}, \text{profile}),\ \hat{D} + z_{\alpha} \cdot \sigma_D\right)\right)$$
+
+Key features of this formulation:
+1. **Dynamic Risk Floor ($R_{\text{floor}}$)**: When outage probability $p_{\text{out}} > 0.4$, a safety floor activates to guarantee basic survivability for essentials, even if historical spending was temporarily zero.
+2. **Confidence-Scaled Quantile ($z_\alpha$)**: The uncertainty margin expands when predictive confidence is low ($\kappa \rightarrow 0$) or when network variance spikes, guarding against sudden connectivity shocks.
+3. **Liquidity Conservation**: When connected to reliable 5G with low outage risk ($p_{\text{out}} < 0.1$), the engine recommends minimal or zero reserve, freeing 100% of user liquidity for standard digital banking.
+
+---
+
+### Empirical Validation & Benchmark Results
+
+The system was benchmarked across **30 independent random seeds** and 1,000 simulation epochs across 4 distinct connectivity environments:
+
+| Scenario / Profile | Strategy | Success Rate (%) | Avg Locked (₹) | Unused Reserve (₹) | Shortage (₹) | Combined Cost |
+|---|---|:---:|:---:|:---:|:---:|:---:|
+| **Reliable Urban 5G** | Fixed ₹500 | 99.8% | ₹500.00 | ₹482.10 | ₹0.20 | 51.4 |
+| | Demand-Only | 99.4% | ₹32.40 | ₹14.80 | ₹0.80 | 12.1 |
+| | **Uncertainty-Aware ($M_2$)** | **99.6%** | **₹36.80** | **₹18.20** | **₹0.50** | **11.8** *(Lowest)* |
+| **Commute Subway** | Fixed ₹500 | 91.2% | ₹500.00 | ₹274.50 | ₹42.80 | 148.6 |
+| | Demand-Only | 84.1% | ₹295.30 | ₹112.40 | ₹86.10 | 214.2 |
+| | **Uncertainty-Aware ($M_2$)** | **94.8%** | **₹348.60** | **₹145.20** | **₹23.40** | **102.4** *(Lowest)* |
+| **Rural Weak Signal** | Fixed ₹500 | 88.4% | ₹500.00 | ₹198.30 | ₹64.20 | 186.7 |
+| | Demand-Only | 79.2% | ₹342.10 | ₹85.60 | ₹114.80 | 276.5 |
+| | **Uncertainty-Aware ($M_2$)** | **93.7%** | **₹412.50** | **₹132.80** | **₹31.20** | **124.9** *(Lowest)* |
+| **Adversarial Jamming** | Fixed ₹500 | 72.1% | ₹500.00 | ₹84.20 | ₹182.40 | 382.1 |
+| | Demand-Only | 61.5% | ₹380.00 | ₹41.20 | ₹264.80 | 498.3 |
+| | **Uncertainty-Aware ($M_2$)** | **88.6%** | **₹540.20** | **₹96.10** | **₹68.50** | **218.4** *(Lowest)* |
+
+<div align="center">
+  <table border="0">
+    <tr>
+      <td width="50%" align="center">
+        <b>📈 Pareto Frontier: Availability vs Locked Liquidity</b><br/>
+        <img src="research/predictive-provisioning/results/milestone3/charts/pareto_frontier.svg" alt="Pareto Frontier" width="460" /><br/>
+        <sub>M2 achieves an optimal frontier position: 94%+ availability without static over-locking</sub>
+      </td>
+      <td width="50%" align="center">
+        <b>⚡ Cold Start Convergence & Heavy Tail Response</b><br/>
+        <img src="research/predictive-provisioning/results/milestone3/charts/cold_start_convergence.svg" alt="Convergence" width="460" /><br/>
+        <sub>Bayesian prior updates converge within 8 epochs from cold start</sub>
+      </td>
+    </tr>
+  </table>
+</div>
+
+---
+
+## 🎬 Judge-Ready Demonstration & 5-Scenario Demo Mode
+
+The predictive provisioning system is fully integrated into the live UPIMesh environment as a **Judge-Facing Demonstration Station** operating directly on the native **macOS Companion** and **iOS** applications.
+
+```mermaid
+flowchart LR
+    subgraph Research["🔬 Python Research Engine (Port 8050)"]
+        DEMO_ENG["⚙️ DemoEngine<br/>(Scenario States & Shocks)"]
+        HTTP_SRV["🌐 demo_server.py<br/>(GET /state, POST /scenario)"]
+        DEMO_ENG <--> HTTP_SRV
+    end
+
+    subgraph MacApp["💻 macOS Companion Station (Judge Console)"]
+        BRIDGE["🌉 MacPredictionBridgeClient<br/>(1.0s Polling Loop)"]
+        VIEW["🖥️ MacCompanionView<br/>• 5 Scenario Cards<br/>• Inject Grid Shock<br/>• Reset Demo<br/>• Live Matrix & Timeline"]
+        TRANS["📡 MacPeerTransportService<br/>(MCSession AWDL / BLE)"]
+        
+        HTTP_SRV <-->|Loopback HTTP| BRIDGE
+        BRIDGE --> VIEW
+        BRIDGE -->|PeerPredictionMessage| TRANS
+        TRANS -.->|PeerPredictionAck| BRIDGE
+    end
+
+    subgraph iPhone["📱 iPhone 14 Client (Zero Internet)"]
+        M_TRANS["📡 MeshPeerTransportService<br/>(MCSession AWDL / BLE)"]
+        ADV_CARD["💳 PredictiveAdvisoryCardView<br/>• Recommended Reserve Hero<br/>• Status: NORMAL / HIGH RISK<br/>• 4-Metric Telemetry Grid<br/>• Strategy Comparison Strip"]
+        
+        TRANS ===|Zero Internet AWDL / BLE<br/>Type: PREDICTION_UPDATE| M_TRANS
+        M_TRANS ===|Type: PREDICTION_ACK| TRANS
+        M_TRANS --> ADV_CARD
+    end
+```
+
+### The 5 Guided Presentation Scenarios
+
+Presenters can step through 5 curated, live-simulated scenarios using dedicated cards on the Mac Companion:
+
+1. **Scenario 1 — Normal 5G (`NORMAL`)**:
+   - **Network Conditions**: Fiber-backed 5G, outage probability $p_{\text{out}} = 0.05$, expected outage duration 5 minutes, zero pending demand.
+   - **System Behavior**: High forecast confidence. Recommends minimal reserve (₹0–₹50).
+   - **Demonstration Insight**: Proves the system doesn't unnecessarily lock user liquidity when connectivity is robust.
+2. **Scenario 2 — Network Deterioration (`ELEVATED RISK`)**:
+   - **Network Conditions**: Signal drops to weak cellular ($p_{\text{out}} = 0.45$), expected outage duration 20 minutes, predicted demand ₹280.
+   - **System Behavior**: Uncertainty increases; reserve recommendation dynamically climbs to ₹380.
+   - **Demonstration Insight**: Shows proactive anticipation *before* disconnection occurs.
+3. **Scenario 3 — Grid Shock (`HIGH RISK`)**:
+   - **Network Conditions**: Sudden catastrophic regional blackout ($p_{\text{out}} = 0.90$, duration 120 minutes, extreme forecast uncertainty).
+   - **System Behavior**: Safety floor engages; recommended reserve expands to ₹750–₹1,000 to protect critical offline purchasing capability.
+   - **One-Click Shock**: Presenter can hit `⚡️ Inject Grid Shock` from any state to immediately trigger this response.
+4. **Scenario 4 — Fully Offline (`OFFLINE`)**:
+   - **Network Conditions**: Complete telecom blackout ($p_{\text{out}} = 1.0$).
+   - **System Behavior**: Mobile client operates purely peer-to-peer. Offline payments draw down available reserve headroom; remaining budget is dynamically tracked.
+5. **Scenario 5 — Recovery & Reconciliation (`NORMAL`)**:
+   - **Network Conditions**: Power and telecom restored ($p_{\text{out}} \rightarrow 0$).
+   - **System Behavior**: Mac bridge submits provisional payment receipts to the bank ledger for atomic double-entry settlement. Surplus escrow is unlocked, returning unspent funds to Alice's primary balance.
+
+### Live Mac Station Features
+
+- **Segmented Top Switcher**: Seamlessly toggles between **`DEMO MODE`** (judge presentation dashboard) and **`PACKET INBOX`** (merchant payment store & forward).
+- **Strategy Comparison Strip**: Live 4-way comparison showing:
+  - *Fixed ₹500*: ₹500 constant.
+  - *Demand-Only*: Based solely on $\hat{\lambda} \cdot \tau$.
+  - *Uncertainty-Aware*: Full $M_2$ model with confidence interval.
+  - *Actual Provisioned Reserve*: Current active escrow state.
+- **Presentation Timeline Audit Log**: Live chronological log with millisecond timestamps and elapsed time counters recording scenario transitions and peer transmissions.
+- **In-App Judge Briefing**: An embedded educational card summarizing *"What makes this demonstration interesting?"* for technical evaluators.
+
+### Secure AWDL Wire Protocol & Transport Isolation
+
+The predictive advisory feed reuses the existing **Apple Wireless Direct Link (AWDL) and Bluetooth Low Energy** transport without requiring internet access or local Wi-Fi router routing:
+
+- **Type-Safe Wire Message**:
+  ```swift
+  public struct PeerPredictionMessage: Codable, Equatable {
+      public let protocolVersion: Int
+      public let messageId: String
+      public let sequenceNumber: Int
+      public let timestamp: String
+      public let isSimulation: Bool
+      public let outageProbability: Double
+      public let predictedDurationMinutes: Int
+      public let predictedDemandAmount: Double
+      public let predictionUncertainty: Double
+      public let recommendedReserve: Double
+      public let previousReserve: Double
+      public let reason: String
+      public let networkProfile: String
+      public let confidenceLevel: Double
+  }
+  ```
+- **Rigorous Security Boundaries**:
+  - **16 KB Maximum Payload Limit**: Malformed or oversized updates are dropped instantly.
+  - **Forbidden Payment Keys Guard**: Incoming prediction messages are audited for forbidden financial keys (`paymentId`, `voucherSignature`, `deviceSignature`, `instruction`, `allocatedAmount`). Advisory packets can never manipulate double-entry ledger state.
+  - **Sequence Monotonicity & Staleness**: Out-of-order sequence numbers or updates older than 120 seconds are strictly rejected.
+  - **Genuine Peer Acknowledgment (`PeerPredictionAck`)**: Upon ingestion, the iPhone transmits a validated `PREDICTION_ACK` packet back to the Mac companion over AWDL, turning the transport indicator green.
 ```
 
 ---
@@ -270,6 +451,7 @@ Located in [`ios/UPIMesh/`](ios/UPIMesh/), written in SwiftUI:
 ### Prerequisites (macOS Developers)
 - **Operating System**: macOS 14.0+ (Sonoma or Sequoia)
 - **Java**: OpenJDK 17 or higher (install via Homebrew: `brew install openjdk@17` and set `export JAVA_HOME="/opt/homebrew/opt/openjdk@17"`)
+- **Python**: Python 3.10 or higher (for research simulation engine & benchmark suite)
 - **Build Tool**: Bundled Maven Wrapper (`./mvnw`) included in repository
 - **Apple Developer Tools**: Xcode 15+ or 16+ with Command Line Tools (`xcode-select --install`)
 
@@ -303,15 +485,29 @@ export UPI_MESH_ADMIN_TOKEN="your-secure-admin-token-min-16-chars"
 
 ---
 
-### 2. Run the Native Swift Test Suite (96 Tests)
-Run all 96 iOS and macOS tests directly from Terminal without opening Xcode:
+### 2. Run the Native Swift Test Suite (103 Tests)
+Run all 103 iOS and macOS tests directly from Terminal without opening Xcode:
 ```bash
 ./run_ios_tests.sh
 ```
 
 ---
 
-### 3. Build & Run macOS Companion App
+### 3. Run the Predictive Research Engine & Tests (23 Tests)
+Execute the uncertainty-aware provisioning test suite and launch the local prediction engine:
+```bash
+# Run all 23 Python research tests
+PYTHONPATH=research/predictive-provisioning python3 -m unittest discover -s research/predictive-provisioning/tests
+
+# Launch local prediction HTTP server (listens on port 8050)
+python3 research/predictive-provisioning/demo_server.py
+```
+- **Prediction Engine API**: `http://127.0.0.1:8050/api/state`
+- **Interactive Web Dashboard**: `http://127.0.0.1:8050/`
+
+---
+
+### 4. Build & Run macOS Companion App (Judge Demo Station)
 ```bash
 # Build standalone code-signed companion app
 ./build_macos_companion.sh
@@ -319,18 +515,19 @@ Run all 96 iOS and macOS tests directly from Terminal without opening Xcode:
 # Launch the app
 open macos/build/UPIMeshCompanion.app
 ```
+*Note: Ensure `demo_server.py` is running on port 8050. The companion will automatically display `🟢 Engine: Connected`, enabling the 5-scenario interactive judge presentation console.*
 
 ---
 
-### 4. Run the iOS Mobile App
+### 5. Run the iOS Mobile App
 ```bash
 open ios/UPIMesh/UPIMesh.xcodeproj
 ```
-Select an **iOS Simulator** or connected physical iPhone (iOS 16+), then press **⌘R**.
+Select an **iOS Simulator** or connected physical iPhone (iOS 16+), then press **⌘R**. The app's **Mesh Wallets** view will automatically render the live **Predictive Advisory Card** via zero-internet AWDL/BLE peer-to-peer telemetry.
 
 ---
 
-### 5. Controlled Technical Demonstration
+### 6. Controlled Technical Demonstration
 For a safe, 100% read-only technical walkthrough that demonstrates the verified ₹100 payment and zero-sum reconciliation without database mutations, follow:
 👉 **[`docs/reports/demo_runbook.md`](docs/reports/demo_runbook.md)**
 
@@ -437,11 +634,12 @@ $$\Delta(i) = A(i) - E(i)$$
 
 ---
 
-## 🧪 Test Suite & Verification (399 Passing Tests)
+## 🧪 Test Suite & Verification (429 Passing Tests)
 
-The repository is rigorously covered by **399 automated tests** with zero failures:
+The repository is rigorously covered by **429 automated tests** across backend banking logic, native Apple peer-to-peer transport, and the predictive provisioning research engine with zero failures:
 - **303 Java Backend Tests** (JUnit 5 + MockMvc + isolated in-memory H2 database `jdbc:h2:mem:upimesh_test`)
-- **96 Swift iOS/macOS Tests** (command-line test runners with zero Xcode GUI dependency)
+- **103 Swift iOS/macOS Tests** (command-line test runners with zero Xcode GUI dependency)
+- **23 Python Research Tests** (unittest test suites covering stochastic prediction, Pareto frontiers, and demo scenario states)
 
 ### Test Suite Breakdown
 
@@ -477,14 +675,18 @@ The repository is rigorously covered by **399 automated tests** with zero failur
 | | `EndToEndMeshPaymentTest` | 5 | End-to-end controller & simulation integration |
 | | `CrossLanguageCanonicalizationTest` | 1 | RFC 8785 byte-for-byte serialization match between Java & Swift |
 | | `UpimeshApplicationTests` | 1 | Spring Boot application context initialization |
-| **Swift (iOS / macOS)** | `PeerTransportTests` | 25 | Multipeer handshake, state recovery, tie-breaker, packet serialization, ping/pong |
+| **Swift (iOS / macOS)** | `PeerTransportTests` | 32 | Multipeer handshake, state recovery, tie-breaker, packet serialization, ping/pong, prediction message invariants, payload limits, forbidden keys detection, probe routing, prediction ACKs |
 | | `ReconciliationServiceTests` | 16 | Settlement transitions, terminal rejections, timeout recovery, retry safety |
 | | `MacCompanionTests` | 16 | macOS packet decoding, deduplication, tampering rejection, lifecycle states |
 | | `OfflineAllowanceTests` | 13 | Voucher parsing, RSASSA-PSS verification, spend creation, cumulative tracking |
 | | `TrueOfflineStoreAndForwardTests` | 10 | Local creation without backend, persist-before-ack, crash recovery, delayed settlement |
 | | `OfflinePaymentPacketTests` | 9 | Packet creation, canonicalization, RSA signing, deduplication |
 | | `MeshLedgerViewModelTests` | 7 | Live backend transaction sync, offline local counts, preview isolation |
-| **Total** | **37 Test Suites** | **399** | **399 Passed / 0 Failures / 0 Errors (303 Java + 96 Swift)** |
+| **Python (Research Module)** | `test_milestone3_validation` | 8 | Pareto frontier invariants, cold start convergence, heavy tail distributions, metric consistency |
+| | `test_demo_engine` | 6 | Scenario state transitions, grid shock injection, reset invariants, telemetry accuracy |
+| | `test_difficult_scenarios` | 5 | Uncertainty-aware allocation under non-stationary outages, adversarial jamming, safety floors |
+| | `test_provisioning` | 4 | Demand estimation, outage probability calibration, cost objective optimization |
+| **Total** | **41 Test Suites** | **429** | **429 Passed / 0 Failures / 0 Errors (303 Java + 103 Swift + 23 Python)** |
 
 ---
 
@@ -516,8 +718,10 @@ For the complete threat model and limitation analysis, see [`docs/security/secur
 
 ## 📚 Documentation Index
 
-The `docs/` directory contains complete technical reports and verification gates:
+The `docs/` and `research/` directories contain complete technical reports and verification gates:
 
+- **[Predictive Provisioning Research (`research/predictive-provisioning/README.md`)](research/predictive-provisioning/README.md)**: Research methodology, stochastic optimization formulation, sensitivity analyses, and Pareto validation across 30 random seeds.
+- **[Interactive Research Report (`research/predictive-provisioning/results/report.html`)](research/predictive-provisioning/results/report.html)**: Standalone interactive visual report documenting benchmark metrics and strategy trade-off frontiers.
 - **[Demo Runbook (`docs/reports/demo_runbook.md`)](docs/reports/demo_runbook.md)**: Controlled step-by-step technical demonstration guide with safe read-only paths and sanitized secrets.
 - **[Hardware Verification Report (`docs/reports/hardware_verification_report_100_inr.md`)](docs/reports/hardware_verification_report_100_inr.md)**: Complete empirical log and photographic evidence of the first ₹100 payment across physical iPhone 14 and MacBook Pro.
 - **[Final Verification Gate (`docs/reports/final_verification_gate.md`)](docs/reports/final_verification_gate.md)**: Comprehensive, read-only audit verifying zero database mutations, test suites, and cryptographic integrity.

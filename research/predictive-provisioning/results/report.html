@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UPIMesh Predictive Provisioning Benchmark Report</title>
+    <style>
+        :root {
+            --bg-canvas: #0a0e14;
+            --bg-card: #161b22;
+            --border: #30363d;
+            --text-main: #f0f6fc;
+            --text-dim: #8b949e;
+            --gold: #f59e0b;
+            --green: #10b981;
+            --red: #ef4444;
+        }
+        body {
+            background: var(--bg-canvas);
+            color: var(--text-main);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 32px;
+            line-height: 1.5;
+        }
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+        header {
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+        h1 {
+            margin: 0 0 8px 0;
+            font-size: 26px;
+            color: var(--gold);
+        }
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: bold;
+            background: rgba(245, 158, 11, 0.15);
+            color: var(--gold);
+            margin-right: 6px;
+        }
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 28px;
+        }
+        .chart-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 24px;
+            margin-bottom: 28px;
+        }
+        @media (min-width: 900px) {
+            .chart-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+        th, td {
+            padding: 10px 12px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+        th {
+            color: var(--text-dim);
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+        }
+        tr:hover td {
+            background: rgba(255, 255, 255, 0.02);
+        }
+        .num {
+            text-align: right;
+            font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        }
+        .tag-uncertainty {
+            color: var(--green);
+            font-weight: bold;
+        }
+        .tag-joint {
+            color: #3b82f6;
+            font-weight: bold;
+        }
+        .tag-fixed {
+            color: var(--gold);
+            font-weight: 500;
+        }
+        .tag-demand {
+            color: var(--red);
+            font-weight: 500;
+        }
+        img.vector-chart {
+            width: 100%;
+            height: auto;
+            border-radius: 8px;
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <span class="badge">RESEARCH MODULE</span>
+            <span class="badge">UPIMESH CORE</span>
+            <h1>Predictive Offline Payment Provisioning — Benchmark Report</h1>
+            <p style="color: var(--text-dim); margin: 4px 0 0 0; font-size: 14px;">
+                Experimental evaluation of Joint Optimization allowance provisioning against Fixed and Demand-Only baselines across non-stationary connectivity regimes.
+            </p>
+        </header>
+
+        <div class="card">
+            <h3 style="margin-top: 0; color: var(--gold);">Optimization Formulation</h3>
+            <p style="font-size: 13px; color: var(--text-dim);">
+                Minimizes total expected cost: <code>J(R) = c_lock &times; R &times; H + p_out &times; c_short &times; E[max(D_T - R, 0)] + c_exposure &times; Risk(R)</code><br>
+                Subject to banking hard invariant: <code>0 &le; R &le; min(available_balance, maximum_allowance)</code>.
+            </p>
+        </div>
+
+        <div class="chart-grid">
+            <div class="card" style="padding: 16px;">
+                <img src="charts/benchmark_metrics.svg" alt="Benchmark Metrics" class="vector-chart">
+            </div>
+            <div class="card" style="padding: 16px;">
+                <img src="charts/trade_off_frontier.svg" alt="Trade-off Frontier" class="vector-chart">
+            </div>
+        </div>
+
+        <div class="card">
+            <h3 style="margin-top: 0;">Comprehensive Scenario Evaluation Table</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Scenario</th>
+                        <th>Strategy</th>
+                        <th class="num">Success Rate</th>
+                        <th class="num">Shortage Rate</th>
+                        <th class="num">Avg Locked (₹)</th>
+                        <th class="num">Avg Unused (₹)</th>
+                        <th class="num">Avg Shortage (₹)</th>
+                        <th class="num">Demand MAE</th>
+                    </tr>
+                </thead>
+                <tbody>
+
+                    <tr>
+                        <td><strong>Urban Metro Commute</strong></td>
+                        <td class="tag-fixed">Fixed-₹500</td>
+                        <td class="num">98.8% &plusmn; 2.5</td>
+                        <td class="num">0.8%</td>
+                        <td class="num">₹500.00</td>
+                        <td class="num">₹449.24</td>
+                        <td class="num">₹0.75</td>
+                        <td class="num">₹68.23</td>
+                    </tr>
+
+                    <tr>
+                        <td><strong>Urban Metro Commute</strong></td>
+                        <td class="tag-demand">Demand-Only</td>
+                        <td class="num">100.0%</td>
+                        <td class="num">0.0%</td>
+                        <td class="num">₹759.52</td>
+                        <td class="num">₹708.01</td>
+                        <td class="num">₹0.00</td>
+                        <td class="num">₹68.23</td>
+                    </tr>
+
+                    <tr>
+                        <td><strong>Urban Metro Commute</strong></td>
+                        <td class="tag-joint">Proposed-JointOpt</td>
+                        <td class="num">67.0% &plusmn; 6.8</td>
+                        <td class="num">17.6%</td>
+                        <td class="num">₹122.46</td>
+                        <td class="num">₹88.13</td>
+                        <td class="num">₹17.18</td>
+                        <td class="num">₹68.23</td>
+                    </tr>
+
+                    <tr>
+                        <td><strong>Urban Metro Commute</strong></td>
+                        <td class="tag-uncertainty">Uncertainty-Aware</td>
+                        <td class="num">75.7% &plusmn; 6.7</td>
+                        <td class="num">13.1%</td>
+                        <td class="num">₹191.88</td>
+                        <td class="num">₹152.90</td>
+                        <td class="num">₹12.53</td>
+                        <td class="num">₹69.47</td>
+                    </tr>
+
+                    <tr>
+                        <td><strong>Rural Weak Signal</strong></td>
+                        <td class="tag-fixed">Fixed-₹500</td>
+                        <td class="num">98.8% &plusmn; 0.8</td>
+                        <td class="num">4.4%</td>
+                        <td class="num">₹500.00</td>
+                        <td class="num">₹357.75</td>
+                        <td class="num">₹1.79</td>
+                        <td class="num">₹129.49</td>
+                    </tr>
+
+                    <tr>
+                        <td><strong>Rural Weak Signal</strong></td>
+                        <td class="tag-demand">Demand-Only</td>
+                        <td class="num">100.0%</td>
+                        <td class="num">0.0%</td>
+                        <td class="num">₹795.64</td>
+                        <td class="num">₹651.60</td>
+                        <td class="num">₹0.00</td>
+                        <td class="num">₹129.49</td>
+                    </tr>
+
+                    <tr>
+                        <td><strong>Rural Weak Signal</strong></td>
+                        <td class="tag-joint">Proposed-JointOpt</td>
+                        <td class="num">89.2% &plusmn; 2.8</td>
+                        <td class="num">19.6%</td>
+                        <td class="num">₹334.52</td>
+                        <td class="num">₹206.03</td>
+                        <td class="num">₹15.54</td>
+                        <td class="num">₹129.49</td>
+                    </tr>
+
+                    <tr>
+                        <td><strong>Rural Weak Signal</strong></td>
+                        <td class="tag-uncertainty">Uncertainty-Aware</td>
+                        <td class="num">93.7% &plusmn; 3.0</td>
+                        <td class="num">14.5%</td>
+                        <td class="num">₹384.63</td>
+                        <td class="num">₹249.58</td>
+                        <td class="num">₹8.98</td>
+                        <td class="num">₹128.86</td>
+                    </tr>
+
+                    <tr>
+                        <td><strong>Reliable Urban 5G</strong></td>
+                        <td class="tag-fixed">Fixed-₹500</td>
+                        <td class="num">100.0%</td>
+                        <td class="num">0.0%</td>
+                        <td class="num">₹500.00</td>
+                        <td class="num">₹498.13</td>
+                        <td class="num">₹0.00</td>
+                        <td class="num">₹32.34</td>
+                    </tr>
+
+                    <tr>
+                        <td><strong>Reliable Urban 5G</strong></td>
+                        <td class="tag-demand">Demand-Only</td>
+                        <td class="num">100.0%</td>
+                        <td class="num">0.0%</td>
+                        <td class="num">₹806.85</td>
+                        <td class="num">₹804.99</td>
+                        <td class="num">₹0.00</td>
+                        <td class="num">₹32.34</td>
+                    </tr>
+
+                    <tr>
+                        <td><strong>Reliable Urban 5G</strong></td>
+                        <td class="tag-joint">Proposed-JointOpt</td>
+                        <td class="num">61.1% &plusmn; 29.5</td>
+                        <td class="num">23.7%</td>
+                        <td class="num">₹45.70</td>
+                        <td class="num">₹44.89</td>
+                        <td class="num">₹1.06</td>
+                        <td class="num">₹32.34</td>
+                    </tr>
+
+                    <tr>
+                        <td><strong>Reliable Urban 5G</strong></td>
+                        <td class="tag-uncertainty">Uncertainty-Aware</td>
+                        <td class="num">66.2% &plusmn; 25.9</td>
+                        <td class="num">23.7%</td>
+                        <td class="num">₹54.47</td>
+                        <td class="num">₹53.53</td>
+                        <td class="num">₹0.93</td>
+                        <td class="num">₹34.97</td>
+                    </tr>
+
+                    <tr>
+                        <td><strong>Non-Stationary Travel Shift</strong></td>
+                        <td class="tag-fixed">Fixed-₹500</td>
+                        <td class="num">99.4% &plusmn; 1.0</td>
+                        <td class="num">1.5%</td>
+                        <td class="num">₹500.00</td>
+                        <td class="num">₹436.57</td>
+                        <td class="num">₹0.33</td>
+                        <td class="num">₹116.01</td>
+                    </tr>
+
+                    <tr>
+                        <td><strong>Non-Stationary Travel Shift</strong></td>
+                        <td class="tag-demand">Demand-Only</td>
+                        <td class="num">100.0%</td>
+                        <td class="num">0.0%</td>
+                        <td class="num">₹803.36</td>
+                        <td class="num">₹739.61</td>
+                        <td class="num">₹0.00</td>
+                        <td class="num">₹116.01</td>
+                    </tr>
+
+                    <tr>
+                        <td><strong>Non-Stationary Travel Shift</strong></td>
+                        <td class="tag-joint">Proposed-JointOpt</td>
+                        <td class="num">79.9% &plusmn; 7.7</td>
+                        <td class="num">32.1%</td>
+                        <td class="num">₹166.86</td>
+                        <td class="num">₹116.13</td>
+                        <td class="num">₹13.03</td>
+                        <td class="num">₹116.01</td>
+                    </tr>
+
+                    <tr>
+                        <td><strong>Non-Stationary Travel Shift</strong></td>
+                        <td class="tag-uncertainty">Uncertainty-Aware</td>
+                        <td class="num">87.9% &plusmn; 7.2</td>
+                        <td class="num">19.6%</td>
+                        <td class="num">₹202.96</td>
+                        <td class="num">₹147.06</td>
+                        <td class="num">₹7.86</td>
+                        <td class="num">₹114.95</td>
+                    </tr>
+
+                    <tr>
+                        <td><strong>Adversarial Grid Shock</strong></td>
+                        <td class="tag-fixed">Fixed-₹500</td>
+                        <td class="num">99.2% &plusmn; 1.8</td>
+                        <td class="num">1.2%</td>
+                        <td class="num">₹500.00</td>
+                        <td class="num">₹477.61</td>
+                        <td class="num">₹0.23</td>
+                        <td class="num">₹114.61</td>
+                    </tr>
+
+                    <tr>
+                        <td><strong>Adversarial Grid Shock</strong></td>
+                        <td class="tag-demand">Demand-Only</td>
+                        <td class="num">100.0%</td>
+                        <td class="num">0.0%</td>
+                        <td class="num">₹800.35</td>
+                        <td class="num">₹777.73</td>
+                        <td class="num">₹0.00</td>
+                        <td class="num">₹114.61</td>
+                    </tr>
+
+                    <tr>
+                        <td><strong>Adversarial Grid Shock</strong></td>
+                        <td class="tag-joint">Proposed-JointOpt</td>
+                        <td class="num">76.8% &plusmn; 15.7</td>
+                        <td class="num">32.1%</td>
+                        <td class="num">₹206.87</td>
+                        <td class="num">₹189.98</td>
+                        <td class="num">₹5.74</td>
+                        <td class="num">₹114.61</td>
+                    </tr>
+
+                    <tr>
+                        <td><strong>Adversarial Grid Shock</strong></td>
+                        <td class="tag-uncertainty">Uncertainty-Aware</td>
+                        <td class="num">88.1% &plusmn; 8.2</td>
+                        <td class="num">22.1%</td>
+                        <td class="num">₹297.82</td>
+                        <td class="num">₹278.11</td>
+                        <td class="num">₹2.91</td>
+                        <td class="num">₹112.10</td>
+                    </tr>
+
+                </tbody>
+            </table>
+        </div>
+    </div>
+</body>
+</html>

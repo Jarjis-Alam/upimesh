@@ -1,0 +1,13 @@
+distribution,strategy,offline_success_rate,atomic_success_rate,average_locked_funds,average_shortage_amount,realized_combined_cost
+gaussian,Fixed-₹500,98.99,98.16,500.0,1.63,10.6975
+gaussian,Demand-Only,100.0,99.96,783.64,0.0,17.285
+gaussian,Proposed-JointOpt,89.08,85.8,325.65,16.35,36.1549
+gaussian,Uncertainty-Aware,92.7,89.88,371.38,10.89,26.1677
+lognormal,Fixed-₹500,98.84,98.08,500.0,1.87,11.1963
+lognormal,Demand-Only,100.0,99.96,776.48,0.0,16.9897
+lognormal,Proposed-JointOpt,89.29,85.74,328.72,15.98,35.4617
+lognormal,Uncertainty-Aware,92.5,89.88,370.83,11.14,26.6616
+pareto,Fixed-₹500,98.04,97.95,500.0,3.08,13.6201
+pareto,Demand-Only,99.77,99.76,771.79,0.4,17.6531
+pareto,Proposed-JointOpt,95.19,94.34,447.96,7.05,20.4514
+pareto,Uncertainty-Aware,95.33,94.73,438.06,6.94,19.8765
